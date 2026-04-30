@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, X, ArrowDownCircle, ArrowUpCircle, 
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
-  Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart, History
+  Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart, History, Info
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -67,6 +67,7 @@ function AppContent() {
   const todayStr = getKSTDateStr(); 
   
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' }); // 💡 토스트 알림 상태
   
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'loans'];
   const [tabOrder, setTabOrder] = useState(() => {
@@ -90,6 +91,7 @@ function AppContent() {
     }
     setTabOrder(newOrder);
     localStorage.setItem('hyunaTabOrder', JSON.stringify(newOrder));
+    showToast("하단 메뉴 순서가 변경되었습니다.");
   };
   
   const [ledger, setLedger] = useState([]);
@@ -97,7 +99,7 @@ function AppContent() {
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
   const [events, setEvents] = useState([]); 
   const [messages, setMessages] = useState([]); 
-  const [logs, setLogs] = useState([]); // 💡 활동 로그 상태 추가
+  const [logs, setLogs] = useState([]); 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {} });
 
@@ -160,6 +162,12 @@ function AppContent() {
   const scrollRefDelivery = useRef(null);
   const dutyTimelineRef = useRef(null); 
 
+  // 💡 토스트 메시지 함수
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 2500);
+  };
+
   useEffect(() => {
     if (!isFirebaseEnabled) return;
     const initAuth = async () => {
@@ -182,7 +190,7 @@ function AppContent() {
     });
     const unsubEvents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (s) => setEvents(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubMessages = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), (s) => setMessages(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-    const unsubLogs = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), (s) => setLogs(s.docs.map(doc => ({ id: doc.id, ...doc.data() })))); // 💡 로그 불러오기
+    const unsubLogs = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), (s) => setLogs(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
 
     const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'categories'), (docSnap) => {
       if(docSnap.exists()) setCategories(docSnap.data());
@@ -201,7 +209,6 @@ function AppContent() {
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubLogs(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
-  // 💡 이벤트 로그 기록 함수
   const logEvent = async (action, description) => {
     if (!isFirebaseEnabled || !user) return;
     try {
@@ -238,13 +245,6 @@ function AppContent() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (!isFirebaseEnabled) {
-      const savedTime = localStorage.getItem('hyunaDeliveryStartTime');
-      if (savedTime) { setTrackingStartTime(savedTime); setTimerActive(true); }
-    }
-  }, []);
-
-  useEffect(() => {
     let interval;
     if (timerActive && trackingStartTime) {
       interval = setInterval(() => { setElapsedSeconds(Math.floor((new Date() - new Date(trackingStartTime)) / 1000)); }, 1000);
@@ -258,7 +258,7 @@ function AppContent() {
     return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
   };
 
-  // 💡 기호 중복 제거 로직 강화
+  // 💡 기호 중복 제거 수정 완료
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
     const absVal = Math.abs(val);
@@ -573,7 +573,7 @@ function AppContent() {
     setEditingDeliveryId(null);
   };
   
-  const clearFilters = (e) => { e.preventDefault(); setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({ start: '', end: '' }); };
+  const clearFilters = (e) => { e.preventDefault(); setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({ start: '', end: '' }); showToast("필터가 초기화되었습니다."); };
 
   const handleStartDelivery = async () => {
     const nowStr = new Date().toISOString();
@@ -583,6 +583,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), { timerActive: true, trackingStartTime: nowStr });
       logEvent('배달 시작', '실시간 배달 기록을 시작했습니다.');
+      showToast("배달 근무를 시작합니다! 안전운전하세요 🛵", "info");
     } else {
       localStorage.setItem('hyunaDeliveryStartTime', nowStr);
     }
@@ -601,6 +602,7 @@ function AppContent() {
     setTimerActive(false); setTrackingStartTime(null); setEditingDeliveryId(null); setIsDeliveryModalOpen(true);
     if (isFirebaseEnabled && user) {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), { timerActive: false, trackingStartTime: null });
+      showToast("배달 근무를 종료합니다. 수익을 기록해주세요.");
     } else {
       localStorage.removeItem('hyunaDeliveryStartTime');
     }
@@ -623,6 +625,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), newTx);
       logEvent('가계부 추가', `${newTx.date} [${newTx.type}] ${newTx.category} ${formatMoney(newTx.amount)}원 추가`);
+      showToast("기록이 저장되었습니다.");
     } else setLedger([{...newTx, id: Date.now().toString()}, ...ledger]);
     closeModals();
   };
@@ -642,6 +645,7 @@ function AppContent() {
       if (isFirebaseEnabled && user) {
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', editingDeliveryId), newDel);
         logEvent('배달 수정', `${newDel.date} ${newDel.earner} 배달 데이터 수정`);
+        showToast("배달 기록이 수정되었습니다.");
       } else setDailyDeliveries(prev => (prev||[]).map(item => item.id === editingDeliveryId ? {...newDel, id: item.id} : item));
     } else {
       const adds = [];
@@ -665,6 +669,7 @@ function AppContent() {
       if (isFirebaseEnabled && user) {
         for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
         logEvent('배달 일괄 기록', `${deliveryFormData.date} 배달 수익 동시 기록 완료`);
+        showToast("수익 기록이 완료되었습니다! 수고하셨습니다 👏");
       } else {
         const newAdds = adds.map(a => ({...a, id: Date.now().toString() + Math.random()}));
         setDailyDeliveries([...newAdds, ...(dailyDeliveries||[])]);
@@ -682,11 +687,13 @@ function AppContent() {
       if (isFirebaseEnabled && user) {
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', editingEventId), newEvent);
         logEvent('일정 수정', `${newEvent.date} ${newEvent.title} 일정 수정`);
+        showToast("일정이 수정되었습니다.");
       } else setEvents(events.map(ev => ev.id === editingEventId ? {...newEvent, id: editingEventId} : ev));
     } else {
       if (isFirebaseEnabled && user) {
         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), newEvent);
         logEvent('일정 추가', `${newEvent.date} ${newEvent.title} 일정 등록`);
+        showToast("새로운 일정이 등록되었습니다.");
       } else setEvents([{...newEvent, id: Date.now().toString()}, ...(events||[])]);
     }
     closeModals();
@@ -698,20 +705,25 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
       logEvent('일정 삭제', `${target?.title} 일정 삭제`);
+      showToast("일정이 삭제되었습니다.", "error");
     } else setEvents((events||[]).filter(e => e.id !== id));
   };
 
   const handleSendMessage = async () => {
     if(!messageFormData.text.trim() || !user) return;
     const newMsg = { ...messageFormData, createdAt: todayStr, isChecked: false };
-    if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
-    else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
+    if (isFirebaseEnabled) {
+       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
+       showToast("메시지를 전송했습니다 💌");
+    } else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData(prev => ({...prev, text: ''}));
   };
 
   const handleCheckMessage = async (id) => {
-    if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', id), { isChecked: true, checkedAt: todayStr });
-    else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
+    if (isFirebaseEnabled && user) {
+       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', id), { isChecked: true, checkedAt: todayStr });
+       showToast("읽음 처리되었습니다.");
+    } else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
   };
 
   const openDutyBatchModal = () => {
@@ -771,6 +783,7 @@ function AppContent() {
          author: '시스템', text: `현아가 ${dutyBatchMonth}월 근무표를 새롭게 업데이트했어요! 🗓️`, createdAt: todayStr, isChecked: false
       });
       logEvent('근무표 업데이트', `${dutyBatchMonth}월 듀티표를 일괄 업데이트했습니다.`);
+      showToast(`${dutyBatchMonth}월 스케쥴이 저장되었습니다!`);
     } else {
       const kept = events.filter(e => !(e.type === '듀티' && e.date && e.date.startsWith(monthPrefix)));
       const added = Object.entries(batchDuties).map(([date, title], i) => ({
@@ -779,7 +792,6 @@ function AppContent() {
       setEvents([...added, ...kept]);
     }
     setIsDutyBatchModalOpen(false);
-    alert(`${dutyBatchMonth}월 스케쥴이 일괄 저장되었습니다!`);
   };
 
   const handlePayLoanThisMonth = async (loan) => {
@@ -789,6 +801,7 @@ function AppContent() {
       if (isFirebaseEnabled) {
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
         logEvent('대출 납부', `${loan.name} ${selectedMonth}월 납입 처리`);
+        showToast("납부 처리가 완료되었습니다.");
       } else setAssets(prev => ({ ...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, paidMonths: newPaidMonths } : l) }));
     }
   };
@@ -800,6 +813,7 @@ function AppContent() {
       if (isFirebaseEnabled) {
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
         logEvent('대출 납부 취소', `${loan.name} ${selectedMonth}월 납입 취소`);
+        showToast("납부 취소가 완료되었습니다.");
       } else setAssets(prev => ({ ...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, paidMonths: newPaidMonths } : l) }));
     }
   };
@@ -819,6 +833,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: newPrincipal, status: newStatus, prepaymentHistory: [newHistoryItem, ...(loan.prepaymentHistory || [])] });
       logEvent('중도 상환', `${loan.name} 원금 ${formatMoney(pAmount)}원 상환 기록`);
+      showToast("중도상환 내역이 기록되었습니다.");
     } else setAssets(prev => ({...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, principal: newPrincipal, status: newStatus, prepaymentHistory: [newHistoryItem, ...(l.prepaymentHistory || [])] } : l)}));
     closeModals();
   };
@@ -836,6 +851,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (loan.prepaymentHistory||[]).filter(h => h.id !== historyId) });
       logEvent('중도 상환 취소', `${loan.name} 원금 ${formatMoney(historyItem.principalAmount)}원 상환 복구`);
+      showToast("상환 기록이 취소되고 원금이 복구되었습니다.");
     } else setAssets(prev => ({...prev, loans: (prev.loans||[]).map(l => l.id === loanId ? { ...l, principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (l.prepaymentHistory||[]).filter(h => h.id !== historyId) } : l)}));
   };
 
@@ -850,6 +866,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id));
       logEvent('대출 삭제', `${target?.name} 대출 정보 삭제`);
+      showToast("삭제되었습니다.", "error");
     } else setAssets(prev => ({ ...prev, [type]: (prev[type]||[]).filter(item => item.id !== id) }));
   }
 
@@ -859,6 +876,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ledger', id));
       logEvent('가계부 삭제', `${target?.category} ${formatMoney(target?.amount)}원 삭제`);
+      showToast("삭제되었습니다.", "error");
     } else setLedger((ledger||[]).filter(t => t.id !== id));
   }
 
@@ -868,6 +886,7 @@ function AppContent() {
     if (isFirebaseEnabled && user) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', id));
       logEvent('배달 기록 삭제', `${target?.date} ${target?.earner} 수익 삭제`);
+      showToast("삭제되었습니다.", "error");
     } else setDailyDeliveries((dailyDeliveries||[]).filter(d => d.id !== id));
   }
 
@@ -879,6 +898,7 @@ function AppContent() {
       if (isFirebaseEnabled && user) {
         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), newAsset);
         logEvent('대출 추가', `${name} 신규 대출 등록`);
+        showToast("신규 대출 항목이 추가되었습니다.");
       } else setAssets(prev => ({ ...prev, loans: [...(prev.loans||[]), {id: Date.now().toString(), ...newAsset}] }));
     }
   };
@@ -888,6 +908,16 @@ function AppContent() {
   return (
     <div className={`min-h-screen font-sans text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor}`}>
       
+      {/* 💡 상단 토스트 알림 컴포넌트 */}
+      {toast.show && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4">
+          <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border ${toast.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-white border-indigo-100 text-indigo-600'}`}>
+             <Info size={16}/>
+             <span className="text-sm font-black whitespace-nowrap">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl pb-2 shadow-sm border-b border-gray-200/60">
         <header className="pt-10 pb-4 px-6 flex justify-between items-center">
           <div>
@@ -917,7 +947,7 @@ function AppContent() {
             <button key={m} onClick={() => setSelectedMonth(m)} 
               className={`flex-none px-5 py-2 rounded-[1.2rem] font-black text-sm transition-all shadow-sm ${
                 selectedMonth === m 
-                  ? (activeTab === 'ledger' ? 'bg-pink-500 text-white border border-pink-500' : activeTab === 'delivery' ? 'bg-blue-600 text-white border border-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500 text-white border border-emerald-500' : 'bg-indigo-600 text-white border border-indigo-600')
+                  ? (activeTab === 'ledger' ? 'bg-pink-500 text-white border border-pink-500' : activeTab === 'delivery' ? 'bg-blue-600 text-white border border-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500 text-white border border-emerald-500' : activeTab === 'indigo-600 text-white border border-indigo-600')
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}>
               {m}월
@@ -928,7 +958,6 @@ function AppContent() {
 
       {isManageMode && (
         <div className="px-5 my-4 animate-in fade-in space-y-4">
-           {/* 💡 기기 설정 카드 */}
            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md">
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 내 기기 설정</h3>
              <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-pink-50/50 border-pink-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
@@ -936,13 +965,12 @@ function AppContent() {
                  <span className="text-[11px] font-bold text-gray-600 block mb-0.5">앱 시작 시 화면</span>
                  <span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-pink-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{activeTab === 'ledger' ? '가계부' : activeTab === 'delivery' ? '배달수익' : activeTab === 'loans' ? '대출관리' : '우리가족'}</span>
                </div>
-               <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('이 기기의 초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold active:scale-95 transition-transform shadow-sm`}>
+               <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); showToast("이 기기의 초기화면이 설정되었습니다."); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold active:scale-95 transition-transform shadow-sm`}>
                  현재 탭으로 고정
                </button>
              </div>
            </div>
 
-           {/* 💡 최근 활동 로그 카드 (신규!) */}
            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md">
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><History size={16} className="text-indigo-500"/> 최근 활동 로그</h3>
              <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 max-h-40 overflow-y-auto no-scrollbar space-y-2">
@@ -959,7 +987,6 @@ function AppContent() {
              </div>
            </div>
 
-           {/* 탭 순서 변경 */}
            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-top-2">
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 하단 메뉴 순서 변경</h3>
              <div className="space-y-2">
@@ -1090,7 +1117,6 @@ function AppContent() {
                        return (
                          <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
                            <span className={`text-[9px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
-                           {/* 💡 기호 정리 적용부 */}
                            {dayData.inc > 0 && <span className="text-[8px] font-black text-blue-500 w-full text-center tracking-tighter truncate">{formatCompactMoney(dayData.inc)}</span>}
                            {dayData.exp > 0 && <span className="text-[8px] font-black text-rose-500 w-full text-center tracking-tighter truncate">{formatCompactMoney(-dayData.exp)}</span>}
                          </div>
@@ -1627,7 +1653,7 @@ function AppContent() {
                </div>
             </div>
 
-            <div className="pt-2"> {/* 💡 TODAY 글자 짤림 방지 pt-2 추가 */}
+            <div className="pt-2"> 
               <div className="flex justify-between items-center px-2 mb-3">
                 <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Stethoscope size={16} className="text-pink-500"/> 현아 근무 스케줄</h3>
                 <button onClick={openDutyBatchModal} className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-bold border border-emerald-200 shadow-sm active:scale-95 transition-transform">
@@ -1636,7 +1662,7 @@ function AppContent() {
               </div>
               
               <div className="relative">
-                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 pt-4 scroll-smooth"> {/* 💡 상단 여백 pt-4 확보 */}
+                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 pt-6 scroll-smooth"> 
                   {extendedDutyDays.map((d) => {
                     const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
                     const duty = dutyEvent ? dutyEvent.title : 'OFF';
@@ -1650,7 +1676,8 @@ function AppContent() {
 
                     return (
                       <div key={d} id={isToday ? 'duty-today' : undefined} className={`flex-none w-[60px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
-                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-3 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm z-10">TODAY</div>}
+                        {/* 💡 TODAY 뱃지 위치 및 여백 수정 완료 */}
+                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-4 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm z-10 whitespace-nowrap">TODAY</div>}
                         <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                         <div className="text-xs font-black">{dayName}</div>
                         <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -1753,7 +1780,10 @@ function AppContent() {
       {isMessageHistoryOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[70] p-4 pb-8 overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 border border-pink-100">
-            <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-gray-800">💌 메시지 기록 보관소</h2><button onClick={closeModals} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl border border-gray-200 shadow-sm"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-6">
+               <h2 className="text-xl font-black text-gray-800">💌 메시지 기록 보관소</h2>
+               <button onClick={closeModals} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl border border-gray-200 shadow-sm"><X size={20}/></button>
+            </div>
             <div className="space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar pb-4">
                {messages.length === 0 && <div className="text-center text-gray-400 font-bold py-10">과거 내역이 없습니다.</div>}
                {messages.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).map(m => (
