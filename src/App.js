@@ -40,11 +40,15 @@ const DEFAULT_CATEGORIES = {
   수입: ['월급', '배달비', '월세', '용돈', '기타수입']
 };
 
+// 완벽한 KST(한국 시간) 기준 YYYY-MM-DD 추출 로직 (toISOString 버그 해결)
 const getKSTDateStr = () => {
   const d = new Date();
   const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
   const kstTime = new Date(utc + (9 * 3600000));
-  return kstTime.toISOString().slice(0, 10);
+  const yy = kstTime.getFullYear();
+  const mm = String(kstTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(kstTime.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 };
 
 const getPaydayStr = (dateString) => {
@@ -118,6 +122,9 @@ function AppContent() {
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false); 
   const [isManageMode, setIsManageMode] = useState(false); 
   
+  // 관리자 모드 설정 탭 분류 (시스템 공통 vs 메뉴별)
+  const [settingsTab, setSettingsTab] = useState('common');
+
   // 개별 듀티 수정 모달 상태
   const [selectedDutyEditDate, setSelectedDutyEditDate] = useState(null);
   const [isDutyEditModalOpen, setIsDutyEditModalOpen] = useState(false);
@@ -565,7 +572,11 @@ function AppContent() {
       const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
       const kst = new Date(utc + (9 * 3600000));
       kst.setDate(kst.getDate() + (i - 3)); 
-      return kst.toISOString().slice(0, 10);
+      
+      const yy = kst.getFullYear();
+      const mm = String(kst.getMonth() + 1).padStart(2, '0');
+      const dd = String(kst.getDate()).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
     });
   }, []);
 
@@ -744,7 +755,7 @@ function AppContent() {
     setReplyingTo(null);
   };
 
-  // 시스템 메시지 삭제
+  // 시스템 메시지 확인(삭제) 처리
   const handleDeleteSystemMessage = async (msgId) => {
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', msgId));
     else setMessages(messages.filter(m => m.id !== msgId));
@@ -1026,91 +1037,107 @@ function AppContent() {
 
       {isManageMode && (
         <div className="px-5 my-4 animate-in fade-in space-y-4">
-           
-           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md">
-             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
-             <div className="flex gap-2">
-               <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ? 'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
-               <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
-             </div>
+           {/* 설정 탭 선택 (시스템 공통 vs 메뉴별 설정) */}
+           <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 shadow-inner">
+             <button onClick={() => setSettingsTab('common')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${settingsTab === 'common' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>⚙️ 시스템 설정</button>
+             <button onClick={() => setSettingsTab('menu')} className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${settingsTab === 'menu' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>📂 메뉴별 설정</button>
            </div>
 
-           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md">
-             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
-             <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-pink-50/50 border-pink-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
-               <div>
-                 <span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-pink-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{activeTab === 'ledger' ? '가계부' : activeTab === 'delivery' ? '배달수익' : activeTab === 'loans' ? '대출관리' : '우리가족'}</span>
-               </div>
-               <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('이 기기의 초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold active:scale-95 transition-transform shadow-sm`}>
-                 현재 탭으로 고정
-               </button>
-             </div>
-           </div>
-
-           {activeTab === 'ledger' && (
-             <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-md animate-in slide-in-from-top-2">
-               <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
-               <div className="space-y-4">
-                 <div>
-                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-[10px] font-bold text-pink-500">지출 카테고리</span>
-                     <button onClick={() => handleAddCategory('지출')} className="text-[10px] bg-pink-50 text-pink-600 px-2 py-1 rounded font-bold border border-pink-100">+ 추가</button>
-                   </div>
-                   <div className="flex flex-wrap gap-1.5">
-                     {getSortedCategories('지출').map(c => (
-                       <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('지출', c)} className="text-gray-400 hover:text-pink-500"><X size={10}/></button></span>
-                     ))}
-                   </div>
-                 </div>
-                 <div>
-                   <div className="flex justify-between items-center mb-2">
-                     <span className="text-[10px] font-bold text-blue-500">수입 카테고리</span>
-                     <button onClick={() => handleAddCategory('수입')} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-100">+ 추가</button>
-                   </div>
-                   <div className="flex flex-wrap gap-1.5">
-                     {getSortedCategories('수입').map(c => (
-                       <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('수입', c)} className="text-gray-400 hover:text-blue-500"><X size={10}/></button></span>
-                     ))}
-                   </div>
+           {settingsTab === 'common' ? (
+             <>
+               <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
+                 <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
+                 <div className="flex gap-2">
+                   <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ? 'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
+                   <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
                  </div>
                </div>
-             </div>
-           )}
 
-           {activeTab === 'delivery' && (
-             <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-top-2">
-               <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
-               <div className="flex items-center gap-2">
-                 <input type="number" value={userSettings.deliveryGoals?.[currentMonthKey] || ''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value)||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
-                 <span className="text-gray-500 font-bold text-sm">원</span>
+               <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
+                 <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
+                 <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-pink-50/50 border-pink-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
+                   <div>
+                     <span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-pink-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{activeTab === 'ledger' ? '가계부' : activeTab === 'delivery' ? '배달수익' : activeTab === 'loans' ? '대출관리' : '우리가족'}</span>
+                   </div>
+                   <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('이 기기의 초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold active:scale-95 transition-transform shadow-sm`}>
+                     현재 탭으로 고정
+                   </button>
+                 </div>
                </div>
-             </div>
-           )}
 
-           {activeTab === 'loans' && (
-             <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md animate-in slide-in-from-top-2 text-center text-xs text-gray-500">
-               설정에 있던 [대출 추가] 버튼은 메인 화면 우측으로 이동되었습니다.
-             </div>
-           )}
-
-           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-top-2">
-             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 하단 메뉴 순서 변경</h3>
-             <div className="space-y-2">
-               {tabOrder.map((tabId, index) => (
-                 <div key={tabId} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                   <span className="text-xs font-bold text-gray-700 flex items-center gap-2">
-                     <span className="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm text-[10px]">{index + 1}</span>
-                     {tabConfig[tabId].label}
-                   </span>
-                   <div className="flex gap-1">
-                     <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={14}/></button>
-                     <button onClick={() => moveTab(index, 'down')} disabled={index === tabOrder.length - 1} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronDown size={14}/></button>
+               <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
+                 <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 하단 메뉴 순서 변경</h3>
+                 <div className="space-y-2">
+                   {tabOrder.map((tabId, index) => (
+                     <div key={tabId} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                       <span className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                         <span className="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm text-[10px]">{index + 1}</span>
+                         {tabConfig[tabId].label}
+                       </span>
+                       <div className="flex gap-1">
+                         <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={14}/></button>
+                         <button onClick={() => moveTab(index, 'down')} disabled={index === tabOrder.length - 1} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronDown size={14}/></button>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             </>
+           ) : (
+             <>
+               {activeTab === 'ledger' && (
+                 <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-md animate-in slide-in-from-right-2">
+                   <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
+                   <div className="space-y-4">
+                     <div>
+                       <div className="flex justify-between items-center mb-2">
+                         <span className="text-[10px] font-bold text-pink-500">지출 카테고리</span>
+                         <button onClick={() => handleAddCategory('지출')} className="text-[10px] bg-pink-50 text-pink-600 px-2 py-1 rounded font-bold border border-pink-100">+ 추가</button>
+                       </div>
+                       <div className="flex flex-wrap gap-1.5">
+                         {getSortedCategories('지출').map(c => (
+                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('지출', c)} className="text-gray-400 hover:text-pink-500"><X size={10}/></button></span>
+                         ))}
+                       </div>
+                     </div>
+                     <div>
+                       <div className="flex justify-between items-center mb-2">
+                         <span className="text-[10px] font-bold text-blue-500">수입 카테고리</span>
+                         <button onClick={() => handleAddCategory('수입')} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-100">+ 추가</button>
+                       </div>
+                       <div className="flex flex-wrap gap-1.5">
+                         {getSortedCategories('수입').map(c => (
+                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('수입', c)} className="text-gray-400 hover:text-blue-500"><X size={10}/></button></span>
+                         ))}
+                       </div>
+                     </div>
                    </div>
                  </div>
-               ))}
-             </div>
-           </div>
+               )}
 
+               {activeTab === 'delivery' && (
+                 <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-right-2">
+                   <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
+                   <div className="flex items-center gap-2">
+                     <input type="number" value={userSettings.deliveryGoals?.[currentMonthKey] || ''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value)||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 h-[48px] text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
+                     <span className="text-gray-500 font-bold text-sm">원</span>
+                   </div>
+                 </div>
+               )}
+
+               {activeTab === 'loans' && (
+                 <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md animate-in slide-in-from-right-2 text-center text-xs font-bold text-gray-500">
+                   설정에 있던 [대출 추가] 버튼은 메인 화면 상단으로 이동되었습니다.
+                 </div>
+               )}
+
+               {activeTab === 'calendar' && (
+                 <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-md animate-in slide-in-from-right-2 text-center text-xs font-bold text-gray-500">
+                   우리가족 메뉴는 별도의 설정이 필요하지 않습니다.
+                 </div>
+               )}
+             </>
+           )}
         </div>
       )}
 
@@ -1142,13 +1169,13 @@ function AppContent() {
 
               {showFilters && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-200/60 animate-in slide-in-from-top-2 space-y-3 mb-3">
-                  <div className="relative"><Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50/50 rounded-xl py-2 pl-8 pr-3 text-xs font-bold outline-none border border-pink-100 focus:ring-2 ring-pink-200 text-gray-700 transition-all" /></div>
+                  <div className="relative"><Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50/50 rounded-xl py-2 pl-8 pr-3 h-[40px] text-xs font-bold outline-none border border-pink-100 focus:ring-2 ring-pink-200 text-gray-700 transition-all" /></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">구분</label><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
-                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">카테고리</label><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 truncate focus:ring-2 ring-pink-200"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">구분</label><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
+                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">카테고리</label><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 truncate focus:ring-2 ring-pink-200"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                   </div>
-                  <div><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex justify-between mb-0.5"><span>조회 기간 (월별 무시)</span></label><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl p-1.5 text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /><span className="text-gray-300 text-[10px] font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl p-1.5 text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /></div></div>
-                  <button onClick={clearFilters} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-2 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={12}/> 모든 검색/필터 초기화</button>
+                  <div><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex justify-between mb-0.5"><span>조회 기간 (월별 무시)</span></label><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /><span className="text-gray-300 text-[10px] font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /></div></div>
+                  <button onClick={clearFilters} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={12}/> 모든 검색/필터 초기화</button>
                 </div>
               )}
             </div>
@@ -1428,9 +1455,9 @@ function AppContent() {
                     <span>임의 기간 지정 (옵션)</span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <input type="date" value={deliveryDateRange.start} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, start: e.target.value})} className="flex-1 bg-slate-50 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
+                    <input type="date" value={deliveryDateRange.start} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, start: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
                     <span className="text-gray-300 text-xs font-bold">~</span>
-                    <input type="date" value={deliveryDateRange.end} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, end: e.target.value})} className="flex-1 bg-slate-50 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
+                    <input type="date" value={deliveryDateRange.end} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, end: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
                   </div>
                 </div>
                 <button onClick={() => setDeliveryDateRange({start:'', end:''})} className="w-full mt-3 bg-gray-50 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-blue-50 hover:text-blue-600 transition-colors"><RefreshCw size={12}/> 기간 설정 초기화</button>
@@ -1749,7 +1776,8 @@ function AppContent() {
                             </div>
                             <div className="text-[13px] font-black text-emerald-900 leading-tight break-all">{m.text}</div>
                          </div>
-                         <button onClick={() => handleDeleteSystemMessage(m.id)} className="bg-white text-gray-500 border border-gray-200 p-2 rounded-full shrink-0 active:scale-90 transition-transform shadow-sm"><X size={14}/></button>
+                         {/* 시스템 메시지는 보관소에 안 가고 바로 삭제(확인)됨 */}
+                         <button onClick={() => handleDeleteSystemMessage(m.id)} className="bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-[10px] font-black shrink-0 active:scale-90 transition-transform shadow-sm flex items-center gap-1"><CheckCircle2 size={12}/> 확인</button>
                       </div>
                     ) : (
                       <div key={m.id} className={`bg-white p-3.5 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
@@ -1811,7 +1839,7 @@ function AppContent() {
               </div>
               
               <div className="relative pt-4">
-                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 scroll-smooth">
+                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 pt-4 scroll-smooth">
                   {extendedDutyDays.map((d) => {
                     const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
                     const duty = dutyEvent ? dutyEvent.title : 'OFF';
@@ -1827,7 +1855,7 @@ function AppContent() {
                       <div key={d} id={isToday ? 'duty-today' : undefined} 
                            onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }}
                            className={`flex-none w-[60px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
-                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-3 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
+                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-4 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
                         <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                         <div className="text-xs font-black">{dayName}</div>
                         <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -1976,13 +2004,13 @@ function AppContent() {
               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
-                <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
+              <div className="flex gap-2">
+                <div className="w-[35%]"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
+                <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
               </div>
-              {isCustomCategory && <div className="animate-in fade-in slide-in-from-top-2"><input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl p-3.5 font-black text-sm outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} /></div>}
+              {isCustomCategory && <div className="animate-in fade-in slide-in-from-top-2"><input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl px-3.5 h-[48px] font-black text-sm outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} /></div>}
               
-              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
+              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
               <button type="submit" className={`w-full ${formData.type === '수입' ? 'bg-blue-500 shadow-blue-200 border border-blue-600' : 'bg-pink-500 shadow-pink-200 border border-pink-600'} mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl`}>기록 완료 {formData.type === '수입' ? '💰' : '🎀'}</button>
             </form>
           </div>
@@ -1999,24 +2027,24 @@ function AppContent() {
               <button onClick={closeModals} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border border-emerald-100 shadow-sm"><X size={20}/></button>
             </div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="flex gap-2">
+                <div className="flex-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
-                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
+                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
                     <option value="가족일정">가족일정</option>
                     <option value="회식">회식</option>
                     <option value="기타">기타</option>
                   </select>
                 </div>
-                <div>
+                <div className="w-[35%]">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
+                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label>
-                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
+                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] text-sm font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
               </div>
 
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
@@ -2245,33 +2273,33 @@ function AppContent() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block">시작 시간</label>
                   <div className="flex items-center gap-1">
-                    <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="flex-1 bg-gray-50 border border-gray-200/60 rounded-xl p-2.5 font-bold text-xs outline-none focus:ring-2 ring-blue-200" />
-                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, startTime:formatTimeStr(new Date())})} className="bg-gray-100 border border-gray-200 text-gray-600 px-2 py-2.5 rounded-lg text-[10px] font-black shrink-0 hover:bg-blue-50 hover:text-blue-600 shadow-sm">현재</button>
-                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, startTime:''})} className="bg-red-50 border border-red-100 text-red-500 px-2 py-2.5 rounded-lg text-[10px] font-black shrink-0 shadow-sm"><X size={12}/></button>
+                    <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="flex-1 bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-bold text-xs outline-none focus:ring-2 ring-blue-200" />
+                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, startTime:formatTimeStr(new Date())})} className="bg-gray-100 border border-gray-200 text-gray-600 px-2 h-[48px] rounded-lg text-[10px] font-black shrink-0 hover:bg-blue-50 hover:text-blue-600 shadow-sm">현재</button>
+                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, startTime:''})} className="bg-red-50 border border-red-100 text-red-500 px-2 h-[48px] rounded-lg text-[10px] font-black shrink-0 shadow-sm"><X size={12}/></button>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block">종료 시간</label>
                   <div className="flex items-center gap-1">
-                    <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="flex-1 bg-gray-50 border border-gray-200/60 rounded-xl p-2.5 font-bold text-xs outline-none focus:ring-2 ring-blue-200" />
-                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, endTime:formatTimeStr(new Date())})} className="bg-gray-100 border border-gray-200 text-gray-600 px-2 py-2.5 rounded-lg text-[10px] font-black shrink-0 hover:bg-blue-50 hover:text-blue-600 shadow-sm">현재</button>
-                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, endTime:''})} className="bg-red-50 border border-red-100 text-red-500 px-2 py-2.5 rounded-lg text-[10px] font-black shrink-0 shadow-sm"><X size={12}/></button>
+                    <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="flex-1 bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-bold text-xs outline-none focus:ring-2 ring-blue-200" />
+                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, endTime:formatTimeStr(new Date())})} className="bg-gray-100 border border-gray-200 text-gray-600 px-2 h-[48px] rounded-lg text-[10px] font-black shrink-0 hover:bg-blue-50 hover:text-blue-600 shadow-sm">현재</button>
+                    <button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, endTime:''})} className="bg-red-50 border border-red-100 text-red-500 px-2 h-[48px] rounded-lg text-[10px] font-black shrink-0 shadow-sm"><X size={12}/></button>
                   </div>
                 </div>
                 <div className="col-span-2 mt-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl p-3.5 font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800" />
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
               </div>
 
               {editingDeliveryId ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>현아</button></div></div>
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>쿠팡</button></div></div>
+                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 h-[40px] rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 h-[40px] rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>현아</button></div></div>
+                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 h-[40px] rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 h-[40px] rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>쿠팡</button></div></div>
                   </div>
                   <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">수익금</label><div className="relative"><input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
-                  <div><label className="text-[10px] font-black text-gray-400 ml-1 block uppercase">건수</label><div className="relative"><input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl p-3 font-black text-sm outline-none focus:ring-2 ring-blue-200" /><span className="absolute right-3 top-3.5 text-sm font-black text-gray-400">건</span></div></div>
+                  <div><label className="text-[10px] font-black text-gray-400 ml-1 block uppercase">건수</label><div className="relative"><input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-black text-sm outline-none focus:ring-2 ring-blue-200" /><span className="absolute right-3 top-3.5 text-sm font-black text-gray-400">건</span></div></div>
                   <button type="submit" disabled={!deliveryFormData.amount} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 border border-blue-700">수정 완료</button>
                 </>
               ) : (
@@ -2282,19 +2310,19 @@ function AppContent() {
                       <div className="flex gap-2 items-center">
                         <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                         <div className="w-16 relative">
-                          <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
                         <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                         <div className="w-16 relative">
-                          <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                     </div>
@@ -2306,19 +2334,19 @@ function AppContent() {
                       <div className="flex gap-2 items-center">
                         <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                         <div className="w-16 relative">
-                          <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
                         <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                         <div className="w-16 relative">
-                          <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl p-2.5 outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                     </div>
@@ -2346,7 +2374,7 @@ function AppContent() {
                 <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-2xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
                 <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-2xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
               </div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200" /></div>
+              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200" /></div>
               <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-indigo-200 border border-indigo-700">상환 처리 완료</button>
             </form>
           </div>
