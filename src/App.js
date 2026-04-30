@@ -11,7 +11,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- 💡 앱 버전 및 업데이트 시간 (버전 확인용) ---
-const APP_VERSION = "v5.6 (업데이트: 2026.04.30 11:55 AM)";
+const APP_VERSION = "v5.7 (업데이트: 2026.04.30 12:00 PM)";
 
 // --- Firebase 세팅 ---
 const firebaseConfig = {
@@ -49,6 +49,7 @@ const getKSTDateStr = () => {
   return kstTime.toISOString().slice(0, 10);
 };
 
+// 💡 배달 정산 (수-화 주기 -> 다음주 금요일) 로직 완벽 복구!
 const getPaydayStr = (dateString) => {
   if (!dateString || typeof dateString !== 'string') return '';
   const parts = dateString.split('-');
@@ -56,6 +57,9 @@ const getPaydayStr = (dateString) => {
   const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10)-1, parseInt(parts[2], 10));
   if (isNaN(d.getTime())) return ''; 
   const day = d.getDay(); 
+  // 일:0, 월:1, 화:2, 수:3, 목:4, 금:5, 토:6
+  // 수(3)->+9(다음주 금), 목(4)->+8(다음주 금), 금(5)->+7(다음주 금), 토(6)->+6(다음주 금)
+  // 일(0)->+5(이번주 금), 월(1)->+4(이번주 금), 화(2)->+3(이번주 금)
   const daysToAdd = [5, 4, 3, 9, 8, 7, 6][day];
   d.setDate(d.getDate() + daysToAdd);
   const yy = d.getFullYear();
@@ -68,7 +72,7 @@ function AppContent() {
   const [user, setUser] = useState(null);
   const todayStr = getKSTDateStr(); 
   
-  // 기기 사용자명 등록 (로그 실명제용)
+  // 💡 기기 사용자명 등록 (로그 실명제용)
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaUserName') || '가족');
   
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
@@ -96,7 +100,7 @@ function AppContent() {
     showToast("하단 메뉴 순서가 변경되었습니다.");
   };
   
-  // 💡 불필요한 하드코딩 데이터를 지우고 빈 배열로 초기화! (DB에서 불러옵니다)
+  // 💡 하드코딩된 더미 데이터 영구 삭제 -> 순수 빈 배열로 시작 (파이어베이스가 자동으로 채워줌!)
   const [ledger, setLedger] = useState([]);
   const [assets, setAssets] = useState({ loans: [], stocks: [] }); 
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
@@ -106,6 +110,7 @@ function AppContent() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {} });
   const [exchangeRate, setExchangeRate] = useState(1380);
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   const [selectedYear, setSelectedYear] = useState(parseInt(todayStr.slice(0,4)));
   const [selectedMonth, setSelectedMonth] = useState(parseInt(todayStr.slice(5,7))); 
@@ -121,7 +126,7 @@ function AppContent() {
   const [isDutyBatchModalOpen, setIsDutyBatchModalOpen] = useState(false);
   const [isDutyBatchEditMode, setIsDutyBatchEditMode] = useState(false);
   
-  // 근무표 단건 수정 팝업 상태
+  // 💡 근무표 단건 수정 팝업 상태
   const [singleDutyModal, setSingleDutyModal] = useState({ isOpen: false, date: '', duty: '', eventId: null });
 
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false); 
@@ -513,7 +518,7 @@ function AppContent() {
     showToast("삭제되었습니다.", "error");
   };
 
-  // 근무표 단건 수정 저장 로직
+  // 💡 근무표 단건 수정 저장 로직
   const handleSingleDutySave = async (stamp) => {
     if (!user) return;
     const { date, eventId, duty: oldDuty } = singleDutyModal;
@@ -745,9 +750,9 @@ function AppContent() {
             
             {/* 💡 요약 폰트 크기 조절 적용 */}
             <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 grid grid-cols-3 gap-2">
-              <div className="text-center overflow-hidden"><div className="text-[10px] font-bold text-blue-500 mb-1">수입</div><div className="text-[11px] sm:text-xs font-black truncate">{formatMoney(ledgerSummary.income)}</div></div>
-              <div className="text-center border-x border-gray-100 overflow-hidden"><div className="text-[10px] font-bold text-red-500 mb-1">지출</div><div className="text-[11px] sm:text-xs font-black truncate">{formatMoney(ledgerSummary.expense)}</div></div>
-              <div className="text-center overflow-hidden"><div className="text-[10px] font-bold text-indigo-500 mb-1">남은돈</div><div className="text-[11px] sm:text-xs font-black text-indigo-600 truncate">{formatMoney(ledgerSummary.net)}</div></div>
+              <div className="text-center overflow-hidden"><div className="text-[10px] font-bold text-blue-500 mb-1">수입</div><div className="text-[11px] font-black text-gray-800 truncate">{formatMoney(ledgerSummary.income)}</div></div>
+              <div className="text-center border-x border-gray-100 overflow-hidden"><div className="text-[10px] font-bold text-red-500 mb-1">지출</div><div className="text-[11px] font-black text-gray-800 truncate">{formatMoney(ledgerSummary.expense)}</div></div>
+              <div className="text-center overflow-hidden"><div className="text-[10px] font-bold text-indigo-500 mb-1">남은돈</div><div className="text-[11px] font-black text-indigo-600 truncate">{formatMoney(ledgerSummary.net)}</div></div>
             </div>
             
             <div className="flex bg-gray-100 p-1.5 rounded-2xl"><button onClick={()=>setLedgerSubTab('daily')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${ledgerSubTab==='daily'?'bg-white text-indigo-600 shadow-sm':'text-gray-400'}`}>목록</button><button onClick={()=>setLedgerSubTab('calendar')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?'bg-white text-indigo-600 shadow-sm':'text-gray-400'}`}><CalendarDays size={16}/> 달력</button></div>
