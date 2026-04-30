@@ -11,7 +11,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- 💡 앱 버전 및 업데이트 시간 (버전 확인용) ---
-const APP_VERSION = "v5.5 (업데이트: 2026.04.30 11:30 AM)";
+const APP_VERSION = "v5.6 (업데이트: 2026.04.30 11:45 AM)";
 
 // --- Firebase 세팅 ---
 const firebaseConfig = {
@@ -68,7 +68,7 @@ function AppContent() {
   const [user, setUser] = useState(null);
   const todayStr = getKSTDateStr(); 
   
-  // 💡 기기 사용자명 등록 (로그 실명제용)
+  // 기기 사용자명 등록 (로그 실명제용)
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaUserName') || '가족');
   
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
@@ -96,7 +96,7 @@ function AppContent() {
     showToast("하단 메뉴 순서가 변경되었습니다.");
   };
   
-  // 💡 빈 배열로 시작 (Firebase에서 가져오므로 하드코딩 필요 없음!)
+  // 💡 하드코딩된 더미 데이터 영구 삭제 -> 순수 빈 배열로 시작 (파이어베이스가 동기화)
   const [ledger, setLedger] = useState([]);
   const [assets, setAssets] = useState({ loans: [], stocks: [] }); 
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
@@ -122,7 +122,7 @@ function AppContent() {
   const [isDutyBatchModalOpen, setIsDutyBatchModalOpen] = useState(false);
   const [isDutyBatchEditMode, setIsDutyBatchEditMode] = useState(false);
   
-  // 💡 근무표 단건 수정 팝업 상태
+  // 근무표 단건 수정 팝업 상태
   const [singleDutyModal, setSingleDutyModal] = useState({ isOpen: false, date: '', duty: '', eventId: null });
 
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false); 
@@ -209,7 +209,7 @@ function AppContent() {
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubLogs(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
-  // 💡 로그 기록시 이름 포함
+  // 로그 기록시 이름 포함
   const logEvent = async (action, description) => {
     if (!isFirebaseEnabled || !user) return;
     try {
@@ -256,7 +256,7 @@ function AppContent() {
     return new Intl.NumberFormat('ko-KR').format(num);
   };
 
-  // 💡 기호 오류 완전 해결! (+, - 부호를 함수 자체에서 아예 빼버렸습니다.)
+  // 💡 기호 오류 완전 해결 (+, - 부호를 함수 자체에서 반환하지 않고 숫자로만 반환)
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
     const absVal = Math.abs(val);
@@ -332,8 +332,6 @@ function AppContent() {
 
   // --- 데이터 연산 ---
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && t.date?.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
-  
-  // 💡 배달 총액 누락 에러 해결부
   const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => d.date?.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
 
   const filteredLedger = useMemo(() => {
@@ -366,18 +364,31 @@ function AppContent() {
     return data;
   }, [dailyDeliveries, selectedYear, selectedMonth, deliveryDateRange]);
 
+  // 💡 배달 누락 에러의 원인이었던 변수들 복구 (pastPaydays, globalExpectedTotal 등)
   const paydayGroups = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
-      const pd = getPaydayStr(d.date);
-      if (!pd) return;
-      if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0 };
-      groups[pd].total += (d.amount||0);
-      if (d.earner === '현아') groups[pd].hyuna += (d.amount||0);
-      else groups[pd].junghoon += (d.amount||0);
+      const pdStr = getPaydayStr(d.date);
+      if (!pdStr) return;
+      if (!groups[pdStr]) groups[pdStr] = { total: 0, hyuna: 0, junghoon: 0 };
+      groups[pdStr].total += (d.amount||0);
+      if (d.earner === '현아') groups[pdStr].hyuna += (d.amount||0);
+      else groups[pdStr].junghoon += (d.amount||0);
     });
     return groups;
   }, [dailyDeliveries]);
+
+  const pastPaydays = Object.keys(paydayGroups).sort((a,b) => b.localeCompare(a)).filter(p => p && p < todayStr); 
+  
+  const globalPending = (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date && getPaydayStr(d.date) >= todayStr);
+  const globalExpectedTotal = globalPending.reduce((a,b) => a + (b.amount||0), 0);
+  
+  let closestGlobalPaydayStr = '';
+  if (globalPending.length > 0) {
+     const paydays = globalPending.map(d => getPaydayStr(d.date));
+     closestGlobalPaydayStr = paydays.sort()[0];
+  }
+  const paydayDisplay = (closestGlobalPaydayStr && closestGlobalPaydayStr.length >= 10) ? `${parseInt(closestGlobalPaydayStr.slice(5,7))}월 ${parseInt(closestGlobalPaydayStr.slice(8,10))}일` : '예정 없음';
 
   const sortedLoans = useMemo(() => {
     const active = assets.loans.filter(l => l.status !== '완납');
@@ -483,7 +494,7 @@ function AppContent() {
     showToast("삭제되었습니다.", "error");
   };
 
-  // 💡 근무표 단건 수정 저장 로직
+  // 근무표 단건 수정 저장 로직
   const handleSingleDutySave = async (stamp) => {
     if (!user) return;
     const { date, eventId, duty: oldDuty } = singleDutyModal;
@@ -495,7 +506,6 @@ function AppContent() {
         else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title: stamp, date: date, isImportant: false });
       }
       logEvent('근무 변경', `${date.slice(5)} 근무를 [${oldDuty} ➔ ${stamp === '삭제' ? 'OFF' : stamp}]로 변경했습니다.`);
-      // 알림 메시지 자동 전송
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), { author: '시스템', text: `${date.slice(5)} 근무가 [${stamp === '삭제' ? 'OFF' : stamp}]로 변경되었습니다 🏥`, createdAt: todayStr, isChecked: false });
     }
     showToast(`${date.slice(5)} 스케쥴이 수정되었습니다.`);
@@ -774,6 +784,15 @@ function AppContent() {
                <div className="flex justify-between items-center mb-4"><div><h2 className="text-lg font-black text-gray-800">실시간 배달 기록</h2><p className="text-xs text-gray-400 font-bold">터치하여 시급을 자동 계산하세요.</p></div>{timerActive && <span className="text-orange-500 animate-pulse font-black text-sm">배달중</span>}</div>
                <div className="flex gap-4">{timerActive ? <button onClick={handleEndDelivery} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl"><Square size={18} fill="white"/> {Math.floor(elapsedSeconds/3600)}:{String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')} 종료</button> : <button onClick={handleStartDelivery} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg"><Play size={18} fill="white"/> 배달 시작</button>}</div>
             </div>
+            
+            {/* 💡 배달 누락 에러 해결부 */}
+            <div className="bg-white rounded-[2rem] p-6 shadow-md border-2 border-orange-100 flex flex-col relative overflow-hidden mt-2">
+              <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 px-4 py-1.5 rounded-bl-2xl font-black text-xs flex items-center"><Clock className="w-3 h-3 mr-1"/> 곧 입금!</div>
+              <h3 className="text-xs font-bold text-gray-400 mb-1"><span className="text-orange-500">{paydayDisplay}</span> 입금 예정</h3>
+              <div className="text-gray-800 font-black text-xl mb-3">다음 정산 예정금</div>
+              <div className="text-3xl font-black text-orange-500 mb-1">{formatMoney(globalExpectedTotal)}원</div>
+            </div>
+
             <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
               <h2 className="text-sm font-bold mb-1 opacity-90">{selectedYear}년 누적 배달 수익</h2>
               <div className="text-4xl font-black mb-4">{formatMoney(deliveryYearlyTotal)}원</div>
@@ -933,7 +952,21 @@ function AppContent() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[60] p-4 py-8 overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
             <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryId ? '배달 기록 수정' : '배달 수익 기록 🛵'}</h2><button onClick={closeModals} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border border-blue-100 shadow-sm"><X size={20}/></button></div>
-            <form onSubmit={handleDeliverySubmit} className="space-y-4">
+            <form onSubmit={async (e) => {
+               e.preventDefault();
+               if (!deliveryFormData.amount || !user) return;
+               const newDel = { ...deliveryFormData, amount: parseInt(String(deliveryFormData.amount).replace(/,/g, ''), 10), count: parseInt(deliveryFormData.count) || 0 };
+               if (isFirebaseEnabled) {
+                  if (editingDeliveryId) {
+                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', editingDeliveryId), newDel);
+                     logEvent('배달 수정', `${newDel.date} 수익 수정`);
+                  } else {
+                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+                     logEvent('배달 완료', `${newDel.date} ${newDel.earner} ${formatMoney(newDel.amount)}원 기록`);
+                  }
+               }
+               showToast("수익이 기록되었습니다! 수고하셨습니다 👏"); closeModals();
+            }} className="space-y-4">
               <div className="bg-gradient-to-br from-blue-900 to-slate-800 p-4 rounded-2xl text-white shadow-md flex justify-around mb-2"><div className="text-center"><div className="text-[10px] font-bold text-blue-200 mb-1">예상 통합 시급</div><div className="font-black text-cyan-400 text-lg">{formatMoney(calcDailyMetrics([deliveryFormData]).hourlyRate)}<span className="text-[10px] ml-0.5 font-normal text-blue-100">원</span></div></div><div className="w-px bg-blue-700/50 mx-2"></div><div className="text-center"><div className="text-[10px] font-bold text-blue-200 mb-1">건당 평단</div><div className="font-black text-blue-300 text-lg">{formatMoney(calcDailyMetrics([deliveryFormData]).perDelivery)}<span className="text-[10px] ml-0.5 font-normal text-blue-100">원</span></div></div></div>
               <div className="grid grid-cols-2 gap-3"><div><label className="text-[10px] font-black text-gray-400 ml-1 block uppercase">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl"><button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>정훈</button><button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>현아</button></div></div><div><label className="text-[10px] font-black text-gray-400 ml-1 block uppercase">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl"><button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white':'text-gray-500'}`}>배민</button><button type="button" onClick={()=>setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 py-2 rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white':'text-gray-500'}`}>쿠팡</button></div></div></div>
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">오늘 총 수익금</label><div className="relative"><input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" autoFocus /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
