@@ -2046,8 +2046,8 @@ function AppContent() {
               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
               
-              <div className="flex gap-2.5 w-full">
-                <div className="w-[120px] flex-shrink-0 min-w-0">
+              <div className="flex gap-3 w-full">
+                <div className="w-[35%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} />
                 </div>
@@ -2081,8 +2081,8 @@ function AppContent() {
               <button onClick={closeModals} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border border-emerald-100 shadow-sm"><X size={20}/></button>
             </div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex gap-2.5 w-full">
-                <div className="w-[120px] flex-shrink-0 min-w-0">
+              <div className="flex gap-3 w-full">
+                <div className="w-[35%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
                 </div>
@@ -2207,7 +2207,7 @@ function AppContent() {
                     <button onClick={() => setDutyBatchMonth(prev => prev === 12 ? 1 : prev + 1)} className="p-1"><ChevronRight size={16}/></button>
                   </div>
                   <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
+                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[9px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 gap-1">
                     {batchDaysArray.map((d, i) => {
@@ -2323,8 +2323,8 @@ function AppContent() {
                 </div>
               </div>
 
-              <div className="flex gap-1.5 pb-3 border-b border-gray-100 mb-2 w-full">
-                <div className="w-[110px] flex-shrink-0 min-w-0">
+              <div className="flex gap-2 pb-3 border-b border-gray-100 mb-2 w-full">
+                <div className="w-[32%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                   <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
