@@ -11,7 +11,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- 💡 앱 버전 및 업데이트 시간 (버전 확인용) ---
-const APP_VERSION = "v5.6 (업데이트: 2026.04.30 11:45 AM)";
+const APP_VERSION = "v5.6 (업데이트: 2026.04.30 11:55 AM)";
 
 // --- Firebase 세팅 ---
 const firebaseConfig = {
@@ -96,7 +96,7 @@ function AppContent() {
     showToast("하단 메뉴 순서가 변경되었습니다.");
   };
   
-  // 💡 하드코딩된 더미 데이터 영구 삭제 -> 순수 빈 배열로 시작 (파이어베이스가 동기화)
+  // 💡 불필요한 하드코딩 데이터를 지우고 빈 배열로 초기화! (DB에서 불러옵니다)
   const [ledger, setLedger] = useState([]);
   const [assets, setAssets] = useState({ loans: [], stocks: [] }); 
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
@@ -106,7 +106,6 @@ function AppContent() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {} });
   const [exchangeRate, setExchangeRate] = useState(1380);
-  const [isFetchingRate, setIsFetchingRate] = useState(false);
 
   const [selectedYear, setSelectedYear] = useState(parseInt(todayStr.slice(0,4)));
   const [selectedMonth, setSelectedMonth] = useState(parseInt(todayStr.slice(5,7))); 
@@ -209,7 +208,7 @@ function AppContent() {
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubLogs(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
-  // 로그 기록시 이름 포함
+  // 💡 로그 기록시 이름 포함
   const logEvent = async (action, description) => {
     if (!isFirebaseEnabled || !user) return;
     try {
@@ -265,6 +264,18 @@ function AppContent() {
       return (Number.isInteger(v) ? v : v.toFixed(1)) + '만';
     }
     return new Intl.NumberFormat('ko-KR').format(absVal);
+  };
+
+  const getWeekOfMonth = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return 1;
+    const date = new Date(dateStr);
+    if(isNaN(date.getTime())) return 1;
+    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    return Math.ceil((date.getDate() + firstDay) / 7);
+  };
+
+  const formatTimeStr = (dateObj) => {
+    return `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
   };
 
   const calcDailyMetrics = (deliveries) => {
@@ -364,7 +375,6 @@ function AppContent() {
     return data;
   }, [dailyDeliveries, selectedYear, selectedMonth, deliveryDateRange]);
 
-  // 💡 배달 누락 에러의 원인이었던 변수들 복구 (pastPaydays, globalExpectedTotal 등)
   const paydayGroups = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
@@ -390,16 +400,25 @@ function AppContent() {
   }
   const paydayDisplay = (closestGlobalPaydayStr && closestGlobalPaydayStr.length >= 10) ? `${parseInt(closestGlobalPaydayStr.slice(5,7))}월 ${parseInt(closestGlobalPaydayStr.slice(8,10))}일` : '예정 없음';
 
+  const groupedDaily = (filteredDailyDeliveries || []).reduce((acc, curr) => {
+    if(!curr.date || typeof curr.date !== 'string') return acc;
+    if (!acc[curr.date]) acc[curr.date] = [];
+    acc[curr.date].push(curr);
+    return acc;
+  }, {});
+  const dailyDates = Object.keys(groupedDaily).sort((a,b) => new Date(b) - new Date(a));
+
   const sortedLoans = useMemo(() => {
-    const active = assets.loans.filter(l => l.status !== '완납');
-    const done = assets.loans.filter(l => l.status === '완납');
+    const loans = assets?.loans || [];
+    const active = loans.filter(l => l.status !== '완납');
+    const completed = loans.filter(l => l.status === '완납');
     active.sort((a, b) => {
       if (loanSortBy === 'date') return (parseInt(a.paymentDate)||31) - (parseInt(b.paymentDate)||31);
       if (loanSortBy === 'principal') return (b.principal||0) - (a.principal||0);
       return (parseFloat(b.rate)||0) - (parseFloat(a.rate)||0);
     });
-    return [...active, ...done];
-  }, [assets.loans, loanSortBy]);
+    return [...active, ...completed]; 
+  }, [assets?.loans, loanSortBy]);
 
   const totalPrincipal = (assets?.loans || []).filter(l=>l.status!=='완납').reduce((a,b)=>a+(b.principal||0), 0);
   const totalMonthlyPayment = (assets?.loans || []).filter(l=>l.status!=='완납').reduce((a,b)=>a+getMonthlyPayment(b), 0);
@@ -785,7 +804,6 @@ function AppContent() {
                <div className="flex gap-4">{timerActive ? <button onClick={handleEndDelivery} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl"><Square size={18} fill="white"/> {Math.floor(elapsedSeconds/3600)}:{String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')} 종료</button> : <button onClick={handleStartDelivery} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg"><Play size={18} fill="white"/> 배달 시작</button>}</div>
             </div>
             
-            {/* 💡 배달 누락 에러 해결부 */}
             <div className="bg-white rounded-[2rem] p-6 shadow-md border-2 border-orange-100 flex flex-col relative overflow-hidden mt-2">
               <div className="absolute top-0 right-0 bg-orange-100 text-orange-600 px-4 py-1.5 rounded-bl-2xl font-black text-xs flex items-center"><Clock className="w-3 h-3 mr-1"/> 곧 입금!</div>
               <h3 className="text-xs font-bold text-gray-400 mb-1"><span className="text-orange-500">{paydayDisplay}</span> 입금 예정</h3>
@@ -1020,13 +1038,60 @@ function AppContent() {
   );
 }
 
+// 💡 오류 화면(ErrorBoundary) 완벽 복구
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false }; }
-  static getDerivedStateFromError() { return { hasError: true }; }
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+  
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+  
   render() {
-    if (this.state.hasError) return <div className="min-h-screen flex items-center justify-center p-6 text-center font-black">오류가 발생했습니다. 앱을 새로고침 해주세요.</div>;
-    return this.props.children;
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center font-sans">
+          <div className="bg-white p-6 rounded-[2rem] shadow-xl max-w-sm w-full border border-gray-200 text-left">
+            <div className="flex items-center gap-3 mb-4 text-red-500">
+              <div className="w-10 h-10 bg-red-50 border border-red-100 rounded-full flex items-center justify-center shrink-0">
+                <RefreshCw size={20} className="opacity-80" />
+              </div>
+              <h2 className="text-lg font-black text-gray-900">오류가 발생했습니다</h2>
+            </div>
+            
+            <div className="bg-gray-900 rounded-xl p-4 mb-6 overflow-auto max-h-60 text-[10px] text-green-400 font-mono">
+              <p className="font-bold text-red-400 mb-2">{this.state.error && this.state.error.toString()}</p>
+              <pre className="whitespace-pre-wrap">{this.state.errorInfo && this.state.errorInfo.componentStack}</pre>
+            </div>
+            
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed font-bold text-center">
+              위의 검은색 화면을 캡처해서 전달해주세요!
+            </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black active:scale-95 transition-transform shadow-md"
+            >
+              새로고침 (홈으로 복구하기)
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children; 
   }
 }
 
-export default function App() { return <ErrorBoundary><AppContent /></ErrorBoundary>; }
+export default function App() { 
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  ); 
+}
