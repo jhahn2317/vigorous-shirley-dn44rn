@@ -283,6 +283,17 @@ function AppContent() {
     return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
   };
 
+  // 큰 금액 축약 포맷 (1,000만 이상일 때 짤림 방지)
+  const formatLargeMoney = (val) => {
+    if (!val || val === 0) return '0';
+    const absVal = Math.abs(val);
+    if (absVal >= 10000000) {
+      const v = absVal / 10000;
+      return (val < 0 ? '-' : '') + new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(v) + '만';
+    }
+    return new Intl.NumberFormat('ko-KR').format(val);
+  };
+
   // 달력용 짧은 금액 포맷 (기호 중복 방지 완료: 무조건 양수로만 리턴)
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
@@ -1083,13 +1094,13 @@ function AppContent() {
                  <div className="space-y-2">
                    {tabOrder.map((tabId, index) => (
                      <div key={tabId} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                       <span className="text-xs font-bold text-gray-700 flex items-center gap-2">
-                         <span className="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm text-[10px]">{index + 1}</span>
+                       <span className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                         <span className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm text-xs">{index + 1}</span>
                          {tabConfig[tabId].label}
                        </span>
                        <div className="flex gap-1">
-                         <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={14}/></button>
-                         <button onClick={() => moveTab(index, 'down')} disabled={index === tabOrder.length - 1} className="p-1.5 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronDown size={14}/></button>
+                         <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-2 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={16}/></button>
+                         <button onClick={() => moveTab(index, 'down')} disabled={index === tabOrder.length - 1} className="p-2 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronDown size={16}/></button>
                        </div>
                      </div>
                    ))}
@@ -1104,23 +1115,23 @@ function AppContent() {
                    <div className="space-y-4">
                      <div>
                        <div className="flex justify-between items-center mb-2">
-                         <span className="text-[10px] font-bold text-pink-500">지출 카테고리</span>
+                         <span className="text-xs font-bold text-pink-500">지출 카테고리</span>
                          <button onClick={() => handleAddCategory('지출')} className="text-[10px] bg-pink-50 text-pink-600 px-2 py-1 rounded font-bold border border-pink-100">+ 추가</button>
                        </div>
                        <div className="flex flex-wrap gap-1.5">
                          {getSortedCategories('지출').map(c => (
-                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('지출', c)} className="text-gray-400 hover:text-pink-500"><X size={10}/></button></span>
+                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('지출', c)} className="text-gray-400 hover:text-pink-500"><X size={12}/></button></span>
                          ))}
                        </div>
                      </div>
                      <div>
                        <div className="flex justify-between items-center mb-2">
-                         <span className="text-[10px] font-bold text-blue-500">수입 카테고리</span>
+                         <span className="text-xs font-bold text-blue-500">수입 카테고리</span>
                          <button onClick={() => handleAddCategory('수입')} className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded font-bold border border-blue-100">+ 추가</button>
                        </div>
                        <div className="flex flex-wrap gap-1.5">
                          {getSortedCategories('수입').map(c => (
-                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('수입', c)} className="text-gray-400 hover:text-blue-500"><X size={10}/></button></span>
+                           <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory('수입', c)} className="text-gray-400 hover:text-blue-500"><X size={12}/></button></span>
                          ))}
                        </div>
                      </div>
@@ -1139,13 +1150,13 @@ function AppContent() {
                )}
 
                {activeTab === 'loans' && (
-                 <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md animate-in slide-in-from-right-2 text-center text-xs font-bold text-gray-500">
+                 <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500">
                    설정에 있던 [대출 추가] 버튼은 메인 화면 상단으로 이동되었습니다.
                  </div>
                )}
 
                {activeTab === 'calendar' && (
-                 <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-md animate-in slide-in-from-right-2 text-center text-xs font-bold text-gray-500">
+                 <div className="bg-white p-5 rounded-2xl border border-emerald-200 shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500">
                    우리가족 메뉴는 별도의 설정이 필요하지 않습니다.
                  </div>
                )}
@@ -1159,8 +1170,8 @@ function AppContent() {
           <div className="space-y-3 animate-in fade-in duration-500">
             <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-5 text-white shadow-md shadow-pink-200/50 relative overflow-hidden flex justify-between items-center">
                <div className="relative z-10">
-                 <div className="text-[10px] font-bold opacity-90 mb-0.5 tracking-wider">🌸 {selectedYear}년 누적 총 수입</div>
-                 <div className="text-2xl font-black">{formatMoney(yearlyIncome)}<span className="text-base ml-1 font-bold opacity-80">원</span></div>
+                 <div className="text-xs font-bold opacity-90 mb-0.5 tracking-wider">🌸 {selectedYear}년 누적 총 수입</div>
+                 <div className="text-3xl font-black tracking-tight">{formatLargeMoney(yearlyIncome)}<span className="text-lg ml-1 font-bold opacity-80">원</span></div>
                </div>
                <Heart className="w-16 h-16 opacity-20 absolute -right-3 -bottom-3 rotate-12" fill="white" />
             </div>
@@ -1171,9 +1182,9 @@ function AppContent() {
                   <Search size={16} />
                 </button>
                 <div className="flex overflow-x-auto no-scrollbar gap-1.5 py-1 flex-1">
-                  <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-[11px] font-black transition-all shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>전체</button>
+                  <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>전체</button>
                   {monthUsedCategories.map(c => (
-                    <button key={c} onClick={() => { setFilterType('all'); setFilterCategory(c === filterCategory ? 'all' : c); }} className={`flex-none px-3 py-1.5 rounded-xl text-[11px] font-black transition-all shadow-sm ${filterCategory === c ? 'bg-pink-500 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>
+                    <button key={c} onClick={() => { setFilterType('all'); setFilterCategory(c === filterCategory ? 'all' : c); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm ${filterCategory === c ? 'bg-pink-500 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>
                       #{c}
                     </button>
                   ))}
@@ -1182,13 +1193,13 @@ function AppContent() {
 
               {showFilters && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-200/60 animate-in slide-in-from-top-2 space-y-3 mb-3">
-                  <div className="relative"><Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50/50 rounded-xl py-2 pl-8 pr-3 h-[40px] text-xs font-bold outline-none border border-pink-100 focus:ring-2 ring-pink-200 text-gray-700 transition-all" /></div>
+                  <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50/50 rounded-xl py-2 pl-9 pr-3 h-[44px] text-sm font-bold outline-none border border-pink-100 focus:ring-2 ring-pink-200 text-gray-700 transition-all" /></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">구분</label><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
-                    <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">카테고리</label><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 truncate focus:ring-2 ring-pink-200"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div><label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-0.5">구분</label><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
+                    <div><label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-0.5">카테고리</label><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none text-gray-700 truncate focus:ring-2 ring-pink-200"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                   </div>
-                  <div><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex justify-between mb-0.5"><span>조회 기간 (월별 무시)</span></label><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /><span className="text-gray-300 text-[10px] font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[40px] text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /></div></div>
-                  <button onClick={clearFilters} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={12}/> 모든 검색/필터 초기화</button>
+                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 flex justify-between mb-0.5"><span>조회 기간 (월별 무시)</span></label><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /><span className="text-gray-300 text-xs font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /></div></div>
+                  <button onClick={clearFilters} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={14}/> 모든 검색/필터 초기화</button>
                 </div>
               )}
             </div>
@@ -1201,38 +1212,38 @@ function AppContent() {
                <div className="grid grid-cols-3 gap-2 mb-3">
                  <div className="bg-blue-50/60 p-3 rounded-2xl border border-blue-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-blue-500 mb-1">수입 합계 💰</div>
-                   <div className="text-xs font-black text-gray-800 truncate">{formatMoney(ledgerSummary.income)}</div>
+                   <div className="text-sm font-black text-gray-800 truncate">{formatLargeMoney(ledgerSummary.income)}</div>
                  </div>
                  <div className="bg-rose-50/60 p-3 rounded-2xl border border-rose-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-rose-500 mb-1">지출 합계 💸</div>
-                   <div className="text-xs font-black text-gray-800 truncate">{formatMoney(ledgerSummary.expense)}</div>
+                   <div className="text-sm font-black text-gray-800 truncate">{formatLargeMoney(ledgerSummary.expense)}</div>
                  </div>
                  <div className="bg-purple-50/60 p-3 rounded-2xl border border-purple-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-purple-500 mb-1">남은 돈 ✨</div>
-                   <div className="text-xs font-black text-purple-600 truncate">{formatMoney(ledgerSummary.net)}</div>
+                   <div className="text-sm font-black text-purple-600 truncate">{formatLargeMoney(ledgerSummary.net)}</div>
                  </div>
                </div>
 
                <div className="flex justify-between text-center gap-2">
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">순수 생활비 🍱</div>
-                   <div className="text-[11px] font-black text-rose-500 truncate">{formatMoney(financialSummary.sumLiving)}</div>
+                   <div className="text-xs font-black text-rose-500 truncate">{formatLargeMoney(financialSummary.sumLiving)}</div>
                  </div>
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">대출 원금 🏦</div>
-                   <div className="text-[11px] font-black text-pink-500 truncate">{formatMoney(financialSummary.sumPrincipal)}</div>
+                   <div className="text-xs font-black text-pink-500 truncate">{formatLargeMoney(financialSummary.sumPrincipal)}</div>
                  </div>
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">대출 이자 📉</div>
-                   <div className="text-[11px] font-black text-purple-500 truncate">{formatMoney(financialSummary.sumInterest)}</div>
+                   <div className="text-xs font-black text-purple-500 truncate">{formatLargeMoney(financialSummary.sumInterest)}</div>
                  </div>
                </div>
             </div>
 
             <div className="flex bg-pink-100/40 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200/50">
-              <button onClick={() => setLedgerSubTab('daily')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='daily'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><List size={14}/> 상세내역</button>
-              <button onClick={() => setLedgerSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><CalendarDays size={14}/> 달력</button>
-              <button onClick={() => setLedgerSubTab('review')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='review'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><PieChart size={14}/> 리포트</button>
+              <button onClick={() => setLedgerSubTab('daily')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='daily'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><List size={14}/> 상세내역</button>
+              <button onClick={() => setLedgerSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><CalendarDays size={14}/> 달력</button>
+              <button onClick={() => setLedgerSubTab('review')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='review'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><PieChart size={14}/> 리포트</button>
             </div>
 
             {ledgerSubTab === 'calendar' && (() => {
@@ -1262,9 +1273,9 @@ function AppContent() {
                        const hasData = dayData.inc > 0 || dayData.exp > 0;
                        return (
                          <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
-                           <span className={`text-[9px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
-                           {dayData.inc > 0 && <span className="text-[8px] font-black text-blue-500 w-full text-center tracking-tighter truncate">+{formatCompactMoney(dayData.inc)}</span>}
-                           {dayData.exp > 0 && <span className="text-[8px] font-black text-rose-500 w-full text-center tracking-tighter truncate">-{formatCompactMoney(dayData.exp)}</span>}
+                           <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
+                           {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter truncate">+{formatCompactMoney(dayData.inc)}</span>}
+                           {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter truncate">-{formatCompactMoney(dayData.exp)}</span>}
                          </div>
                        )
                      })}
@@ -1277,7 +1288,7 @@ function AppContent() {
               <div className="space-y-4 animate-in slide-in-from-right duration-300">
                 {reviewData.expense.length > 0 && (
                   <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200/60">
-                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💸 지출 TOP 5</span><span className="text-rose-500">{formatMoney(ledgerSummary.expense)}원</span></h3>
+                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💸 지출 TOP 5</span><span className="text-rose-500">{formatLargeMoney(ledgerSummary.expense)}원</span></h3>
                     <div className="space-y-3">
                       {reviewData.expense.map(([cat, amt], idx) => {
                         const pct = ledgerSummary.expense > 0 ? ((amt / ledgerSummary.expense) * 100).toFixed(1) : 0;
@@ -1285,10 +1296,10 @@ function AppContent() {
                         return (
                           <div key={cat}>
                             <div className="flex justify-between items-end mb-1">
-                              <div className="flex items-center gap-1.5"><span className={`w-3.5 h-3.5 flex items-center justify-center rounded-full text-[8px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-[11px] font-bold text-gray-700">{cat}</span></div>
-                              <div className="text-right flex items-center gap-1.5"><div className="text-[11px] font-black text-gray-900">{formatMoney(amt)}원</div><div className="text-[8px] text-gray-400 font-bold bg-pink-50 px-1 py-0.5 rounded">{pct}%</div></div>
+                              <div className="flex items-center gap-1.5"><span className={`w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-xs font-bold text-gray-700">{cat}</span></div>
+                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatLargeMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-pink-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
                           </div>
                         )
                       })}
@@ -1297,7 +1308,7 @@ function AppContent() {
                 )}
                 {reviewData.income.length > 0 && (
                   <div className="bg-white rounded-3xl p-5 shadow-md border border-blue-200/60">
-                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💰 수입 TOP 5</span><span className="text-blue-500">{formatMoney(ledgerSummary.income)}원</span></h3>
+                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💰 수입 TOP 5</span><span className="text-blue-500">{formatLargeMoney(ledgerSummary.income)}원</span></h3>
                     <div className="space-y-3">
                       {reviewData.income.map(([cat, amt], idx) => {
                         const pct = ledgerSummary.income > 0 ? ((amt / ledgerSummary.income) * 100).toFixed(1) : 0;
@@ -1305,10 +1316,10 @@ function AppContent() {
                         return (
                           <div key={cat}>
                             <div className="flex justify-between items-end mb-1">
-                              <div className="flex items-center gap-1.5"><span className={`w-3.5 h-3.5 flex items-center justify-center rounded-full text-[8px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-[11px] font-bold text-gray-700">{cat}</span></div>
-                              <div className="text-right flex items-center gap-1.5"><div className="text-[11px] font-black text-gray-900">{formatMoney(amt)}원</div><div className="text-[8px] text-gray-400 font-bold bg-blue-50 px-1 py-0.5 rounded">{pct}%</div></div>
+                              <div className="flex items-center gap-1.5"><span className={`w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-xs font-bold text-gray-700">{cat}</span></div>
+                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatLargeMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
                           </div>
                         )
                       })}
@@ -1324,24 +1335,24 @@ function AppContent() {
                 {ledgerDates.length === 0 && <div className="text-center py-20 text-gray-400 font-bold">내역이 없습니다.</div>}
                 {ledgerDates.map(date => (
                   <div key={date} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80">
-                     <div className="text-[10px] font-bold text-gray-400 mb-2.5 ml-1">
+                     <div className="text-xs font-bold text-gray-400 mb-2.5 ml-1">
                        {typeof date === 'string' && date.length >= 10 ? `${date.slice(0,4)}년 ${parseInt(date.slice(5,7))}월 ${parseInt(date.slice(8,10))}일` : date}
                      </div>
-                     <div className="space-y-1.5">
+                     <div className="space-y-2">
                       {(groupedLedger[date]||[]).map(t => (
-                        <div key={t.id} className="flex justify-between items-center bg-gray-50/50 border border-gray-100/50 p-2.5 rounded-2xl hover:bg-pink-50/50 transition-colors">
-                          <div className="flex items-center gap-2.5 overflow-hidden">
-                            <div className={`p-2 rounded-xl flex-shrink-0 shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                        <div key={t.id} className="flex justify-between items-center bg-gray-50/50 border border-gray-100/50 p-3 rounded-2xl hover:bg-pink-50/50 transition-colors">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className={`p-2.5 rounded-xl flex-shrink-0 shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
                               {getCategoryIcon(t.category, t.type)}
                             </div>
                             <div className="truncate pr-2">
-                              <div className="text-[9px] font-bold text-gray-400 truncate">{t.category}</div>
-                              <div className="font-bold text-xs text-gray-800 truncate">{t.note || t.category}</div>
+                              <div className="text-[10px] font-bold text-gray-500 truncate">{t.category}</div>
+                              <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={`font-black text-sm tracking-tight ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}</span>
-                            {isManageMode && <button onClick={() => deleteTransaction(t.id)} className="text-gray-300 hover:text-pink-500 bg-white p-1.5 rounded-lg shadow-sm border border-gray-100"><Trash2 size={12}/></button>}
+                            <span className={`font-black text-base tracking-tight ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}</span>
+                            {isManageMode && <button onClick={() => deleteTransaction(t.id)} className="text-gray-300 hover:text-pink-500 bg-white p-2 rounded-xl shadow-sm border border-gray-100"><Trash2 size={14}/></button>}
                           </div>
                         </div>
                       ))}
@@ -1360,17 +1371,17 @@ function AppContent() {
               <div className="flex items-center gap-2 ml-1">
                 {timerActive ? <Timer className="w-5 h-5 text-blue-500 animate-pulse" /> : <Play className="w-5 h-5 text-slate-400" />}
                 <div>
-                  <div className="text-xs font-black text-gray-800 flex items-center gap-1">
+                  <div className="text-sm font-black text-gray-800 flex items-center gap-1">
                     실시간 기록 {timerActive && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>}
                   </div>
-                  <div className="text-[9px] text-blue-400 font-bold">
+                  <div className="text-[10px] text-blue-400 font-bold">
                     {timerActive ? `${formatTimeStr(new Date(trackingStartTime))}부터 근무중` : '시작 버튼을 눌러주세요'}
                   </div>
                 </div>
               </div>
               <button 
                 onClick={timerActive ? handleEndDelivery : handleStartDelivery} 
-                className={`px-4 py-2 rounded-xl font-black text-xs transition-all shadow-sm ${timerActive ? 'bg-slate-800 text-white' : 'bg-blue-600 text-white shadow-blue-200'}`}
+                className={`px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-sm ${timerActive ? 'bg-slate-800 text-white' : 'bg-blue-600 text-white shadow-blue-200'}`}
               >
                 {timerActive ? `${Math.floor(elapsedSeconds/3600)}:${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}:${String(elapsedSeconds%60).padStart(2,'0')} 종료` : '시작하기'}
               </button>
@@ -1378,26 +1389,26 @@ function AppContent() {
 
             <div className="grid grid-cols-2 gap-2 mt-1">
               {upcomingPaydays.length === 0 ? (
-                <div className="col-span-2 bg-white rounded-2xl p-3 shadow-sm border border-slate-200 text-center text-gray-400 text-xs font-bold">대기 중인 정산금이 없습니다.</div>
+                <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border border-slate-200 text-center text-gray-400 text-sm font-bold">대기 중인 정산금이 없습니다.</div>
               ) : (
                 upcomingPaydays.slice(0,2).map((pd, idx) => {
                   const group = pendingByPayday[pd];
                   const isClosest = idx === 0;
                   return (
-                    <div key={pd} className={`bg-white rounded-2xl p-3 shadow-sm border ${isClosest ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200'} flex flex-col justify-between`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <span className={`text-[10px] font-black tracking-tighter ${isClosest ? "text-blue-600" : "text-gray-500"}`}>
+                    <div key={pd} className={`bg-white rounded-2xl p-3.5 shadow-sm border ${isClosest ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200'} flex flex-col justify-between`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[11px] font-black tracking-tighter ${isClosest ? "text-blue-600" : "text-gray-500"}`}>
                           {parseInt(pd.slice(5,7))}/{parseInt(pd.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(pd).getDay()]})
                         </span>
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm ${isClosest ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm ${isClosest ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
                           {isClosest ? '이번주' : '다음주'}
                         </span>
                       </div>
-                      <div className={`text-xl font-black tracking-tighter ${isClosest ? 'text-blue-600' : 'text-gray-700'}`}>
-                        {formatMoney(group.total)}원
+                      <div className={`text-2xl font-black tracking-tighter ${isClosest ? 'text-blue-600' : 'text-gray-700'}`}>
+                        {formatLargeMoney(group.total)}<span className="text-base font-bold opacity-80">원</span>
                       </div>
-                      <div className="text-[8px] font-bold text-gray-400 mt-1">
-                        훈 {formatMoney(group.junghoon)} | 현 {formatMoney(group.hyuna)}
+                      <div className="text-[10px] font-bold text-gray-500 mt-1">
+                        훈 {formatLargeMoney(group.junghoon)} | 현 {formatLargeMoney(group.hyuna)}
                       </div>
                     </div>
                   )
@@ -1405,17 +1416,17 @@ function AppContent() {
               )}
             </div>
 
-            <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mt-1">
-              <Bike className="absolute -right-2 -bottom-2 w-20 h-20 opacity-10 rotate-12" />
+            <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-5 text-white shadow-md relative overflow-hidden mt-1">
+              <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" />
               
-              <div className="flex justify-between items-end mb-2 relative z-10">
+              <div className="flex justify-between items-end mb-3 relative z-10">
                 <div>
-                  <div className="text-[10px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
-                  <div className="text-3xl font-black tracking-tighter leading-none">{formatMoney(deliveryFilteredTotal)}<span className="text-sm ml-0.5 opacity-80 font-bold">원</span></div>
+                  <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
+                  <div className="text-4xl font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded font-bold tracking-tight mb-1 inline-block">{selectedYear}년 누적: {formatMoney(deliveryYearlyTotal)}</div>
-                  <div className="text-[9px] font-bold opacity-90 flex flex-col items-end">
+                  <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold tracking-tight mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}</div>
+                  <div className="text-[10px] font-bold opacity-90 flex flex-col items-end">
                     <span>총 {formatMoney(deliveryFilteredCount)}건</span>
                     <span>평단 {formatMoney(deliveryAvgPerDelivery)}원</span>
                   </div>
@@ -1427,37 +1438,37 @@ function AppContent() {
                  const pct = Math.min(100, (deliveryFilteredTotal / goal) * 100);
                  return (
                    <div className="mb-2 relative z-10">
-                     <div className="flex justify-between text-[8px] font-bold mb-1 opacity-90">
-                       <span>목표 {formatMoney(goal)}</span>
+                     <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90">
+                       <span>목표 {formatLargeMoney(goal)}</span>
                        <span>{pct.toFixed(1)}% 달성</span>
                      </div>
-                     <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                     <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
                        <div className="bg-white h-full rounded-full transition-all duration-1000" style={{width: `${pct}%`}}></div>
                      </div>
                    </div>
                  );
               })()}
 
-              <div className="flex bg-white/10 rounded-xl p-2 mt-2 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
-                <div className="flex-1 px-2">
-                  <div className="text-[9px] opacity-80 mb-0.5 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
-                  <div className="text-sm font-black">{formatMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
+              <div className="flex bg-white/10 rounded-xl p-3 mt-3 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
+                <div className="flex-1 px-3">
+                  <div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
+                  <div className="text-base font-black">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
                 </div>
-                <div className="flex-1 px-2">
-                  <div className="text-[9px] opacity-80 mb-0.5 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
-                  <div className="text-sm font-black">{formatMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
+                <div className="flex-1 px-3">
+                  <div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
+                  <div className="text-base font-black">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2 mt-1">
               <div className="flex bg-white p-1 rounded-xl flex-1 shadow-sm border border-slate-200">
-                <button onClick={() => setDeliverySubTab('daily')} className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${deliverySubTab==='daily'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>상세내역</button>
-                <button onClick={() => setDeliverySubTab('calendar')} className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${deliverySubTab==='calendar'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>달력</button>
-                <button onClick={() => setDeliverySubTab('weekly')} className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all ${deliverySubTab==='weekly'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>주차별</button>
+                <button onClick={() => setDeliverySubTab('daily')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='daily'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>상세내역</button>
+                <button onClick={() => setDeliverySubTab('calendar')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='calendar'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>달력</button>
+                <button onClick={() => setDeliverySubTab('weekly')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='weekly'?'bg-blue-50 text-blue-600 shadow-sm border border-blue-100':'text-gray-500'}`}>주차별</button>
               </div>
-              <button onClick={() => setShowDeliveryFilters(!showDeliveryFilters)} className={`p-2 rounded-xl transition-colors shadow-sm ${showDeliveryFilters ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
-                <Filter size={16} />
+              <button onClick={() => setShowDeliveryFilters(!showDeliveryFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showDeliveryFilters ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                <Filter size={18} />
               </button>
             </div>
 
@@ -1468,12 +1479,12 @@ function AppContent() {
                     <span>임의 기간 지정 (옵션)</span>
                   </label>
                   <div className="flex items-center gap-2">
-                    <input type="date" value={deliveryDateRange.start} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, start: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
-                    <span className="text-gray-300 text-xs font-bold">~</span>
-                    <input type="date" value={deliveryDateRange.end} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, end: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[40px] text-xs font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
+                    <input type="date" value={deliveryDateRange.start} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, start: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[44px] text-sm font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
+                    <span className="text-gray-300 text-sm font-bold">~</span>
+                    <input type="date" value={deliveryDateRange.end} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, end: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[44px] text-sm font-bold outline-none text-gray-700 border border-slate-200 focus:ring-2 ring-blue-200" />
                   </div>
                 </div>
-                <button onClick={() => setDeliveryDateRange({start:'', end:''})} className="w-full mt-3 bg-gray-50 border border-gray-200 text-gray-500 py-2.5 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-blue-50 hover:text-blue-600 transition-colors"><RefreshCw size={12}/> 기간 설정 초기화</button>
+                <button onClick={() => setDeliveryDateRange({start:'', end:''})} className="w-full mt-3 bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm active:scale-95 flex items-center justify-center gap-1.5 hover:bg-blue-50 hover:text-blue-600 transition-colors"><RefreshCw size={14}/> 기간 설정 초기화</button>
               </div>
             )}
 
@@ -1494,20 +1505,20 @@ function AppContent() {
               return (
                 <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-blue-200 animate-in slide-in-from-bottom-2 mt-1">
                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
+                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
                    </div>
                    <div className="grid grid-cols-7 gap-1">
                      {days.map((d, i) => {
-                       if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
+                       if(!d) return <div key={`empty-${i}`} className="h-[60px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
                        const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                        const dayData = dataByDate[dateStr] || { amt: 0 };
                        const hasData = dayData.amt > 0;
                        
                        return (
-                         <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-center ${hasData?'border-blue-200 bg-blue-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
-                           <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-red-400':(i%7)===6?'text-blue-400':'text-gray-600'}`}>{d}</span>
+                         <div key={`day-${i}`} className={`h-[60px] border rounded-xl p-1 flex flex-col items-center justify-center ${hasData?'border-blue-200 bg-blue-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
+                           <span className={`text-[11px] font-bold mb-1 ${(i%7)===0?'text-red-400':(i%7)===6?'text-blue-400':'text-gray-600'}`}>{d}</span>
                            {hasData && (
-                             <span className="text-[9px] font-black text-blue-600 w-full text-center tracking-tighter truncate">{formatCompactMoney(dayData.amt)}</span>
+                             <span className="text-[10px] font-black text-blue-600 w-full text-center tracking-tighter truncate">{formatCompactMoney(dayData.amt)}</span>
                            )}
                          </div>
                        )
@@ -1523,16 +1534,16 @@ function AppContent() {
                 {pastPaydays.map((pDate) => {
                   const group = paydayGroups[pDate];
                   return (
-                    <div key={pDate} className="bg-white rounded-[2rem] p-4 shadow-sm border border-slate-200 flex justify-between items-center">
+                    <div key={pDate} className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-200 flex justify-between items-center">
                       <div>
-                        <div className="text-[10px] text-gray-400 font-bold mb-1">{typeof pDate === 'string' && pDate.length >= 10 ? `${pDate.slice(0,4)}년 ${pDate.slice(5).replace('-', '/')}` : pDate} 입금완료</div>
-                        <div className="font-black text-gray-800 text-sm">
+                        <div className="text-xs text-gray-400 font-bold mb-1.5">{typeof pDate === 'string' && pDate.length >= 10 ? `${pDate.slice(0,4)}년 ${pDate.slice(5).replace('-', '/')}` : pDate} 입금완료</div>
+                        <div className="font-black text-gray-800 text-base">
                           {parseInt(String(pDate).slice(5,7))}월 {getWeekOfMonth(pDate)}주차
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-black text-blue-600 tracking-tight">{formatMoney(group.total)}원</div>
-                        <div className="text-[9px] text-gray-400 font-bold mt-0.5">정훈 {formatMoney(group.junghoon)} | 현아 {formatMoney(group.hyuna)}</div>
+                        <div className="text-xl font-black text-blue-600 tracking-tight">{formatLargeMoney(group.total)}원</div>
+                        <div className="text-[10px] text-gray-500 font-bold mt-1">정훈 {formatLargeMoney(group.junghoon)} | 현아 {formatLargeMoney(group.hyuna)}</div>
                       </div>
                     </div>
                   );
@@ -1547,45 +1558,45 @@ function AppContent() {
                   const dayMetrics = calcDailyMetrics(groupedDaily[date]);
 
                   return (
-                    <div key={date} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-                       <div className="flex justify-between items-start mb-3 border-b border-gray-100 pb-2">
+                    <div key={date} className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-200">
+                       <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
                          <div className="overflow-hidden pr-2">
-                           <div className="text-xs font-black text-gray-800 flex items-center gap-1.5 mb-1 truncate">
-                             <CalendarCheck size={12} className="text-blue-500 flex-shrink-0" />
+                           <div className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-1.5 truncate">
+                             <CalendarCheck size={14} className="text-blue-500 flex-shrink-0" />
                              {typeof date === 'string' && date.length >= 10 ? `${date.slice(0,4)}년 ${parseInt(date.slice(5,7))}월 ${parseInt(date.slice(8,10))}일` : date}
                            </div>
                            {dayMetrics.durationStr && (
-                             <div className="text-[9px] font-bold text-gray-500 flex items-center gap-1 truncate">
-                                <Timer size={10} className="flex-shrink-0"/> {dayMetrics.durationStr} 근무
+                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1 truncate">
+                                <Timer size={12} className="flex-shrink-0"/> {dayMetrics.durationStr} 근무
                              </div>
                            )}
                          </div>
                          <div className="text-right flex-shrink-0">
-                           <div className="text-base font-black text-blue-600 mb-1 tracking-tight">{formatMoney(dayMetrics.totalAmt)}</div>
-                           <div className="text-[8px] font-black text-gray-500 flex gap-1 justify-end flex-wrap w-32">
-                             <span className="bg-slate-50 px-1 py-0.5 rounded border border-slate-200">총 {dayMetrics.totalCnt}건</span>
-                             <span className="bg-slate-50 px-1 py-0.5 rounded border border-slate-200">평단 {formatMoney(dayMetrics.perDelivery)}</span>
-                             {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-blue-600 px-1 py-0.5 rounded border border-blue-100">시급 {formatMoney(dayMetrics.hourlyRate)}</span>}
+                           <div className="text-lg font-black text-blue-600 mb-1.5 tracking-tight">{formatLargeMoney(dayMetrics.totalAmt)}</div>
+                           <div className="text-[9px] font-black text-gray-500 flex gap-1 justify-end flex-wrap w-32">
+                             <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">총 {dayMetrics.totalCnt}건</span>
+                             <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">평단 {formatMoney(dayMetrics.perDelivery)}</span>
+                             {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">시급 {formatMoney(dayMetrics.hourlyRate)}</span>}
                            </div>
                          </div>
                        </div>
                        
-                       <div className="space-y-1.5">
+                       <div className="space-y-2">
                         {(groupedDaily[date]||[]).map(d => {
                           const pDay = getPaydayStr(d.date);
                           const isPending = pDay && pDay >= todayStr;
 
                           return (
-                            <div key={d.id} className="flex justify-between items-center bg-slate-50/50 p-2.5 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50">
-                              <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-white text-[10px] flex-shrink-0 shadow-sm ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div>
+                            <div key={d.id} className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-xs flex-shrink-0 shadow-sm ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div>
                                 <div className="truncate">
-                                  <div className="font-black text-xs text-gray-800 truncate">{d.earner} <span className="text-gray-400 text-[9px] font-bold">| {d.count}건 {d.startTime ? `(${d.startTime}~${d.endTime})` : ''}</span></div>
-                                  <div className={`text-[9px] font-bold mt-0.5 truncate ${isPending ? 'text-blue-400' : 'text-gray-400'}`}>{isPending && typeof pDay === 'string' && pDay.length >= 10 ? `${pDay.slice(5,10).replace('-','/')} 입금 대기` : '정산 완료'}</div>
+                                  <div className="font-black text-sm text-gray-800 truncate">{d.earner} <span className="text-gray-400 text-[10px] font-bold">| {d.count}건 {d.startTime ? `(${d.startTime}~${d.endTime})` : ''}</span></div>
+                                  <div className={`text-[10px] font-bold mt-1 truncate ${isPending ? 'text-blue-500' : 'text-gray-500'}`}>{isPending && typeof pDay === 'string' && pDay.length >= 10 ? `${pDay.slice(5,10).replace('-','/')} 입금 대기` : '정산 완료'}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="font-black text-sm text-gray-900 tracking-tight">{formatMoney(d.amount)}</span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="font-black text-base text-gray-900 tracking-tight">{formatLargeMoney(d.amount)}</span>
                                 {isManageMode && <button onClick={() => {
                                   setDeliveryFormData({
                                     date: d.date, earner: d.earner, platform: d.platform, amount: String(d.amount||''),
@@ -1595,8 +1606,8 @@ function AppContent() {
                                   });
                                   setEditingDeliveryId(d.id);
                                   setIsDeliveryModalOpen(true);
-                                }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200"><Edit3 size={12}/></button>}
-                                {isManageMode && <button onClick={() => deleteDailyDelivery(d.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg shadow-sm border border-gray-200"><Trash2 size={12}/></button>}
+                                }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Edit3 size={14}/></button>}
+                                {isManageMode && <button onClick={() => deleteDailyDelivery(d.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Trash2 size={14}/></button>}
                               </div>
                             </div>
                           );
@@ -1621,20 +1632,20 @@ function AppContent() {
                 <Landmark className="absolute -right-6 -bottom-6 w-36 h-36 opacity-10" />
                 <div className="relative z-10">
                   <div className="text-indigo-200 text-xs font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
-                  <div className="text-3xl font-black mb-4 tracking-tight">{formatMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
+                  <div className="text-3xl font-black mb-4 tracking-tight">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
                   
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
                     <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-indigo-100 font-bold">이번 달 총 납입 예정</span>
-                       <span className="text-sm font-black text-white">{formatMoney(totalMonthlyPayment)}원</span>
+                       <span className="text-[11px] text-indigo-100 font-bold">이번 달 총 납입 예정</span>
+                       <span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span>
                     </div>
                     <div className="flex justify-between items-center">
-                       <span className="text-[10px] text-indigo-100 font-bold">이번 달 납부 완료</span>
-                       <span className="text-sm font-black text-emerald-300">{formatMoney(totalPaidThisMonth)}원</span>
+                       <span className="text-[11px] text-indigo-100 font-bold">이번 달 납부 완료</span>
+                       <span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-indigo-400/50">
-                       <span className="text-xs text-white font-bold">이번 달 남은 납입금</span>
-                       <span className="text-lg font-black text-white">{formatMoney(totalUnpaidThisMonth)}원</span>
+                    <div className="flex justify-between items-center pt-3 border-t border-indigo-400/50 mt-1">
+                       <span className="text-sm text-white font-bold">이번 달 남은 납입금</span>
+                       <span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span>
                     </div>
                   </div>
                 </div>
@@ -1688,7 +1699,7 @@ function AppContent() {
                           )}
                           {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black mr-2 border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
                         </div>
-                        {isManageMode ? <input type="number" value={loan.principal || ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none focus:ring-2 ring-indigo-200 border border-gray-200" /> : <div className="text-xl font-black text-gray-900 tracking-tight">{formatMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
+                        {isManageMode ? <input type="number" value={loan.principal || ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none focus:ring-2 ring-indigo-200 border border-gray-200" /> : <div className="text-xl font-black text-gray-900 tracking-tight">{formatLargeMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
                       </div>
                       
                       <div className="text-right ml-3 bg-gray-50 p-2 rounded-2xl border border-gray-200 min-w-[100px] shadow-sm">
@@ -1698,11 +1709,11 @@ function AppContent() {
                               <input type="text" value={loan.paymentDate || ''} onChange={(e) => updateAsset('loans', loan.id, 'paymentDate', e.target.value)} className="w-6 text-center outline-none bg-transparent" placeholder="일"/>
                             </div>
                           )}
-                          <div className="text-[9px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">
+                          <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">
                             {isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset('loans', loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}
                           </div>
                         </div>
-                        <div className="font-black text-[13px] text-indigo-600">{formatMoney(getMonthlyPayment(loan))}원</div>
+                        <div className="font-black text-[14px] text-indigo-600">{formatMoney(getMonthlyPayment(loan))}원</div>
                       </div>
                     </div>
 
@@ -1752,7 +1763,7 @@ function AppContent() {
                             <div key={h.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-100/50 shadow-sm">
                               <div>
                                 <div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div>
-                                <div className="text-xs font-black text-gray-800 truncate">원금 {formatMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatMoney(h.interestAmount)})</span>}</div>
+                                <div className="text-xs font-black text-gray-800 truncate">원금 {formatLargeMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatLargeMoney(h.interestAmount)})</span>}</div>
                               </div>
                               {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg flex-shrink-0 border border-gray-200"><X size={12}/></button>}
                             </div>
@@ -1783,35 +1794,35 @@ function AppContent() {
                     m.author === '시스템' ? (
                       <div key={m.id} className="bg-emerald-50 p-3 rounded-2xl flex justify-between items-center shadow-sm border border-emerald-100/50">
                          <div className="pr-3 flex-1">
-                            <div className="text-[9px] text-emerald-500 font-bold mb-1 flex items-center gap-1">
+                            <div className="text-[10px] text-emerald-500 font-bold mb-1.5 flex items-center gap-1">
                               <span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded tracking-tighter">시스템 알림</span>
                               {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')}
                             </div>
-                            <div className="text-[13px] font-black text-emerald-900 leading-tight break-all">{m.text}</div>
+                            <div className="text-sm font-black text-emerald-900 leading-tight break-all">{m.text}</div>
                          </div>
                          {/* 시스템 메시지는 보관소에 안 가고 바로 삭제(확인)됨 */}
                          <button onClick={() => handleDeleteSystemMessage(m.id)} className="bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-[10px] font-black shrink-0 active:scale-90 transition-transform shadow-sm flex items-center gap-1"><CheckCircle2 size={12}/> 확인</button>
                       </div>
                     ) : (
-                      <div key={m.id} className={`bg-white p-3.5 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
+                      <div key={m.id} className={`bg-white p-4 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
                          <div className="flex justify-between items-start mb-1.5">
                             <div>
-                               <div className="text-[9px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">
+                               <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">
                                  <span className={`px-1.5 py-0.5 rounded text-white ${m.author === '현아' ? 'bg-pink-400' : 'bg-blue-400'}`}>{m.author}</span>
                                  {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')}
                                </div>
-                               <div className="text-sm font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
+                               <div className="text-base font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
                             </div>
                          </div>
 
                          {(m.replies || []).length > 0 && (
-                           <div className="mt-2.5 space-y-1.5 pl-2.5 border-l-[3px] border-gray-100 py-1">
+                           <div className="mt-3 space-y-1.5 pl-3 border-l-[3px] border-gray-100 py-1">
                              {m.replies.map(r => (
-                               <div key={r.id} className="flex flex-col bg-gray-50/80 p-2.5 rounded-xl border border-gray-100/50">
-                                 <div className="text-[9px] font-bold text-gray-400 mb-1 flex items-center gap-1">
+                               <div key={r.id} className="flex flex-col bg-gray-50/80 p-3 rounded-xl border border-gray-100/50">
+                                 <div className="text-[10px] font-bold text-gray-400 mb-1 flex items-center gap-1">
                                    <span className={`${r.author === '현아' ? 'text-pink-500' : 'text-blue-500'}`}>{r.author}</span>
                                  </div>
-                                 <div className="text-xs font-black text-gray-700">{r.text}</div>
+                                 <div className="text-sm font-black text-gray-700">{r.text}</div>
                                </div>
                              ))}
                            </div>
@@ -1819,14 +1830,14 @@ function AppContent() {
 
                          {replyingTo === m.id ? (
                            <div className="mt-3 flex gap-1.5 animate-in fade-in bg-gray-50 p-1.5 rounded-2xl border border-gray-200 shadow-inner">
-                             <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`${currentUser}(으)로 답글 달기...`} className="flex-1 bg-white text-xs font-bold rounded-xl px-3 py-2 outline-none border border-gray-200" />
+                             <input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`${currentUser}(으)로 답글 달기...`} className="flex-1 bg-white text-sm font-bold rounded-xl px-3 py-2 outline-none border border-gray-200" />
                              <button onClick={() => handleAddReplySubmit(m.id)} className="bg-gray-800 text-white px-3 rounded-xl text-xs font-black active:scale-95">등록</button>
                              <button onClick={() => { setReplyingTo(null); setReplyText(''); }} className="bg-white text-gray-500 px-2 rounded-xl text-xs active:scale-95 border border-gray-200"><X size={14}/></button>
                            </div>
                          ) : (
-                           <div className="flex justify-end gap-1.5 mt-2.5 pt-2.5 border-t border-gray-50">
-                              <button onClick={() => setReplyingTo(m.id)} className="text-[10px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-transform border border-gray-200"><MessageSquareHeart size={12}/> 답글</button>
-                              <button onClick={() => handleCheckMessage(m.id)} className="text-[10px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-transform border border-gray-200"><CheckCircle2 size={12}/> 보관함 이동</button>
+                           <div className="flex justify-end gap-1.5 mt-3 pt-3 border-t border-gray-50">
+                              <button onClick={() => setReplyingTo(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-transform border border-gray-200"><MessageSquareHeart size={14}/> 답글</button>
+                              <button onClick={() => handleCheckMessage(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-transform border border-gray-200"><CheckCircle2 size={14}/> 보관함 이동</button>
                            </div>
                          )}
                       </div>
@@ -1834,12 +1845,12 @@ function AppContent() {
                   ))}
                </div>
 
-               <div className="flex gap-2 relative">
+               <div className="flex gap-2 relative mt-2">
                   <div className="absolute -top-7 left-1">
                     <span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white shadow-[0_-2px_4px_rgba(0,0,0,0.05)] ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span>
                   </div>
-                  <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder="여보 오늘 저녁은 뭐야? 🍗" className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-sm font-bold outline-none border border-pink-200 shadow-sm" />
-                  <button onClick={handleSendMessage} disabled={!messageFormData.text.trim()} className="bg-pink-500 text-white px-4 rounded-2xl font-black shadow-md border border-pink-600 active:scale-95 disabled:opacity-50">전송</button>
+                  <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder="여보 오늘 저녁은 뭐야? 🍗" className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-base font-bold outline-none border border-pink-200 shadow-sm" />
+                  <button onClick={handleSendMessage} disabled={!messageFormData.text.trim()} className="bg-pink-500 text-white px-5 rounded-2xl font-black shadow-md border border-pink-600 active:scale-95 disabled:opacity-50">전송</button>
                </div>
             </div>
 
@@ -1851,8 +1862,8 @@ function AppContent() {
                 </button>
               </div>
               
-              <div className="relative pt-5">
-                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 scroll-smooth">
+              <div className="relative">
+                <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-8 scroll-smooth">
                   {extendedDutyDays.map((d) => {
                     const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
                     const duty = dutyEvent ? dutyEvent.title : 'OFF';
@@ -1860,15 +1871,15 @@ function AppContent() {
                     const dayName = ['일','월','화','수','목','금','토'][new Date(d).getDay()];
                     
                     let dutyColor = 'bg-white text-gray-400 border-gray-200';
-                    if(duty === 'DAY') dutyColor = 'bg-blue-50 text-blue-600 border-blue-200';
-                    else if(duty === 'EVE') dutyColor = 'bg-orange-50 text-orange-600 border-orange-200';
-                    else if(duty !== 'OFF') dutyColor = 'bg-pink-50 text-pink-600 border-pink-200';
+                    if (duty === 'DAY') dutyColor = 'bg-blue-50 text-blue-600 border-blue-200';
+                    else if (duty === 'EVE') dutyColor = 'bg-orange-50 text-orange-600 border-orange-200';
+                    else if (duty === 'OFF') dutyColor = 'bg-pink-50 text-pink-600 border-pink-200';
 
                     return (
                       <div key={d} id={isToday ? 'duty-today' : undefined} 
                            onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }}
-                           className={`flex-none w-[60px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
-                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-4 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
+                           className={`flex-none w-[64px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
+                        {isToday && <div className="text-[10px] font-black text-emerald-500 mb-0.5 absolute -top-5 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
                         <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                         <div className="text-xs font-black">{dayName}</div>
                         <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -1890,7 +1901,7 @@ function AppContent() {
                         <div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div>
                         <div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div>
                       </div>
-                      <div className="font-bold text-sm truncate">{e.title}</div>
+                      <div className="font-bold text-base truncate">{e.title}</div>
                     </div>
                   ))}
                 </div>
@@ -1921,22 +1932,22 @@ function AppContent() {
                         <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-gray-50 shadow shrink-0 z-10">
                           {getEventIcon(e.type)}
                         </div>
-                        <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm ml-3">
-                          <div className="flex justify-between items-start mb-1">
+                        <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm ml-3">
+                          <div className="flex justify-between items-start mb-1.5">
                             <span className="text-[10px] font-black text-emerald-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span>
                             <span className="text-[9px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm">{e.type}</span>
                           </div>
-                          <div className="font-bold text-gray-800 text-sm flex items-center gap-1">
-                            {e.title} {e.isImportant && <Star size={12} className="text-amber-400 fill-amber-400"/>}
+                          <div className="font-bold text-gray-800 text-base flex items-center gap-1.5">
+                            {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
                           </div>
                           
-                          <div className="mt-2 text-right flex justify-end gap-1.5">
+                          <div className="mt-3 text-right flex justify-end gap-1.5">
                             <button onClick={() => {
                               setEventFormData({ date: e.date, title: e.title, type: e.type, isImportant: e.isImportant || false });
                               setEditingEventId(e.id);
                               setIsEventModalOpen(true);
-                            }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm"><Edit3 size={12}/></button>
-                            <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm"><Trash2 size={12}/></button>
+                            }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"><Edit3 size={14}/></button>
+                            <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"><Trash2 size={14}/></button>
                           </div>
                         </div>
                       </div>
@@ -1958,7 +1969,7 @@ function AppContent() {
           return (
             <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${config.colorClass} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
               <Icon size={22}/>
-              <span className="text-[9px] font-black mt-1.5">{config.label}</span>
+              <span className="text-[10px] font-black mt-1.5">{config.label}</span>
             </button>
           )
         })}
@@ -1988,14 +1999,14 @@ function AppContent() {
                       </div>
                       <span className="text-[9px] font-black text-gray-300 flex items-center gap-0.5"><CheckCircle2 size={10}/> 영구보관됨</span>
                    </div>
-                   <div className="text-sm font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
+                   <div className="text-base font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
                    
                    {(m.replies || []).length > 0 && (
                      <div className="space-y-2 pl-3 border-l-[3px] border-gray-200 mt-3 py-1">
                        {m.replies.map(r => (
                          <div key={r.id} className="flex flex-col">
-                           <div className="text-[9px] font-bold mb-0.5"><span className={`${r.author === '현아' ? 'text-pink-500' : 'text-blue-500'}`}>{r.author}</span></div>
-                           <div className="text-xs font-bold text-gray-600 break-all">{r.text}</div>
+                           <div className="text-[10px] font-bold mb-0.5"><span className={`${r.author === '현아' ? 'text-pink-500' : 'text-blue-500'}`}>{r.author}</span></div>
+                           <div className="text-sm font-bold text-gray-600 break-all">{r.text}</div>
                          </div>
                        ))}
                      </div>
@@ -2014,22 +2025,22 @@ function AppContent() {
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
             <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black text-gray-800">✨ 내역 기록</h2><button onClick={closeModals} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border border-pink-100 shadow-sm"><X size={20}/></button></div>
             <form onSubmit={handleTransactionSubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
-              <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
+              <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
+              <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <div className="w-[35%]"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
                 <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
               </div>
               {isCustomCategory && <div className="animate-in fade-in slide-in-from-top-2">
-                  <input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl px-3.5 h-[48px] font-black text-sm outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} />
+                  <input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl px-4 h-[48px] font-black text-base outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} />
                   <label className="flex items-center gap-2 mt-2 ml-1 cursor-pointer">
-                    <input type="checkbox" checked={saveToCategoryList} onChange={(e) => setSaveToCategoryList(e.target.checked)} className="w-4 h-4 text-pink-500 rounded focus:ring-pink-400 focus:ring-2" />
-                    <span className="text-[10px] font-bold text-gray-500">이 항목을 내 카테고리 목록에도 정식 추가하기</span>
+                    <input type="checkbox" checked={saveToCategoryList} onChange={(e) => setSaveToCategoryList(e.target.checked)} className="w-5 h-5 text-pink-500 rounded focus:ring-pink-400 focus:ring-2" />
+                    <span className="text-xs font-bold text-gray-500">이 항목을 내 카테고리 목록에도 정식 추가하기</span>
                   </label>
                 </div>}
               
-              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
+              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl px-4 h-[48px] font-bold text-base outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
               <button type="submit" className={`w-full ${formData.type === '수입' ? 'bg-blue-500 shadow-blue-200 border border-blue-600' : 'bg-pink-500 shadow-pink-200 border border-pink-600'} mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl`}>기록 완료 {formData.type === '수입' ? '💰' : '🎀'}</button>
             </form>
           </div>
@@ -2046,14 +2057,14 @@ function AppContent() {
               <button onClick={closeModals} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border border-emerald-100 shadow-sm"><X size={20}/></button>
             </div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <div className="w-[35%]">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-xs outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
+                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
-                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
+                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
                     <option value="가족일정">가족일정</option>
                     <option value="회식">회식</option>
                     <option value="기타">기타</option>
@@ -2063,7 +2074,7 @@ function AppContent() {
 
               <div>
                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label>
-                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] text-sm font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
+                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
               </div>
 
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
@@ -2107,7 +2118,7 @@ function AppContent() {
 
                <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-center border border-gray-100 shadow-inner">
                  <span className="text-[10px] font-bold text-gray-400 block mb-1">현재 스케줄</span>
-                 <span className={`text-3xl font-black tracking-tighter ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span>
+                 <span className={`text-4xl font-black tracking-tighter ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span>
                </div>
 
                {!isDutyEditing ? (
@@ -2152,8 +2163,8 @@ function AppContent() {
                 
                 {/* 모드 선택 탭 */}
                 <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-4 border border-gray-200">
-                  <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${dutyBatchMode === 'touch' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>👆 터치 모드</button>
-                  <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${dutyBatchMode === 'continuous' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>⏩ 연속 모드</button>
+                  <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${dutyBatchMode === 'touch' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>👆 터치 모드</button>
+                  <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${dutyBatchMode === 'continuous' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>⏩ 연속 모드</button>
                 </div>
 
                 {dutyBatchMode === 'touch' && (
@@ -2168,11 +2179,11 @@ function AppContent() {
                 <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm mb-4">
                   <div className="flex justify-between items-center mb-3 px-2">
                     <button onClick={() => setDutyBatchMonth(prev => prev === 1 ? 12 : prev - 1)} className="p-1"><ChevronLeft size={16}/></button>
-                    <span className="font-black text-emerald-600 text-sm">{dutyBatchYear}년 {dutyBatchMonth}월</span>
+                    <span className="font-black text-emerald-600 text-base">{dutyBatchYear}년 {dutyBatchMonth}월</span>
                     <button onClick={() => setDutyBatchMonth(prev => prev === 12 ? 1 : prev + 1)} className="p-1"><ChevronRight size={16}/></button>
                   </div>
                   <div className="grid grid-cols-7 gap-1 text-center mb-1.5">
-                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[9px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
+                     {['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 gap-1">
                     {batchDaysArray.map((d, i) => {
@@ -2199,10 +2210,10 @@ function AppContent() {
                               setContinuousCursorDateStr(dateStr);
                             }
                           }}
-                          className={`h-10 border rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${bgClass} ${isContinuousCursor ? 'ring-2 ring-emerald-500 ring-offset-1 scale-105 shadow-md' : ''}`}
+                          className={`h-11 border rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${bgClass} ${isContinuousCursor ? 'ring-2 ring-emerald-500 ring-offset-1 scale-105 shadow-md' : ''}`}
                         >
-                          <span className="text-[10px] font-bold opacity-80">{d}</span>
-                          {duty && <span className="text-[11px] font-black tracking-tighter leading-tight mt-0.5">{duty}</span>}
+                          <span className="text-[11px] font-bold opacity-80">{d}</span>
+                          {duty && <span className="text-xs font-black tracking-tighter leading-tight mt-0.5">{duty}</span>}
                         </button>
                       )
                     })}
@@ -2211,10 +2222,10 @@ function AppContent() {
 
                 {dutyBatchMode === 'continuous' && (
                   <div className="grid grid-cols-4 gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2">
-                     <button onClick={() => handleContinuousInput('DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">DAY</button>
-                     <button onClick={() => handleContinuousInput('EVE')} className="bg-orange-50 text-orange-600 border border-orange-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">EVE</button>
-                     <button onClick={() => handleContinuousInput('OFF')} className="bg-pink-50 text-pink-600 border border-pink-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">OFF</button>
-                     <button onClick={handleContinuousUndo} className="bg-gray-100 text-gray-600 border border-gray-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform flex flex-col items-center justify-center gap-1 leading-none"><RefreshCw size={14}/><span className="text-[9px]">취소</span></button>
+                     <button onClick={() => handleContinuousInput('DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-3 rounded-2xl font-black text-sm shadow-sm active:scale-90 transition-transform">DAY</button>
+                     <button onClick={() => handleContinuousInput('EVE')} className="bg-orange-50 text-orange-600 border border-orange-200 py-3 rounded-2xl font-black text-sm shadow-sm active:scale-90 transition-transform">EVE</button>
+                     <button onClick={() => handleContinuousInput('OFF')} className="bg-pink-50 text-pink-600 border border-pink-200 py-3 rounded-2xl font-black text-sm shadow-sm active:scale-90 transition-transform">OFF</button>
+                     <button onClick={handleContinuousUndo} className="bg-gray-100 text-gray-600 border border-gray-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform flex flex-col items-center justify-center gap-1 leading-none"><RefreshCw size={14}/><span className="text-[10px]">취소</span></button>
                   </div>
                 )}
 
@@ -2291,27 +2302,41 @@ function AppContent() {
               <div className="flex gap-2 pb-3 border-b border-gray-100 mb-2">
                 <div className="w-[35%]">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[36px] font-bold text-[11px] outline-none focus:ring-2 ring-blue-200 text-gray-800" />
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[38px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작 시간</label>
-                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[36px] font-bold text-[11px] outline-none focus:ring-2 ring-blue-200 text-gray-800" />
+                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[38px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료 시간</label>
-                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[36px] font-bold text-[11px] outline-none focus:ring-2 ring-blue-200 text-gray-800" />
+                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[38px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
               </div>
 
               {editingDeliveryId ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 h-[36px] rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 h-[36px] rounded-lg text-xs font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>현아</button></div></div>
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 h-[36px] rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 h-[36px] rounded-lg text-xs font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>쿠팡</button></div></div>
+                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 h-[38px] rounded-lg text-sm font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 h-[38px] rounded-lg text-sm font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>현아</button></div></div>
+                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 h-[38px] rounded-lg text-sm font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 h-[38px] rounded-lg text-sm font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>쿠팡</button></div></div>
                   </div>
-                  <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block">수익금</label><div className="relative"><input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
-                  <div><label className="text-[10px] font-black text-gray-400 ml-1 block uppercase">건수</label><div className="relative"><input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[38px] font-black text-sm outline-none focus:ring-2 ring-blue-200" /><span className="absolute right-3 top-2.5 text-sm font-black text-gray-400">건</span></div></div>
-                  <button type="submit" disabled={!deliveryFormData.amount} className="w-full bg-blue-600 mt-2 py-3.5 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 border border-blue-700">수정 완료</button>
+                  <div className="flex gap-4 items-end mt-4 mb-2">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block mb-1">수익금</label>
+                      <div className="relative">
+                        <input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" />
+                        <span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span>
+                      </div>
+                    </div>
+                    <div className="w-24">
+                      <label className="text-[10px] font-black text-gray-400 ml-1 block uppercase mb-1">건수</label>
+                      <div className="relative">
+                        <input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[46px] font-black text-lg outline-none focus:ring-2 ring-blue-200" />
+                        <span className="absolute right-3 top-3 text-sm font-black text-gray-400">건</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="submit" disabled={!deliveryFormData.amount} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 border border-blue-700">수정 완료</button>
                 </>
               ) : (
                 <>
@@ -2319,21 +2344,21 @@ function AppContent() {
                     <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
                     <div className="space-y-1.5">
                       <div className="flex gap-2 items-center">
-                        <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
+                        <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[36px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[38px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
-                        <div className="w-14 relative">
-                          <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-2 h-[36px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                        <div className="w-20 relative">
+                          <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[38px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
-                        <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
+                        <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[36px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[38px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
-                        <div className="w-14 relative">
-                          <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-2 h-[36px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
+                        <div className="w-20 relative">
+                          <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[38px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                     </div>
@@ -2343,27 +2368,27 @@ function AppContent() {
                     <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                     <div className="space-y-1.5">
                       <div className="flex gap-2 items-center">
-                        <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
+                        <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[38px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
-                        <div className="w-14 relative">
-                          <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                        <div className="w-20 relative">
+                          <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[38px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
-                        <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
+                        <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
                         <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-sm font-black bg-white rounded-xl px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                          <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[38px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
-                        <div className="w-14 relative">
-                          <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-full text-sm font-black bg-white rounded-xl px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
+                        <div className="w-20 relative">
+                          <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[38px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-3.5 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:active:scale-100 border border-blue-700">
+                  <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:active:scale-100 border border-blue-700">
                     동시 저장 완료 🚀
                   </button>
                 </>
@@ -2400,10 +2425,10 @@ function AppContent() {
             <form onSubmit={handlePrepaySubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm"><span className="text-xs font-bold text-indigo-600 block mb-1">상환 대상 대출</span><span className="font-black text-indigo-900 text-lg">{(assets?.loans||[]).find(l => l.id === prepayFormData.loanId)?.name}</span></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-2xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-2xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
               </div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200" /></div>
+              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200 text-gray-800" /></div>
               <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-indigo-200 border border-indigo-700">상환 처리 완료</button>
             </form>
           </div>
