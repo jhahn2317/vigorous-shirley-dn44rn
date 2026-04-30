@@ -11,7 +11,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- 💡 앱 버전 및 업데이트 시간 (버전 갱신 확인용) ---
-const APP_VERSION = "v5.9 (업데이트: 2026.04.30 15:00 PM)";
+const APP_VERSION = "v6.0 (최종 업데이트: 2026.04.30 16:30)";
 
 // --- Firebase 세팅 ---
 const firebaseConfig = {
@@ -49,7 +49,7 @@ const getKSTDateStr = () => {
   return kstTime.toISOString().slice(0, 10);
 };
 
-// 💡 배달 정산 (수-화 주기 -> 다음주 금요일) 로직 복구 확인 완료
+// 💡 배달 정산 (수-화 주기 -> 다음주 금요일) 로직 완벽 복구
 const getPaydayStr = (dateString) => {
   if (!dateString || typeof dateString !== 'string') return '';
   const parts = dateString.split('-');
@@ -99,7 +99,7 @@ function AppContent() {
     showToast("하단 메뉴 순서가 변경되었습니다.");
   };
   
-  // 💡 하드코딩된 더미 데이터 영구 삭제 -> 순수 빈 배열 (파이어베이스 연동으로 용량 최적화)
+  // 💡 데이터 최적화: 2,000줄 과거 더미 데이터를 영구 삭제하고 빈 배열로 초기화!
   const [ledger, setLedger] = useState([]);
   const [assets, setAssets] = useState({ loans: [], stocks: [] }); 
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
@@ -151,7 +151,7 @@ function AppContent() {
   const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
   const [messageFormData, setMessageFormData] = useState({ author: currentUser !== '가족' ? currentUser : '현아', text: '' });
   
-  // 💡 배달 동시 입력 폼 복구
+  // 💡 배달 동시 입력 폼
   const [deliveryFormData, setDeliveryFormData] = useState({ 
     date: todayStr, earner: currentUser === '정훈' ? '정훈' : '현아', platform: '배민', amount: '', count: '', 
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
@@ -261,7 +261,7 @@ function AppContent() {
     return new Intl.NumberFormat('ko-KR').format(num);
   };
 
-  // 💡 기호 오류 완벽 해결 (+, - 부호를 함수 자체에서 반환하지 않고 숫자로만 반환)
+  // 💡 기호 중복 오류 완벽 해결 (+, - 부호를 함수 자체에서 반환하지 않고 오직 숫자만 반환)
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
     const absVal = Math.abs(val);
@@ -410,7 +410,7 @@ function AppContent() {
     return data;
   }, [ledger, selectedYear, selectedMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
 
-  // 💡 monthUsedCategories 정의 복구! (에러의 원인이었던 부분)
+  // 💡 monthUsedCategories 에러 완벽 해결
   const monthUsedCategories = useMemo(() => {
     const cats = filteredLedger.map(t => t.category).filter(Boolean);
     return Array.from(new Set(cats)).sort((a,b) => (a||'').localeCompare(b||''));
@@ -721,7 +721,7 @@ function AppContent() {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
       logEvent('일정 삭제', `${target?.title} 일정 삭제`);
     } else setEvents((events||[]).filter(e => e.id !== id));
-    showToast("일정이 삭제되었습니다.", "error");
+    showToast("삭제되었습니다.", "error");
   };
 
   const handleSendMessage = async () => {
@@ -813,9 +813,9 @@ function AppContent() {
          });
       }
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
-         author: '시스템', text: `현아가 ${dutyBatchMonth}월 근무표를 새롭게 업데이트했어요! 🗓️`, createdAt: todayStr, isChecked: false
+         author: '시스템', text: `현아가 ${dutyBatchMonth}월 근무표를 통째로 업데이트했어요! 🗓️`, createdAt: todayStr, isChecked: false
       });
-      logEvent('근무표 업데이트', `${dutyBatchMonth}월 근무표를 통째로 업데이트했습니다.`);
+      logEvent('근무표 일괄 업데이트', `${dutyBatchMonth}월 근무표를 통째로 업데이트했습니다.`);
     } else {
       const kept = events.filter(e => !(e.type === '듀티' && e.date && e.date.startsWith(monthPrefix)));
       const added = Object.entries(batchDuties).map(([date, title], i) => ({
@@ -963,6 +963,7 @@ function AppContent() {
     else setUserSettings(newSettings);
   };
 
+  // 💡 앱 탭별 테마 색상 
   const appBgColor = activeTab === 'ledger' ? 'bg-pink-50/30' : activeTab === 'delivery' ? 'bg-blue-50/30' : 'bg-gray-50/80';
 
   return (
@@ -1016,9 +1017,10 @@ function AppContent() {
         </div>
       </div>
 
+      {/* 💡 관리자 모드 (설정) UI 조건부 렌더링 최적화 */}
       {isManageMode && (
         <div className="px-5 my-4 animate-in fade-in space-y-4">
-           {/* 💡 기기 설정 카드 */}
+           
            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md">
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 내 기기 설정</h3>
              
@@ -1029,7 +1031,7 @@ function AppContent() {
                    <span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-pink-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{activeTab === 'ledger' ? '가계부' : activeTab === 'delivery' ? '배달수익' : activeTab === 'loans' ? '대출관리' : '우리가족'}</span>
                  </div>
                  <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); showToast('이 기기의 초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold active:scale-95 transition-transform shadow-sm`}>
-                   현재 탭 고정
+                   현재 탭으로 고정
                  </button>
                </div>
                
@@ -1064,6 +1066,7 @@ function AppContent() {
              </div>
            </div>
 
+           {/* 💡 가계부 탭일 때만 보이는 설정 */}
            {activeTab === 'ledger' && (
              <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-md animate-in slide-in-from-top-2">
                <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
@@ -1094,6 +1097,7 @@ function AppContent() {
              </div>
            )}
 
+           {/* 💡 배달 탭일 때만 보이는 설정 */}
            {activeTab === 'delivery' && (
              <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-top-2">
                <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
@@ -1104,6 +1108,7 @@ function AppContent() {
              </div>
            )}
 
+           {/* 💡 대출 탭일 때만 보이는 설정 */}
            {activeTab === 'loans' && (
              <div className="bg-white p-5 rounded-2xl border border-indigo-200 shadow-md animate-in slide-in-from-top-2">
                <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><ArrowDownUp size={16} className="text-indigo-500"/> 대출 목록 기본 정렬</h3>
@@ -1305,12 +1310,13 @@ function AppContent() {
                     <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">구분</label><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
                     <div><label className="text-[9px] font-black text-gray-400 uppercase ml-1 block mb-0.5">카테고리</label><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl p-2 text-xs font-bold outline-none text-gray-700 truncate focus:ring-2 ring-pink-200"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                   </div>
-                  <button onClick={(e) => { e.preventDefault(); setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({ start: '', end: '' }); showToast("필터가 초기화되었습니다."); }} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-2 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={12}/> 모든 검색/필터 초기화</button>
+                  <div><label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex justify-between mb-0.5"><span>조회 기간 (월별 무시)</span></label><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl p-1.5 text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /><span className="text-gray-300 text-[10px] font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl p-1.5 text-[10px] font-bold outline-none text-gray-700 focus:ring-2 ring-pink-200" /></div></div>
+                  <button onClick={clearFilters} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-2 rounded-xl font-black text-xs active:scale-95 flex items-center justify-center gap-1.5 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors shadow-sm"><RefreshCw size={12}/> 모든 검색/필터 초기화</button>
                 </div>
               )}
             </div>
             
-            {/* 💡 요약 폰트 크기 조절 (truncate 포함) */}
+            {/* 💡 요약 폰트 크기 조절 (truncate 포함) - 짤림 방지 */}
             <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-pink-200/80">
               <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4">
                 <PieChart size={16} className="text-pink-500"/> {selectedMonth}월 가계부 요약 🌷
@@ -1319,15 +1325,15 @@ function AppContent() {
               <div className="grid grid-cols-3 gap-2 mb-2">
                 <div className="bg-blue-50/60 p-3 rounded-2xl border border-blue-100/60 text-center shadow-sm overflow-hidden">
                   <div className="text-[10px] font-bold text-blue-500 mb-1">수입 합계 💰</div>
-                  <div className="text-[11px] sm:text-xs font-black text-gray-800 truncate">{formatMoney(ledgerSummary.income)}</div>
+                  <div className="text-[11px] font-black text-gray-800 truncate">{formatMoney(ledgerSummary.income)}</div>
                 </div>
                 <div className="bg-rose-50/60 p-3 rounded-2xl border border-rose-100/60 text-center shadow-sm overflow-hidden">
                   <div className="text-[10px] font-bold text-rose-500 mb-1">지출 합계 💸</div>
-                  <div className="text-[11px] sm:text-xs font-black text-gray-800 truncate">{formatMoney(ledgerSummary.expense)}</div>
+                  <div className="text-[11px] font-black text-gray-800 truncate">{formatMoney(ledgerSummary.expense)}</div>
                 </div>
                 <div className="bg-purple-50/60 p-3 rounded-2xl border border-purple-100/60 text-center shadow-sm overflow-hidden">
                   <div className="text-[10px] font-bold text-purple-500 mb-1">남은 돈 ✨</div>
-                  <div className="text-[11px] sm:text-xs font-black text-purple-600 truncate">{formatMoney(ledgerSummary.net)}</div>
+                  <div className="text-[11px] font-black text-purple-600 truncate">{formatMoney(ledgerSummary.net)}</div>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
@@ -1364,7 +1370,7 @@ function AppContent() {
                       return (
                         <div key={i} className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start ${(inc||exp)?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-50 bg-white'}`}>
                           <span className="text-[10px] font-bold mb-0.5">{d}</span>
-                          {/* 💡 기호 수정: 중복된 +- 제거 및 +,- 기호 직접 추가 */}
+                          {/* 💡 기호 중복 제거 반영: +와 - 부호를 여기서만 붙임 */}
                           {inc > 0 && <span className="text-[8px] font-black text-blue-600 w-full text-center truncate">+{formatCompactMoney(inc)}</span>}
                           {exp > 0 && <span className="text-[8px] font-black text-rose-500 w-full text-center truncate">-{formatCompactMoney(exp)}</span>}
                         </div>
@@ -1382,9 +1388,9 @@ function AppContent() {
                   <div key={date} className="bg-white rounded-[2rem] p-4 shadow-sm border border-gray-100">
                     <div className="text-xs font-bold text-gray-400 mb-3 ml-2">{date.replace(/-/g, '.')}</div>
                     <div className="space-y-2">{(groupedLedger[date]||[]).map(t => (
-                      <div key={t.id} className="flex justify-between items-center bg-gray-50/50 p-3 rounded-2xl">
+                      <div key={t.id} className="flex justify-between items-center bg-gray-50/50 p-3 rounded-2xl hover:bg-pink-50 transition-colors">
                         <div className="flex items-center gap-3"><div className={`p-2.5 rounded-xl ${t.type==='수입'?'bg-blue-100 text-blue-600':'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div><div><div className="text-[10px] font-bold text-gray-400">{t.category}</div><div className="font-bold text-sm text-gray-800">{t.note||t.category}</div></div></div>
-                        <div className="flex items-center gap-3"><span className={`font-black text-[15px] ${t.type==='수입'?'text-blue-600':'text-gray-900'}`}>{formatMoney(t.amount)}</span>{isManageMode && <button onClick={()=>deleteTransaction(t.id)} className="text-gray-300"><Trash2 size={16}/></button>}</div>
+                        <div className="flex items-center gap-3"><span className={`font-black text-[15px] ${t.type==='수입'?'text-blue-600':'text-gray-900'}`}>{formatMoney(t.amount)}</span>{isManageMode && <button onClick={()=>deleteTransaction(t.id)} className="text-gray-300 hover:text-red-500 bg-white p-2 rounded-lg shadow-sm border border-gray-100"><Trash2 size={14}/></button>}</div>
                       </div>
                     ))}</div>
                   </div>
@@ -1440,14 +1446,11 @@ function AppContent() {
           </div>
         )}
 
-        {/* ==========================================
-            3. 배달 탭 (블루 테마 및 UI)
-            ========================================== */}
         {activeTab === 'delivery' && (
           <div className="space-y-6 pb-28 animate-in fade-in duration-500">
-            <div className="bg-white rounded-3xl p-5 shadow-md border-2 border-blue-100">
-               <div className="flex justify-between items-center mb-4"><div><h2 className="text-lg font-black text-gray-800 flex items-center gap-1.5"><Play size={18} className="text-blue-500"/> 실시간 기록</h2><p className="text-xs text-blue-400 font-bold mt-1">시작 버튼을 눌러주세요</p></div>{timerActive && <span className="text-blue-500 animate-pulse font-black text-sm">배달중</span>}</div>
-               <div className="flex gap-4">{timerActive ? <button onClick={handleEndDelivery} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl"><Square size={18} fill="white"/> {Math.floor(elapsedSeconds/3600)}:{String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')} 종료</button> : <button onClick={handleStartDelivery} className="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-blue-200"><Play size={18} fill="white"/> 시작하기</button>}</div>
+            <div className="bg-white rounded-3xl p-5 shadow-md border-2 border-orange-100">
+               <div className="flex justify-between items-center mb-4"><div><h2 className="text-lg font-black text-gray-800">실시간 배달 기록</h2><p className="text-xs text-gray-400 font-bold">터치하여 시급을 자동 계산하세요.</p></div>{timerActive && <span className="text-orange-500 animate-pulse font-black text-sm">배달중</span>}</div>
+               <div className="flex gap-4">{timerActive ? <button onClick={handleEndDelivery} className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl"><Square size={18} fill="white"/> {Math.floor(elapsedSeconds/3600)}:{String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')} 종료</button> : <button onClick={handleStartDelivery} className="flex-1 bg-orange-500 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg shadow-orange-200"><Play size={18} fill="white"/> 배달 시작</button>}</div>
             </div>
             
             {/* 💡 배달 이번주/다음주 정산 상단 2분할 */}
@@ -1490,8 +1493,8 @@ function AppContent() {
                  <span>평단 {formatMoney(deliveryAvgPerDelivery)}원</span>
               </div>
               <div className="grid grid-cols-2 gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <div><div className="text-[10px] font-bold mb-1 opacity-80 flex justify-between">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-xl font-black">{formatMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div></div>
-                <div className="border-l border-white/20 pl-4"><div className="text-[10px] font-bold mb-1 opacity-80 flex justify-between">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-xl font-black">{formatMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div></div>
+                <div><div className="text-[10px] font-bold mb-1 opacity-80 flex justify-between">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-xl font-black">{formatMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div></div>
+                <div className="border-l border-white/20 pl-4"><div className="text-[10px] font-bold mb-1 opacity-80 flex justify-between">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-xl font-black">{formatMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div></div>
               </div>
             </div>
             
@@ -1516,8 +1519,8 @@ function AppContent() {
                       const pDay = getPaydayStr(d.date);
                       const isPending = pDay && pDay >= todayStr;
                       return (
-                        <div key={d.id} className="flex justify-between items-center bg-gray-50/50 p-3 rounded-2xl text-xs">
-                          <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-black text-[10px] ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div><div><div className="font-bold text-gray-800 text-sm">{d.earner} <span className="text-gray-400 text-[10px]">| {d.count}건 {d.startTime ? `(${d.startTime}~${d.endTime})` : ''}</span></div><div className={`text-[10px] font-bold mt-0.5 ${isPending ? 'text-blue-400' : 'text-gray-400'}`}>{isPending ? `${pDay.slice(5).replace('-','/')} 입금 대기` : '정산 완료'}</div></div></div>
+                        <div key={d.id} className="flex justify-between items-center bg-gray-50/50 p-3 rounded-2xl text-xs hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-black text-[10px] ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div><div><div className="font-bold text-gray-800 text-sm">{d.earner} <span className="text-gray-400 text-[10px]">| {d.count}건 {d.startTime ? `(${d.startTime}~${d.endTime})` : ''}</span></div><div className={`text-[10px] font-bold mt-0.5 ${isPending ? 'text-blue-400' : 'text-gray-400'}`}>{isPending && typeof pDay === 'string' && pDay.length >= 10 ? `${pDay.slice(5,10).replace('-','/')} 입금 대기` : '정산 완료'}</div></div></div>
                           <div className="flex items-center gap-2"><span className="font-black text-[15px]">{formatMoney(d.amount)}원</span>{isManageMode && <button onClick={() => {
                             setDeliveryFormData({
                               date: d.date, earner: d.earner, platform: d.platform, amount: String(d.amount||''),
@@ -1537,7 +1540,7 @@ function AppContent() {
               {deliverySubTab === 'weekly' && Object.keys(paydayGroups).sort((a,b)=>b.localeCompare(a)).map(pd => (
                 <div key={pd} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex justify-between items-center">
                   <div><div className="text-[10px] text-gray-400 font-bold mb-1">{pd} 입금완료</div><div className="font-black text-gray-800 text-lg">{parseInt(pd.slice(5,7))}월 {getWeekOfMonth(pd)}주차 정산</div></div>
-                  <div className="text-right"><div className="text-xl font-black text-blue-600">{formatMoney(paydayGroups[pd].total)}원</div><div className="text-[10px] text-gray-400 font-bold mt-1">훈 {formatMoney(paydayGroups[pd].junghoon)} | 현 {formatMoney(paydayGroups[pd].hyuna)}</div></div>
+                  <div className="text-right"><div className="text-xl font-black text-blue-600">{formatMoney(paydayGroups[pd].total)}원</div><div className="text-[10px] text-gray-400 font-bold mt-1">현아 {formatMoney(paydayGroups[pd].hyuna)} | 정훈 {formatMoney(paydayGroups[pd].junghoon)}</div></div>
                 </div>
               ))}
               {deliverySubTab === 'calendar' && (() => {
@@ -1567,10 +1570,10 @@ function AppContent() {
                        const hasData = dayData.amt > 0;
                        
                        return (
-                         <div key={`day-${i}`} className={`h-[55px] border rounded-xl flex flex-col items-center justify-center ${hasData?'border-blue-200 bg-blue-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
+                         <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-center ${hasData?'border-blue-200 bg-blue-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
                            <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-red-400':(i%7)===6?'text-blue-400':'text-gray-600'}`}>{d}</span>
                            {hasData && (
-                             <span className="text-[9px] font-black text-blue-600 w-full text-center truncate">{formatCompactMoney(dayData.amt).replace('+','')}</span>
+                             <span className="text-[9px] font-black text-blue-600 w-full text-center truncate">{formatCompactMoney(dayData.amt)}</span>
                            )}
                          </div>
                        )
@@ -1589,30 +1592,145 @@ function AppContent() {
         {activeTab === 'loans' && (
           <div className="space-y-6 pb-28 pt-4 animate-in slide-in-from-right duration-500">
              <section>
-              <div className="bg-indigo-600 rounded-[2.5rem] p-7 text-white shadow-xl relative overflow-hidden mb-6">
+              <div className="flex justify-between items-center mb-4 px-2">
+                <h3 className="text-lg font-black text-gray-900">부채 상환 현황</h3>
+                {isManageMode && <button onClick={() => addAssetItem('loan')} className="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-full font-bold hover:bg-gray-50 transition-colors shadow-sm">+ 대출 추가</button>}
+              </div>
+              
+              <div className="bg-indigo-600 rounded-[2.5rem] p-7 text-white shadow-xl shadow-indigo-200/50 relative overflow-hidden mb-6">
                 <Landmark className="absolute -right-6 -bottom-6 w-36 h-36 opacity-10" />
                 <div className="relative z-10">
                   <div className="text-indigo-200 text-xs font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
-                  <div className="text-4xl font-black mb-6 tracking-tight">{formatMoney(totalPrincipal)}원</div>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex justify-between items-center">
-                    <span className="text-xs text-indigo-100 font-bold">이번 달 납입 예정</span>
-                    <span className="text-xl font-black text-white">{formatMoney(totalMonthlyPayment)}원</span>
+                  <div className="text-4xl font-black mb-6 tracking-tight">{formatMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
+                  
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                    <div className="flex justify-between items-center">
+                       <span className="text-[10px] text-indigo-100 font-bold">이번 달 총 납입 예정</span>
+                       <span className="text-sm font-black text-white">{formatMoney(totalMonthlyPayment)}원</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-[10px] text-indigo-100 font-bold">이번 달 납부 완료</span>
+                       <span className="text-sm font-black text-emerald-300">{formatMoney(totalPaidThisMonth)}원</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-indigo-400/50">
+                       <span className="text-xs text-white font-bold">이번 달 남은 납입금</span>
+                       <span className="text-xl font-black text-white">{formatMoney(totalUnpaidThisMonth)}원</span>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <div className="flex justify-between items-center mb-4 px-2">
+                <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 개별 대출 상세</h3>
+                <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-xl shadow-sm border border-gray-200">
+                  <ArrowDownUp size={12} className="text-gray-400" />
+                  <select value={loanSortBy} onChange={(e) => {
+                    setLoanSortBy(e.target.value);
+                    localStorage.setItem('hyunaLoanSortBy', e.target.value);
+                  }} className="text-[10px] font-bold text-gray-600 bg-transparent outline-none appearance-none cursor-pointer">
+                    <option value="date">납부일 빠른순</option><option value="principal">잔액 많은순</option><option value="rate">금리 높은순</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-4">
-                {sortedLoans.map(loan => (
-                  <div key={loan.id} className={`bg-white rounded-3xl p-5 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : 'border-gray-200'}`}>
-                    <div className="flex justify-between items-center mb-3">
-                       <span className="font-bold text-gray-800 text-lg">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-5 h-5 text-green-500 ml-1.5 inline-block"/>}</span>
-                       <span className="text-[10px] bg-red-50 text-red-500 px-2 py-1 rounded-lg font-black">매월 {loan.paymentDate}일</span>
+                {sortedLoans.map(loan => {
+                  const isPaidThisMonth = loan.paidMonths?.includes(currentMonthKey);
+                  return (
+                  <div key={loan.id} className={`bg-white rounded-3xl p-5 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : isPaidThisMonth ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
+                    <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                       <span className="font-bold text-gray-800 flex items-center text-lg">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-5 h-5 text-green-500 ml-1.5 inline-block"/>}</span>
+                       {loan.status !== '완납' && (
+                        <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-xl font-black text-[11px] flex items-center gap-1.5 border border-red-100 shadow-sm">
+                           <CalendarDays size={14}/> 매월 {loan.paymentDate}일
+                        </div>
+                       )}
                     </div>
-                    <div className="flex justify-between items-end">
-                       <div><div className="text-[10px] text-gray-400 font-bold mb-1">잔액</div><div className="text-xl font-black">{formatMoney(loan.principal)}원</div></div>
-                       <div className="text-right"><div className="text-[10px] text-gray-400 font-bold mb-1">{loan.paymentMethod}</div><div className="text-indigo-600 font-black">{formatMoney(getMonthlyPayment(loan))}원</div></div>
+                    <div className="flex justify-between items-end mb-3">
+                       <div className="flex-1">
+                          <div className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-widest flex justify-between items-center">
+                            잔액
+                            {isManageMode && (
+                              <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                                <input type="text" value={loan.rate || ''} onChange={(e) => updateAsset('loans', loan.id, 'rate', e.target.value)} className="w-12 text-right text-xs font-black text-indigo-600 outline-none bg-transparent" placeholder="0.0" />
+                                <span className="text-[10px] font-bold text-gray-500">%</span>
+                              </div>
+                            )}
+                            {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black mr-2 border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
+                          </div>
+                          {isManageMode ? <input type="number" value={loan.principal || ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value) || 0)} className="w-full text-xl font-black bg-gray-50 p-2 rounded-xl outline-none focus:ring-2 ring-indigo-200 border border-gray-200" /> : <div className="text-2xl font-black text-gray-900 tracking-tight">{formatMoney(loan.principal)}<span className="text-base ml-0.5">원</span></div>}
+                       </div>
+                       <div className="text-right ml-4 bg-gray-50 p-2.5 rounded-2xl border border-gray-200 min-w-[110px] shadow-sm">
+                          <div className="flex justify-end gap-1.5 mb-1.5">
+                            {isManageMode && (
+                              <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center">
+                                <input type="text" value={loan.paymentDate || ''} onChange={(e) => updateAsset('loans', loan.id, 'paymentDate', e.target.value)} className="w-6 text-center outline-none bg-transparent" placeholder="일"/>
+                              </div>
+                            )}
+                            <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">
+                              {isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset('loans', loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}
+                            </div>
+                          </div>
+                          <div className="font-black text-[15px] text-indigo-600">{formatMoney(getMonthlyPayment(loan))}원</div>
+                       </div>
+                    </div>
+
+                    {isManageMode && loan.paymentMethod === '원리금' && (
+                      <div className="bg-orange-50/50 p-3 rounded-xl mb-3 space-y-2 border border-orange-200 shadow-sm">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Timer size={10}/> 남은 상환 기간 (자동계산)</span>
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={loan.duration || ''} onChange={(e) => updateAsset('loans', loan.id, 'duration', parseInt(e.target.value)||0)} className="w-16 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white focus:ring-2 ring-orange-300" placeholder="개월" />
+                            <span className="font-bold text-orange-800">개월</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Settings size={10}/> 또는 직접 금액 입력</span>
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={loan.customMonthly || ''} onChange={(e) => updateAsset('loans', loan.id, 'customMonthly', parseInt(e.target.value)||0)} className="w-24 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white focus:ring-2 ring-orange-300" placeholder="금액" />
+                            <span className="font-bold text-orange-800">원</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-gray-100 mt-1">
+                      <div className="flex justify-between items-center mb-2 gap-2">
+                        {loan.status === '완납' ? (
+                          <span className="text-xs font-black text-green-500 flex items-center gap-1 bg-white px-3 py-2 rounded-xl border border-green-200 shadow-sm w-full justify-center"><CheckCircle2 size={14}/> 완납된 대출입니다</span>
+                        ) : isPaidThisMonth ? (
+                          <button onClick={() => handleCancelPayLoanThisMonth(loan)} className="text-[11px] bg-green-100 text-green-700 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm flex-1 border border-green-200">
+                            <CheckCircle2 size={14}/> {selectedMonth}월 납부 완료 (취소)
+                          </button>
+                        ) : (
+                          <button onClick={() => handlePayLoanThisMonth(loan)} className="text-[11px] bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-md flex-1">
+                            <CheckCircle2 size={14}/> 이번 달 납부 처리
+                          </button>
+                        )}
+                        {loan.principal > 0 && (
+                          <button onClick={() => { setPrepayFormData({ loanId: loan.id, date: new Date().toISOString().slice(0,10), principalAmount: '', interestAmount: '' }); setIsPrepayModalOpen(true); }} className="text-[10px] bg-white text-gray-600 px-3 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm border border-gray-200">
+                            <Coins size={12}/> 중도상환
+                          </button>
+                        )}
+                        {isManageMode && <button onClick={() => deleteAsset('loans', loan.id)} className="text-gray-400 hover:text-red-500 bg-white p-2.5 rounded-xl shadow-sm border border-gray-200 ml-2"><Trash2 size={14}/></button>}
+                      </div>
+
+                      {loan.prepaymentHistory?.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {loan.prepaymentHistory.map(h => (
+                            <div key={h.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-gray-100/50 shadow-sm">
+                              <div>
+                                <div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div>
+                                <div className="text-xs font-black text-gray-800 truncate">원금 {formatMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatMoney(h.interestAmount)})</span>}</div>
+                              </div>
+                              {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg flex-shrink-0 border border-gray-200"><X size={12}/></button>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
              </section>
           </div>
@@ -1632,7 +1750,7 @@ function AppContent() {
         })}
       </nav>
 
-      {/* 💡 플로팅 버튼 색상 테마 동기화 */}
+      {/* 💡 플로팅 버튼 동기화 */}
       {activeTab === 'ledger' && <button onClick={() => { setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-400"><Plus size={28}/></button>}
       {activeTab === 'calendar' && <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-emerald-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-emerald-400"><Plus size={28}/></button>}
       {activeTab === 'delivery' && !timerActive && <button onClick={() => { setDeliveryFormData({ date: todayStr, earner: currentUser === '정훈' ? '정훈' : '현아', platform: '배민', amount: '', count: '', startTime: '', endTime: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' }); setEditingDeliveryId(null); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-blue-500"><Plus size={28}/></button>}
@@ -1659,7 +1777,7 @@ function AppContent() {
         </div>
       )}
 
-      {/* 가계부 모달 */}
+      {/* 가계부 모달 (카테고리 동기화 로직 에러 해결) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[60] p-4 pb-8 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-300 border border-pink-200">
@@ -1669,8 +1787,9 @@ function AppContent() {
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액 (원)</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-5xl font-black border-b-4 border-gray-50 pb-4 outline-none transition-colors bg-transparent ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'}`} autoFocus /><span className="absolute right-2 bottom-6 text-2xl font-black text-gray-300">원</span></div></div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-gray-50 rounded-2xl p-4 font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-pink-100" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">분류</label><select value={formData.category} onChange={e=>setFormData({...formData, category:e.target.value})} className="w-full bg-gray-50 rounded-2xl p-4 font-bold text-xs outline-none border border-gray-200">{(CATEGORIES[formData.type]||[]).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">분류</label><select value={formData.category} onChange={e=>setFormData({...formData, category:e.target.value})} className="w-full bg-gray-50 rounded-2xl p-4 font-bold text-xs outline-none border border-gray-200">{(categories[formData.type]||[]).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
               </div>
+              <div><label className="text-[10px] font-black text-gray-400 ml-2 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'}`} /></div>
               <button type="submit" className={`w-full ${formData.type === '수입' ? 'bg-blue-500 border-blue-600' : 'bg-pink-500 border-pink-600'} py-5 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl`}>기록 완료 ✨</button>
             </form>
           </div>
@@ -1874,7 +1993,6 @@ function AppContent() {
           </div>
         </div>
       )}
-
       {/* 중도상환 모달 */}
       {isPrepayModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[60] p-4 pb-8">
