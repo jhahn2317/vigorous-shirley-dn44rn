@@ -246,23 +246,18 @@ function AppContent() {
     } catch (error) {}
   }, [selectedMonth, activeTab]);
 
-  // 가족 일정 탭 진입 시 자동 스크롤 (TODAY 듀티 및 다가오는 첫 번째 가족 일정)
+  // 달력 탭 진입 시 TODAY 듀티만 살짝 보여주기 (과거/미래 자동 스크롤은 제거)
   useEffect(() => {
     if (activeTab === 'calendar') {
       setTimeout(() => {
-        // 듀티표 오늘 날짜로 이동
+        // 듀티표 오늘 날짜 가로 스크롤 이동
         const todayEl = document.getElementById('duty-today');
         if (todayEl) {
           todayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
-        // 과거+미래 일정 중 '가장 가까운 미래 일정'으로 스크롤 이동
-        const upcomingEl = document.getElementById('upcoming-event');
-        if (upcomingEl) {
-          upcomingEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
       }, 300);
     }
-  }, [activeTab, events]);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isFirebaseEnabled) {
@@ -290,23 +285,18 @@ function AppContent() {
     return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
   };
 
-  // 큰 금액 축약 포맷 (1,000만 이상일 때 짤림 방지)
+  // 큰 금액 축약 폐지: 무조건 전체 금액을 콤마와 함께 출력
   const formatLargeMoney = (val) => {
-    if (!val || val === 0) return '0';
-    const absVal = Math.abs(val);
-    if (absVal >= 10000000) {
-      const v = absVal / 10000;
-      return (val < 0 ? '-' : '') + new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 1 }).format(v) + '만';
-    }
-    return new Intl.NumberFormat('ko-KR').format(val);
+    return formatMoney(val);
   };
 
-  // 달력용 짧은 금액 포맷 (기호 중복 방지 완료: 무조건 양수로만 리턴)
+  // 달력용 짧은 금액 포맷 (100만 이상은 소수점 완전 제거, 기호 중복 방지)
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
     const absVal = Math.abs(val);
     if (absVal >= 10000) {
       const v = absVal / 10000;
+      if (v >= 100) return Math.floor(v) + '만'; // 100만 이상은 소수점 제거
       return (Number.isInteger(v) ? v : v.toFixed(1)) + '만';
     }
     return new Intl.NumberFormat('ko-KR').format(absVal);
@@ -605,11 +595,6 @@ function AppContent() {
   const familyEventsList = useMemo(() => {
     return sortedEvents.filter(e => e.type !== '듀티' && e.date);
   }, [sortedEvents]);
-
-  // 가장 가까운 미래의 첫번째 스케줄 인덱스 탐색
-  const firstUpcomingEventIndex = useMemo(() => {
-    return familyEventsList.findIndex(e => e.date >= todayStr);
-  }, [familyEventsList, todayStr]);
 
   // 메인 화면에 보일 메시지 (보관 안 된 것)
   const activeMessages = useMemo(() => {
@@ -1188,7 +1173,7 @@ function AppContent() {
             <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-5 text-white shadow-md shadow-pink-200/50 relative overflow-hidden flex justify-between items-center">
                <div className="relative z-10">
                  <div className="text-xs font-bold opacity-90 mb-0.5 tracking-wider">🌸 {selectedYear}년 누적 총 수입</div>
-                 <div className="text-3xl font-black tracking-tight">{formatLargeMoney(yearlyIncome)}<span className="text-lg ml-1 font-bold opacity-80">원</span></div>
+                 <div className="text-3xl font-black tracking-tight">{formatMoney(yearlyIncome)}<span className="text-lg ml-1 font-bold opacity-80">원</span></div>
                </div>
                <Heart className="w-16 h-16 opacity-20 absolute -right-3 -bottom-3 rotate-12" fill="white" />
             </div>
@@ -1229,30 +1214,30 @@ function AppContent() {
                <div className="grid grid-cols-3 gap-2 mb-3">
                  <div className="bg-blue-50/60 p-3 rounded-2xl border border-blue-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-blue-500 mb-1">수입 합계 💰</div>
-                   <div className="text-sm font-black text-gray-800 truncate">{formatLargeMoney(ledgerSummary.income)}</div>
+                   <div className="text-sm font-black text-gray-800 truncate">{formatMoney(ledgerSummary.income)}</div>
                  </div>
                  <div className="bg-rose-50/60 p-3 rounded-2xl border border-rose-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-rose-500 mb-1">지출 합계 💸</div>
-                   <div className="text-sm font-black text-gray-800 truncate">{formatLargeMoney(ledgerSummary.expense)}</div>
+                   <div className="text-sm font-black text-gray-800 truncate">{formatMoney(ledgerSummary.expense)}</div>
                  </div>
                  <div className="bg-purple-50/60 p-3 rounded-2xl border border-purple-100/60 text-center shadow-sm">
                    <div className="text-[10px] font-bold text-purple-500 mb-1">남은 돈 ✨</div>
-                   <div className="text-sm font-black text-purple-600 truncate">{formatLargeMoney(ledgerSummary.net)}</div>
+                   <div className="text-sm font-black text-purple-600 truncate">{formatMoney(ledgerSummary.net)}</div>
                  </div>
                </div>
 
                <div className="flex justify-between text-center gap-2">
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">순수 생활비 🍱</div>
-                   <div className="text-xs font-black text-rose-500 truncate">{formatLargeMoney(financialSummary.sumLiving)}</div>
+                   <div className="text-xs font-black text-rose-500 truncate">{formatMoney(financialSummary.sumLiving)}</div>
                  </div>
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">대출 원금 🏦</div>
-                   <div className="text-xs font-black text-pink-500 truncate">{formatLargeMoney(financialSummary.sumPrincipal)}</div>
+                   <div className="text-xs font-black text-pink-500 truncate">{formatMoney(financialSummary.sumPrincipal)}</div>
                  </div>
                  <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border border-gray-200/80 shadow-sm overflow-hidden">
                    <div className="text-[9px] font-bold text-gray-500 mb-0.5">대출 이자 📉</div>
-                   <div className="text-xs font-black text-purple-500 truncate">{formatLargeMoney(financialSummary.sumInterest)}</div>
+                   <div className="text-xs font-black text-purple-500 truncate">{formatMoney(financialSummary.sumInterest)}</div>
                  </div>
                </div>
             </div>
@@ -1291,8 +1276,8 @@ function AppContent() {
                        return (
                          <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
                            <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
-                           {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter truncate">+{formatCompactMoney(dayData.inc)}</span>}
-                           {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter truncate">-{formatCompactMoney(dayData.exp)}</span>}
+                           {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter overflow-hidden">+{formatCompactMoney(dayData.inc)}</span>}
+                           {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter overflow-hidden">-{formatCompactMoney(dayData.exp)}</span>}
                          </div>
                        )
                      })}
@@ -1305,7 +1290,7 @@ function AppContent() {
               <div className="space-y-4 animate-in slide-in-from-right duration-300">
                 {reviewData.expense.length > 0 && (
                   <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200/60">
-                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💸 지출 TOP 5</span><span className="text-rose-500">{formatLargeMoney(ledgerSummary.expense)}원</span></h3>
+                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💸 지출 TOP 5</span><span className="text-rose-500">{formatMoney(ledgerSummary.expense)}원</span></h3>
                     <div className="space-y-3">
                       {reviewData.expense.map(([cat, amt], idx) => {
                         const pct = ledgerSummary.expense > 0 ? ((amt / ledgerSummary.expense) * 100).toFixed(1) : 0;
@@ -1314,7 +1299,7 @@ function AppContent() {
                           <div key={cat}>
                             <div className="flex justify-between items-end mb-1">
                               <div className="flex items-center gap-1.5"><span className={`w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-xs font-bold text-gray-700">{cat}</span></div>
-                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatLargeMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-pink-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
+                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-pink-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
                           </div>
@@ -1325,7 +1310,7 @@ function AppContent() {
                 )}
                 {reviewData.income.length > 0 && (
                   <div className="bg-white rounded-3xl p-5 shadow-md border border-blue-200/60">
-                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💰 수입 TOP 5</span><span className="text-blue-500">{formatLargeMoney(ledgerSummary.income)}원</span></h3>
+                    <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center justify-between"><span>💰 수입 TOP 5</span><span className="text-blue-500">{formatMoney(ledgerSummary.income)}원</span></h3>
                     <div className="space-y-3">
                       {reviewData.income.map(([cat, amt], idx) => {
                         const pct = ledgerSummary.income > 0 ? ((amt / ledgerSummary.income) * 100).toFixed(1) : 0;
@@ -1334,7 +1319,7 @@ function AppContent() {
                           <div key={cat}>
                             <div className="flex justify-between items-end mb-1">
                               <div className="flex items-center gap-1.5"><span className={`w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-black text-white ${colorClass}`}>{idx + 1}</span><span className="text-xs font-bold text-gray-700">{cat}</span></div>
-                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatLargeMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
+                              <div className="text-right flex items-center gap-1.5"><div className="text-xs font-black text-gray-900">{formatMoney(amt)}원</div><div className="text-[9px] text-gray-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded">{pct}%</div></div>
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }}></div></div>
                           </div>
@@ -1368,7 +1353,7 @@ function AppContent() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={`font-black text-base tracking-tight ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}</span>
+                            <span className={`font-black text-base tracking-tight ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}</span>
                             {isManageMode && <button onClick={() => deleteTransaction(t.id)} className="text-gray-300 hover:text-pink-500 bg-white p-2 rounded-xl shadow-sm border border-gray-100"><Trash2 size={14}/></button>}
                           </div>
                         </div>
@@ -1422,10 +1407,10 @@ function AppContent() {
                         </span>
                       </div>
                       <div className={`text-2xl font-black tracking-tighter ${isClosest ? 'text-blue-600' : 'text-gray-700'}`}>
-                        {formatLargeMoney(group.total)}<span className="text-base font-bold opacity-80">원</span>
+                        {formatMoney(group.total)}<span className="text-base font-bold opacity-80">원</span>
                       </div>
                       <div className="text-[10px] font-bold text-gray-500 mt-1">
-                        훈 {formatLargeMoney(group.junghoon)} | 현 {formatLargeMoney(group.hyuna)}
+                        훈 {formatMoney(group.junghoon)} | 현 {formatMoney(group.hyuna)}
                       </div>
                     </div>
                   )
@@ -1439,10 +1424,10 @@ function AppContent() {
               <div className="flex justify-between items-end mb-3 relative z-10">
                 <div>
                   <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
-                  <div className="text-4xl font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
+                  <div className="text-4xl font-black tracking-tighter leading-none">{formatMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold tracking-tight mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}</div>
+                  <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold tracking-tight mb-1.5 inline-block">{selectedYear}년 누적: {formatMoney(deliveryYearlyTotal)}</div>
                   <div className="text-[10px] font-bold opacity-90 flex flex-col items-end">
                     <span>총 {formatMoney(deliveryFilteredCount)}건</span>
                     <span>평단 {formatMoney(deliveryAvgPerDelivery)}원</span>
@@ -1456,7 +1441,7 @@ function AppContent() {
                  return (
                    <div className="mb-2 relative z-10">
                      <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90">
-                       <span>목표 {formatLargeMoney(goal)}</span>
+                       <span>목표 {formatMoney(goal)}</span>
                        <span>{pct.toFixed(1)}% 달성</span>
                      </div>
                      <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden">
@@ -1469,11 +1454,11 @@ function AppContent() {
               <div className="flex bg-white/10 rounded-xl p-3 mt-3 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
                 <div className="flex-1 px-3">
                   <div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
-                  <div className="text-base font-black">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
+                  <div className="text-base font-black">{formatMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
                 </div>
                 <div className="flex-1 px-3">
                   <div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div>
-                  <div className="text-base font-black">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
+                  <div className="text-base font-black">{formatMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}</div>
                 </div>
               </div>
             </div>
@@ -1559,8 +1544,8 @@ function AppContent() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-black text-blue-600 tracking-tight">{formatLargeMoney(group.total)}원</div>
-                        <div className="text-[10px] text-gray-500 font-bold mt-1">정훈 {formatLargeMoney(group.junghoon)} | 현아 {formatLargeMoney(group.hyuna)}</div>
+                        <div className="text-xl font-black text-blue-600 tracking-tight">{formatMoney(group.total)}원</div>
+                        <div className="text-[10px] text-gray-500 font-bold mt-1">정훈 {formatMoney(group.junghoon)} | 현아 {formatMoney(group.hyuna)}</div>
                       </div>
                     </div>
                   );
@@ -1589,8 +1574,8 @@ function AppContent() {
                            )}
                          </div>
                          <div className="text-right flex-shrink-0">
-                           <div className="text-lg font-black text-blue-600 mb-1.5 tracking-tight">{formatLargeMoney(dayMetrics.totalAmt)}</div>
-                           <div className="text-[9px] font-black text-gray-500 flex gap-1 justify-end flex-wrap w-32">
+                           <div className="text-lg font-black text-blue-600 mb-1.5 tracking-tight">{formatMoney(dayMetrics.totalAmt)}원</div>
+                           <div className="text-[9px] font-black text-gray-500 flex gap-1 justify-end whitespace-nowrap">
                              <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">총 {dayMetrics.totalCnt}건</span>
                              <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">평단 {formatMoney(dayMetrics.perDelivery)}</span>
                              {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">시급 {formatMoney(dayMetrics.hourlyRate)}</span>}
@@ -1613,7 +1598,7 @@ function AppContent() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="font-black text-base text-gray-900 tracking-tight">{formatLargeMoney(d.amount)}</span>
+                                <span className="font-black text-base text-gray-900 tracking-tight">{formatMoney(d.amount)}</span>
                                 {isManageMode && <button onClick={() => {
                                   setDeliveryFormData({
                                     date: d.date, earner: d.earner, platform: d.platform, amount: String(d.amount||''),
@@ -1649,20 +1634,20 @@ function AppContent() {
                 <Landmark className="absolute -right-6 -bottom-6 w-36 h-36 opacity-10" />
                 <div className="relative z-10">
                   <div className="text-indigo-200 text-xs font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
-                  <div className="text-3xl font-black mb-4 tracking-tight">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
+                  <div className="text-3xl font-black mb-4 tracking-tight">{formatMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
                   
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
                     <div className="flex justify-between items-center">
                        <span className="text-[11px] text-indigo-100 font-bold">이번 달 총 납입 예정</span>
-                       <span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span>
+                       <span className="text-base font-black text-white">{formatMoney(totalMonthlyPayment)}원</span>
                     </div>
                     <div className="flex justify-between items-center">
                        <span className="text-[11px] text-indigo-100 font-bold">이번 달 납부 완료</span>
-                       <span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span>
+                       <span className="text-base font-black text-emerald-300">{formatMoney(totalPaidThisMonth)}원</span>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-indigo-400/50 mt-1">
                        <span className="text-sm text-white font-bold">이번 달 남은 납입금</span>
-                       <span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span>
+                       <span className="text-xl font-black text-white">{formatMoney(totalUnpaidThisMonth)}원</span>
                     </div>
                   </div>
                 </div>
@@ -1692,16 +1677,19 @@ function AppContent() {
                 {sortedLoans.map((loan) => {
                   const isPaidThisMonth = loan.paidMonths?.includes(currentMonthKey);
                   return (
-                  <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : isPaidThisMonth ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
+                  <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border leading-tight ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : isPaidThisMonth ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
                     
                     <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2.5">
                       <span className="font-bold text-gray-800 flex items-center text-base">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-4 h-4 text-green-500 ml-1.5"/>}</span>
                       
-                      {loan.status !== '완납' && (
-                        <div className="bg-red-50 text-red-600 px-2.5 py-1 rounded-xl font-black text-[10px] flex items-center gap-1 border border-red-100 shadow-sm">
-                           <CalendarDays size={12}/> 매월 {loan.paymentDate}일
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
+                        {loan.status !== '완납' && (
+                          <div className="bg-red-50 text-red-600 px-2.5 py-1 rounded-xl font-black text-[10px] flex items-center gap-1 border border-red-100 shadow-sm">
+                             <CalendarDays size={12}/> 매월 {loan.paymentDate}일
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
                     <div className="flex justify-between items-end mb-3">
@@ -1714,9 +1702,8 @@ function AppContent() {
                               <span className="text-[10px] font-bold text-gray-500">%</span>
                             </div>
                           )}
-                          {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black mr-2 border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
                         </div>
-                        {isManageMode ? <input type="number" value={loan.principal || ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none focus:ring-2 ring-indigo-200 border border-gray-200" /> : <div className="text-xl font-black text-gray-900 tracking-tight">{formatLargeMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
+                        {isManageMode ? <input type="text" value={loan.principal ? formatMoney(loan.principal) : ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none focus:ring-2 ring-indigo-200 border border-gray-200" /> : <div className="text-xl font-black text-gray-900 tracking-tight leading-none">{formatMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
                       </div>
                       
                       <div className="text-right ml-3 bg-gray-50 p-2 rounded-2xl border border-gray-200 min-w-[100px] shadow-sm">
@@ -1730,7 +1717,7 @@ function AppContent() {
                             {isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset('loans', loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}
                           </div>
                         </div>
-                        <div className="font-black text-[14px] text-indigo-600">{formatMoney(getMonthlyPayment(loan))}원</div>
+                        <div className="font-black text-[14px] text-indigo-600 leading-none mt-1.5">{formatMoney(getMonthlyPayment(loan))}원</div>
                       </div>
                     </div>
 
@@ -1780,7 +1767,7 @@ function AppContent() {
                             <div key={h.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-100/50 shadow-sm">
                               <div>
                                 <div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div>
-                                <div className="text-xs font-black text-gray-800 truncate">원금 {formatLargeMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatLargeMoney(h.interestAmount)})</span>}</div>
+                                <div className="text-xs font-black text-gray-800 truncate">원금 {formatMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatMoney(h.interestAmount)})</span>}</div>
                               </div>
                               {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg flex-shrink-0 border border-gray-200"><X size={12}/></button>}
                             </div>
@@ -1936,9 +1923,8 @@ function AppContent() {
                 )}
                 {familyEventsList.map((e, i, arr) => {
                   const isFirstOfMonth = i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7);
-                  const isFirstUpcoming = i === firstUpcomingEventIndex;
                   return (
-                    <div key={e.id} id={isFirstUpcoming ? 'upcoming-event' : undefined}>
+                    <div key={e.id}>
                       {isFirstOfMonth && (
                         <div className="relative flex items-center justify-center py-4">
                           <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border border-gray-200 shadow-sm">
@@ -1952,20 +1938,21 @@ function AppContent() {
                         </div>
                         <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl bg-gray-50 border border-gray-100 shadow-sm ml-3">
                           <div className="flex justify-between items-start mb-1.5">
-                            <span className="text-[10px] font-black text-emerald-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span>
-                            <span className="text-[9px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm">{e.type}</span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] font-black text-emerald-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span>
+                              <span className="text-[9px] bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
+                            </div>
+                            <div className="flex justify-end gap-1">
+                              <button onClick={() => {
+                                setEventFormData({ date: e.date, title: e.title, type: e.type, isImportant: e.isImportant || false });
+                                setEditingEventId(e.id);
+                                setIsEventModalOpen(true);
+                              }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm"><Edit3 size={12}/></button>
+                              <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border border-gray-200 shadow-sm"><Trash2 size={12}/></button>
+                            </div>
                           </div>
-                          <div className="font-bold text-gray-800 text-base flex items-center gap-1.5">
+                          <div className="font-bold text-gray-800 text-base flex items-center gap-1.5 mt-1.5">
                             {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
-                          </div>
-                          
-                          <div className="mt-3 text-right flex justify-end gap-1.5">
-                            <button onClick={() => {
-                              setEventFormData({ date: e.date, title: e.title, type: e.type, isImportant: e.isImportant || false });
-                              setEditingEventId(e.id);
-                              setIsEventModalOpen(true);
-                            }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"><Edit3 size={14}/></button>
-                            <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"><Trash2 size={14}/></button>
                           </div>
                         </div>
                       </div>
@@ -2049,7 +2036,7 @@ function AppContent() {
               <div className="flex gap-3 w-full">
                 <div className="w-[35%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} />
+                  <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800 tracking-tighter`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label>
@@ -2084,7 +2071,7 @@ function AppContent() {
               <div className="flex gap-3 w-full">
                 <div className="w-[35%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
+                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800 tracking-tighter" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
@@ -2323,17 +2310,17 @@ function AppContent() {
                 </div>
               </div>
 
-              <div className="flex gap-2 pb-3 border-b border-gray-100 mb-2 w-full">
+              <div className="flex gap-2.5 pb-3 border-b border-gray-100 mb-2 w-full">
                 <div className="w-[32%] flex-shrink-0 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작 시간</label>
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작</label>
                   <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료 시간</label>
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료</label>
                   <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
               </div>
@@ -2452,7 +2439,7 @@ function AppContent() {
                 <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
                 <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
               </div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200 text-gray-800" /></div>
+              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200 text-gray-800 tracking-tighter" /></div>
               <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-indigo-200 border border-indigo-700">상환 처리 완료</button>
             </form>
           </div>
