@@ -32,7 +32,8 @@ try {
   isFirebaseEnabled = false;
 }
 
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'hyuna-asset-pro';
+// 환경 변수 __app_id에 포함된 '/' 문자가 Firestore 경로 세그먼트를 꼬이게 하는 문제 방지
+const appId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '_') : 'hyuna-asset-pro';
 
 const DEFAULT_CATEGORIES = {
   지출: ['식비', '주거/통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
@@ -117,6 +118,11 @@ function AppContent() {
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false); 
   const [isManageMode, setIsManageMode] = useState(false); 
   
+  // 개별 듀티 수정 모달 상태
+  const [selectedDutyEditDate, setSelectedDutyEditDate] = useState(null);
+  const [isDutyEditModalOpen, setIsDutyEditModalOpen] = useState(false);
+  const [isDutyEditing, setIsDutyEditing] = useState(false);
+
   const [editingDeliveryId, setEditingDeliveryId] = useState(null);
   const [editingEventId, setEditingEventId] = useState(null); 
 
@@ -156,11 +162,14 @@ function AppContent() {
   const [loanSortBy, setLoanSortBy] = useState(() => localStorage.getItem('hyunaLoanSortBy') || 'date'); 
 
   const [isDutyBatchModalOpen, setIsDutyBatchModalOpen] = useState(false);
-  const [isDutyBatchEditMode, setIsDutyBatchEditMode] = useState(false); 
+  
+  // 한 달 스케줄 등록 모드 상태 ('touch' or 'continuous')
+  const [dutyBatchMode, setDutyBatchMode] = useState('touch'); 
   const [dutyBatchYear, setDutyBatchYear] = useState(selectedYear);
   const [dutyBatchMonth, setDutyBatchMonth] = useState(selectedMonth);
   const [batchDuties, setBatchDuties] = useState({}); 
   const [selectedStamp, setSelectedStamp] = useState('DAY');
+  const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
 
   const scrollRefLedger = useRef(null);
   const scrollRefDelivery = useRef(null);
@@ -170,8 +179,16 @@ function AppContent() {
     if (!isFirebaseEnabled) return;
     const initAuth = async () => {
       try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-        else await signInAnonymously(auth);
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          try {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } catch (tokenError) {
+            console.warn("커스텀 토큰 인증 실패 (개인 Firebase 프로젝트 연동 시 발생 가능), 익명 로그인으로 전환합니다.", tokenError);
+            await signInAnonymously(auth);
+          }
+        } else {
+          await signInAnonymously(auth);
+        }
       } catch (err) { console.error(err); }
     };
     initAuth();
@@ -580,8 +597,10 @@ function AppContent() {
     setIsDutyBatchModalOpen(false); 
     setIsMessageHistoryOpen(false);
     setIsPrepayModalOpen(false);
+    setIsDutyEditModalOpen(false);
     setEditingEventId(null);
     setEditingDeliveryId(null);
+    setDutyBatchMode('touch');
   };
   
   const clearFilters = (e) => { e.preventDefault(); setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({ start: '', end: '' }); };
@@ -737,6 +756,30 @@ function AppContent() {
     else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
   };
 
+  // 개별 듀티 빠른 수정 처리 (단건)
+  const handleQuickDutyUpdate = async (dateStr, newDuty) => {
+    if (!user) return;
+    const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
+    
+    if (newDuty === 'DELETE') {
+      if (existingEvent) {
+         if (isFirebaseEnabled) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', existingEvent.id));
+         else setEvents(events.filter(e => e.id !== existingEvent.id));
+      }
+    } else {
+      if (existingEvent) {
+         if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', existingEvent.id), { title: newDuty });
+         else setEvents(events.map(e => e.id === existingEvent.id ? { ...e, title: newDuty } : e));
+      } else {
+         const newEvent = { type: '듀티', title: newDuty, date: dateStr, isImportant: false };
+         if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), newEvent);
+         else setEvents([{...newEvent, id: Date.now().toString()}, ...events]);
+      }
+    }
+    setIsDutyEditModalOpen(false);
+  };
+
+  // 한달 듀티 일괄 모달 오픈
   const openDutyBatchModal = () => {
     setDutyBatchYear(selectedYear);
     setDutyBatchMonth(selectedMonth);
@@ -748,23 +791,26 @@ function AppContent() {
     });
     setBatchDuties(current);
     setSelectedStamp('DAY');
-    setIsDutyBatchEditMode(false); 
+    setDutyBatchMode('touch'); 
+    setContinuousCursorDateStr(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}-01`);
     setIsDutyBatchModalOpen(true);
   };
 
+  // 모달 안에서 년/월 변경 시 연속 모드 커서 1일로 리셋
   useEffect(() => {
-    if(!isDutyBatchModalOpen) return;
-    const current = {};
-    events.forEach(e => {
-      if(e.type === '듀티' && e.date && e.date.startsWith(`${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}`)) {
-        current[e.date] = e.title;
-      }
-    });
-    setBatchDuties(current);
+    if(isDutyBatchModalOpen) {
+      setContinuousCursorDateStr(`${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}-01`);
+      const current = {};
+      events.forEach(e => {
+        if(e.type === '듀티' && e.date && e.date.startsWith(`${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}`)) {
+          current[e.date] = e.title;
+        }
+      });
+      setBatchDuties(current);
+    }
   }, [dutyBatchYear, dutyBatchMonth, isDutyBatchModalOpen, events]);
 
   const handleDutyCellClick = (dateStr) => {
-    if (!isDutyBatchEditMode) return; 
     setBatchDuties(prev => {
       const next = {...prev};
       if (selectedStamp === 'DELETE') {
@@ -774,6 +820,32 @@ function AppContent() {
       }
       return next;
     });
+  };
+
+  // 연속 모드 입력 (DAY/EVE/OFF 버튼 클릭)
+  const handleContinuousInput = (duty) => {
+    setBatchDuties(prev => ({ ...prev, [continuousCursorDateStr]: duty }));
+    
+    // 다음 날짜로 이동
+    const [y, m, d] = continuousCursorDateStr.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    if (d < daysInMonth) {
+        setContinuousCursorDateStr(`${y}-${String(m).padStart(2,'0')}-${String(d + 1).padStart(2,'0')}`);
+    }
+  };
+
+  // 연속 모드 이전 지우기
+  const handleContinuousUndo = () => {
+    const [y, m, d] = continuousCursorDateStr.split('-').map(Number);
+    if (d > 1) {
+        const prevStr = `${y}-${String(m).padStart(2,'0')}-${String(d - 1).padStart(2,'0')}`;
+        setContinuousCursorDateStr(prevStr);
+        setBatchDuties(prev => {
+            const next = {...prev};
+            delete next[prevStr];
+            return next;
+        });
+    }
   };
 
   const saveBatchDuties = async () => {
@@ -1734,11 +1806,11 @@ function AppContent() {
               <div className="flex justify-between items-center px-2 mb-3">
                 <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Stethoscope size={16} className="text-pink-500"/> 현아 근무 스케줄</h3>
                 <button onClick={openDutyBatchModal} className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-bold border border-emerald-200 shadow-sm active:scale-95 transition-transform">
-                  + 한달스케쥴 확인 및 등록
+                  + 한달스케쥴 등록
                 </button>
               </div>
               
-              <div className="relative">
+              <div className="relative pt-4">
                 <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-1 pb-2 scroll-smooth">
                   {extendedDutyDays.map((d) => {
                     const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
@@ -1752,8 +1824,10 @@ function AppContent() {
                     else if(duty !== 'OFF') dutyColor = 'bg-pink-50 text-pink-600 border-pink-200';
 
                     return (
-                      <div key={d} id={isToday ? 'duty-today' : undefined} className={`flex-none w-[60px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
-                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-2 bg-white px-1.5 rounded-full border border-emerald-200 shadow-sm">TODAY</div>}
+                      <div key={d} id={isToday ? 'duty-today' : undefined} 
+                           onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }}
+                           className={`flex-none w-[60px] p-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
+                        {isToday && <div className="text-[8px] font-black text-emerald-500 mb-0.5 absolute -top-3 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
                         <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                         <div className="text-xs font-black">{dayName}</div>
                         <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -1902,13 +1976,13 @@ function AppContent() {
               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
               
-              <div className="flex gap-3">
-                <div className="w-1/3"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-xs outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'}`} /></div>
-                <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-xs outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
+                <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
               </div>
               {isCustomCategory && <div className="animate-in fade-in slide-in-from-top-2"><input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl p-3.5 font-black text-sm outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} /></div>}
               
-              <div><label className="text-[10px] font-black text-gray-400 ml-2 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'}`} /></div>
+              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
               <button type="submit" className={`w-full ${formData.type === '수입' ? 'bg-blue-500 shadow-blue-200 border border-blue-600' : 'bg-pink-500 shadow-pink-200 border border-pink-600'} mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl`}>기록 완료 {formData.type === '수입' ? '💰' : '🎀'}</button>
             </form>
           </div>
@@ -1927,22 +2001,22 @@ function AppContent() {
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block">분류</label>
-                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold outline-none border border-gray-200 focus:ring-2 ring-emerald-200">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
+                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
                     <option value="가족일정">가족일정</option>
                     <option value="회식">회식</option>
                     <option value="기타">기타</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block">날짜</label>
-                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl p-3 text-sm font-bold outline-none border border-gray-200 focus:ring-2 ring-emerald-200" />
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
+                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl p-3.5 font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-gray-400 ml-1 block">일정 내용</label>
-                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-white rounded-xl p-3.5 text-lg font-black outline-none border border-gray-200 focus:ring-2 ring-emerald-200 shadow-sm" />
+                <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label>
+                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl p-3.5 text-sm font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
               </div>
 
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
@@ -1964,7 +2038,49 @@ function AppContent() {
         </div>
       )}
 
-      {/* --- 한달 듀티 등록 모달 (크기가 커서 유지하되 모서리 라운딩만 통일) --- */}
+      {/* --- 개별 듀티 수정 미니 Bottom Sheet --- */}
+      {isDutyEditModalOpen && selectedDutyEditDate && (() => {
+         const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
+         const currentDuty = existingEvent ? existingEvent.title : 'OFF';
+
+         return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar">
+            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300">
+               <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900">
+                      {parseInt(selectedDutyEditDate.slice(5,7))}월 {parseInt(selectedDutyEditDate.slice(8,10))}일 스케줄
+                    </h2>
+                    <p className="text-[10px] text-gray-500 font-bold mt-1">
+                      {isDutyEditing ? '변경할 근무를 선택하세요.' : '현재 등록된 스케줄입니다.'}
+                    </p>
+                  </div>
+                  <button onClick={() => setIsDutyEditModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+               </div>
+
+               <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-center border border-gray-100 shadow-inner">
+                 <span className="text-[10px] font-bold text-gray-400 block mb-1">현재 스케줄</span>
+                 <span className={`text-3xl font-black tracking-tighter ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span>
+               </div>
+
+               {!isDutyEditing ? (
+                  <button onClick={() => setIsDutyEditing(true)} className="w-full bg-emerald-500 text-white py-4 rounded-[1.5rem] font-black text-lg active:scale-95 transition-transform shadow-md shadow-emerald-200 border border-emerald-600">
+                    수정하기
+                  </button>
+               ) : (
+                  <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95">
+                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">DAY</button>
+                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'EVE')} className="bg-orange-50 text-orange-600 border border-orange-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">EVE</button>
+                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'OFF')} className="bg-pink-50 text-pink-600 border border-pink-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">OFF</button>
+                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'DELETE')} className="bg-gray-100 text-gray-600 border border-gray-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 flex items-center justify-center gap-1 transition-transform"><Trash2 size={16}/> 삭제</button>
+                  </div>
+               )}
+            </div>
+          </div>
+         );
+      })()}
+
+      {/* --- 한달 듀티 등록 모달 (연속 모드 포함) --- */}
       {isDutyBatchModalOpen && (() => {
         const batchFirstDay = new Date(dutyBatchYear, dutyBatchMonth - 1, 1).getDay();
         const batchDaysInMonth = new Date(dutyBatchYear, dutyBatchMonth, 0).getDate();
@@ -1979,15 +2095,22 @@ function AppContent() {
                 <div>
                   <h2 className="text-xl font-black text-gray-900">한달 스케쥴 등록</h2>
                   <div className="text-[10px] text-gray-500 font-bold mt-1">
-                    {isDutyBatchEditMode ? '도장을 선택하고 날짜를 터치하세요!' : '수정하기 버튼을 눌러 스케쥴을 변경하세요.'}
+                    {dutyBatchMode === 'continuous' ? '하단 버튼을 눌러 연속으로 입력하세요.' : '도장을 선택하고 날짜를 터치하세요.'}
                   </div>
                 </div>
                 <button onClick={closeModals} className="bg-gray-100 text-gray-500 p-2 rounded-xl active:scale-95"><X size={18}/></button>
               </div>
 
               <div className="overflow-y-auto no-scrollbar flex-1 pb-4">
-                {isDutyBatchEditMode && (
-                  <div className="flex justify-between gap-1 bg-gray-50 p-1.5 rounded-2xl mb-4 border border-gray-200">
+                
+                {/* 모드 선택 탭 */}
+                <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-4 border border-gray-200">
+                  <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${dutyBatchMode === 'touch' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>👆 터치 모드</button>
+                  <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${dutyBatchMode === 'continuous' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>⏩ 연속 모드</button>
+                </div>
+
+                {dutyBatchMode === 'touch' && (
+                  <div className="flex justify-between gap-1 bg-gray-50 p-1.5 rounded-2xl mb-4 border border-gray-200 animate-in fade-in">
                     <button onClick={() => setSelectedStamp('DAY')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${selectedStamp === 'DAY' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}>DAY</button>
                     <button onClick={() => setSelectedStamp('EVE')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${selectedStamp === 'EVE' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}>EVE</button>
                     <button onClick={() => setSelectedStamp('OFF')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${selectedStamp === 'OFF' ? 'bg-pink-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}>OFF</button>
@@ -2015,11 +2138,21 @@ function AppContent() {
                       if (duty === 'EVE') bgClass = 'bg-orange-50 border-orange-200 text-orange-600';
                       if (duty === 'OFF') bgClass = 'bg-pink-50 border-pink-200 text-pink-600';
 
+                      // 연속 모드에서 현재 가리키고 있는 커서 하이라이트
+                      const isContinuousCursor = dutyBatchMode === 'continuous' && dateStr === continuousCursorDateStr;
+
                       return (
                         <button 
                           key={dateStr} 
-                          onClick={() => handleDutyCellClick(dateStr)}
-                          className={`h-10 border rounded-xl flex flex-col items-center justify-center transition-transform ${isDutyBatchEditMode ? 'active:scale-90' : 'cursor-default'} ${bgClass}`}
+                          onClick={() => {
+                            if (dutyBatchMode === 'touch') {
+                              handleDutyCellClick(dateStr);
+                            } else {
+                              // 연속 모드일때 날짜를 누르면 커서를 해당 날짜로 수동 이동
+                              setContinuousCursorDateStr(dateStr);
+                            }
+                          }}
+                          className={`h-10 border rounded-xl flex flex-col items-center justify-center transition-transform active:scale-95 ${bgClass} ${isContinuousCursor ? 'ring-2 ring-emerald-500 ring-offset-1 scale-105 shadow-md' : ''}`}
                         >
                           <span className="text-[10px] font-bold opacity-80">{d}</span>
                           {duty && <span className="text-[11px] font-black tracking-tighter leading-tight mt-0.5">{duty}</span>}
@@ -2029,15 +2162,18 @@ function AppContent() {
                   </div>
                 </div>
 
-                {isDutyBatchEditMode ? (
-                  <button onClick={saveBatchDuties} className="w-full bg-emerald-500 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 transition-transform shadow-lg shadow-emerald-200 border border-emerald-600">
-                    변경사항 저장하기
-                  </button>
-                ) : (
-                  <button onClick={() => setIsDutyBatchEditMode(true)} className="w-full bg-gray-100 py-4 rounded-[1.5rem] text-gray-600 font-black text-lg active:scale-95 transition-transform border border-gray-200">
-                    수정 모드 켜기
-                  </button>
+                {dutyBatchMode === 'continuous' && (
+                  <div className="grid grid-cols-4 gap-2 mb-4 animate-in fade-in slide-in-from-bottom-2">
+                     <button onClick={() => handleContinuousInput('DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">DAY</button>
+                     <button onClick={() => handleContinuousInput('EVE')} className="bg-orange-50 text-orange-600 border border-orange-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">EVE</button>
+                     <button onClick={() => handleContinuousInput('OFF')} className="bg-pink-50 text-pink-600 border border-pink-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform">OFF</button>
+                     <button onClick={handleContinuousUndo} className="bg-gray-100 text-gray-600 border border-gray-200 py-3 rounded-2xl font-black shadow-sm active:scale-90 transition-transform flex flex-col items-center justify-center gap-1 leading-none"><RefreshCw size={14}/><span className="text-[9px]">취소</span></button>
+                  </div>
                 )}
+
+                <button onClick={saveBatchDuties} className="w-full bg-emerald-500 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 transition-transform shadow-lg shadow-emerald-200 border border-emerald-600">
+                  {dutyBatchMode === 'continuous' ? '연속 입력 완료 및 저장' : '변경사항 저장하기'}
+                </button>
               </div>
             </div>
           </div>
@@ -2124,7 +2260,7 @@ function AppContent() {
                 </div>
                 <div className="col-span-2 mt-1">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl p-2.5 font-bold text-xs outline-none focus:ring-2 ring-blue-200" />
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl p-3.5 font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800" />
                 </div>
               </div>
 
