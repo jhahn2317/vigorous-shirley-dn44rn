@@ -88,11 +88,14 @@ const formatMoney = (v) => {
   return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
 };
 
+const formatLargeMoney = (val) => formatMoney(val);
+
 const formatCompactMoney = (val) => {
   if (!val || val === 0) return '0';
   const absVal = Math.abs(val);
   if (absVal >= 10000) {
     const v = absVal / 10000;
+    if (v >= 100) return Math.floor(v) + '만'; 
     return (Number.isInteger(v) ? v : v.toFixed(1)) + '만';
   }
   return new Intl.NumberFormat('ko-KR').format(absVal);
@@ -106,7 +109,13 @@ const getWeekOfMonth = (dateStr) => {
   return Math.ceil((date.getDate() + firstDay) / 7);
 };
 
-const formatEquation = (eq) => eq.replace(/[\d.]+/g, (match) => match.includes('.') ? Number(match.split('.')[0]).toLocaleString('ko-KR') + '.' + match.split('.')[1] : Number(match).toLocaleString('ko-KR'));
+const formatEquation = (eq) => eq.replace(/[\d.]+/g, (match) => {
+  if(match.includes('.')) {
+      const [intP, decP] = match.split('.');
+      return Number(intP).toLocaleString('ko-KR') + '.' + decP;
+  }
+  return Number(match).toLocaleString('ko-KR');
+});
 
 const getMonthlyPayment = (loan) => {
   if (loan.status === '완납') return 0;
@@ -127,7 +136,7 @@ const calcDailyMetrics = (deliveries) => {
   if (!deliveries || deliveries.length === 0) return { durationStr: '', hourlyRate: 0, perDelivery: 0, totalCnt: 0, totalAmt: 0 };
   let intervals = [];
   deliveries.forEach(d => {
-    if(d.startTime && d.endTime) {
+    if(d.startTime && d.endTime && typeof d.startTime === 'string' && typeof d.endTime === 'string') {
       let [sh, sm] = d.startTime.split(':').map(Number);
       let [eh, em] = d.endTime.split(':').map(Number);
       if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
@@ -263,7 +272,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
       {settingsTab === 'common' ? (
         <>
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
-            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정</h3>
+            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
             <div className="flex gap-2">
               <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ? 'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
               <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
@@ -359,6 +368,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
   const [memoText, setMemoText] = useState('');
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState('');
+  const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
 
   const getSortedCategories = (type) => {
     let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
@@ -450,22 +460,41 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         if(isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'memos'), newMemo);
         else setMemos([{...newMemo, id: Date.now().toString()}, ...memos]);
     }
-    setIsMemoEditorOpen(false); setIsCalcOpen(false); 
+    setIsMemoEditorOpen(false); setIsCalcOpen(false); setCalcConfirm({show:false, count:0, total:0});
   };
 
   const deleteMemo = async () => {
     if (!currentMemoId || !user || !window.confirm("메모를 삭제하시겠습니까?")) return;
     if (isFirebaseEnabled) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memos', currentMemoId));
     else setMemos(memos.filter(m => m.id !== currentMemoId));
-    setIsMemoEditorOpen(false); setIsCalcOpen(false); 
+    setIsMemoEditorOpen(false); setIsCalcOpen(false); setCalcConfirm({show:false, count:0, total:0});
   };
 
   const handleCalcBtn = (val) => {
     if (val === 'AC') setCalcInput('');
     else if (val === '⌫') setCalcInput(prev => prev.slice(0, -1));
-    else if (val === '=') { try { setCalcInput(String(new Function('return (' + calcInput.replace(/×/g, '*').replace(/÷/g, '/') + ')')())); } catch { setCalcInput('Error'); } }
-    else if (val === '+/-') { try { setCalcInput(String(-new Function('return (' + calcInput.replace(/×/g, '*').replace(/÷/g, '/') + ')')())); } catch {} }
-    else if (val === '%') { try { setCalcInput(String(new Function('return (' + calcInput.replace(/×/g, '*').replace(/÷/g, '/') + ')')() / 100)); } catch {} }
+    else if (val === '=') { 
+        try { 
+            let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/');
+            sanitized = sanitized.replace(/[+\-*/]+$/, ''); 
+            // eslint-disable-next-line
+            setCalcInput(String(new Function('return (' + sanitized + ')')())); 
+        } catch { setCalcInput('Error'); } 
+    }
+    else if (val === '+/-') { 
+        try { 
+            let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]+$/, '');
+            // eslint-disable-next-line
+            setCalcInput(String(-new Function('return (' + sanitized + ')')())); 
+        } catch {} 
+    }
+    else if (val === '%') { 
+        try { 
+            let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]+$/, '');
+            // eslint-disable-next-line
+            setCalcInput(String(new Function('return (' + sanitized + ')')() / 100)); 
+        } catch {} 
+    }
     else { if (calcInput === 'Error') setCalcInput(val); else setCalcInput(prev => prev + val); }
   };
 
@@ -479,9 +508,14 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     try {
         const lastLine = lines[lines.length - 1].replace(/[^\d+\-*/().]/g, '');
         if (/[+\-*/]/.test(lastLine)) {
+            let sanitized = lastLine.replace(/[+\-*/]+$/, ''); // 꼬리 연산자 무시
             // eslint-disable-next-line no-new-func
-            total = new Function('return ' + lastLine)();
+            total = new Function('return ' + sanitized)();
             hasMath = true;
+            if(total > 0) {
+               setCalcConfirm({ show: true, count: 1, total });
+               return;
+            }
         }
     } catch(e) {}
 
@@ -492,17 +526,13 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                                          .filter(num => num >= 100 && !(num >= 2020 && num <= 2030));
             if (extractedNums.length > 0) {
                total = extractedNums.reduce((a, b) => a + b, 0);
+               setCalcConfirm({ show: true, count: extractedNums.length, total });
+               return;
             }
         }
     }
     
-    if (total > 0) {
-        // 💡 계산된 금액을 바로 메모장 하단에 삽입 후 닫기
-        setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatMoney(total)}원`);
-        setIsCalcOpen(false);
-    } else {
-        alert("계산할 금액이나 수식을 찾지 못했습니다. 🥲\n(숫자가 너무 작거나 연도만 있으면 무시됩니다)");
-    }
+    alert("계산할 금액이나 수식을 찾지 못했습니다. 🥲\n(금액이 너무 작거나 연도만 있는 경우 무시됩니다)");
   };
 
   return (
@@ -569,7 +599,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -629,7 +659,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
            {memos.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)).map(memo => (
               <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setIsMemoEditorOpen(true); }} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer relative hover:bg-gray-50 transition-colors">
                  <div className="text-[10px] font-bold text-gray-400 mb-2">{memo.updatedAt}</div>
-                 <div className="text-base font-bold text-gray-800 line-clamp-2">{memo.text || '내용 없음'}</div>
+                 <div className="text-base font-bold text-gray-800 line-clamp-2 whitespace-pre-wrap">{memo.text || '내용 없음'}</div>
                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
               </div>
            ))}
@@ -645,7 +675,6 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
              const dColor = dIndex === 0 ? 'text-red-500' : dIndex === 6 ? 'text-blue-500' : 'text-gray-800';
              return (
               <div key={date} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80">
-                 {/* 💡 요일 추가 및 색상 적용 */}
                  <div className={`text-sm font-black flex items-center gap-1.5 mb-2.5 ml-1 whitespace-nowrap ${dColor}`}>
                     <CalendarCheck size={14} />{date} ({dName})
                  </div>
@@ -661,7 +690,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}원</span>
+                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       </div>
                     </div>
@@ -699,7 +728,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                               <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
                             </div>
                           </div>
-                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}원</span>
+                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       ))
                   ) : (
@@ -728,7 +757,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">{selectedLedgerDetail.type} 금액</div>
                     <div className={`text-4xl font-black tracking-tighter ${selectedLedgerDetail.type === '수입' ? 'text-blue-500' : 'text-rose-500'}`}>
-                       {selectedLedgerDetail.type === '수입' ? '+' : '-'}{formatMoney(selectedLedgerDetail.amount)}<span className="text-lg text-gray-800 font-bold ml-1">원</span>
+                       {selectedLedgerDetail.type === '수입' ? '+' : '-'}{formatLargeMoney(selectedLedgerDetail.amount)}<span className="text-lg text-gray-800 font-bold ml-1">원</span>
                     </div>
                   </div>
                </div>
@@ -756,7 +785,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
             <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black text-gray-800">✨ {editingLedgerId ? '내역 수정' : '내역 기록'}</h2><button onClick={() => setIsModalOpen(false)} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border border-pink-100"><X size={20}/></button></div>
             <form onSubmit={handleTransactionSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button></div>
-              <div><label className="text-[10px] font-black text-gray-400 ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none bg-transparent`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
+              <div><label className="text-[10px] font-black text-gray-400 ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none bg-transparent`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
               <div className="flex gap-4 w-full">
                 <div className="w-[110px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" /></div>
                 <div className="w-[130px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label><select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className="w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm outline-none border">{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select></div>
@@ -772,7 +801,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
       {/* 💡 메모 에디터 모달 (AI 하이브리드 계산기 포함) */}
       {isMemoEditorOpen && (
-        <div className="fixed inset-0 bg-white z-[80] flex flex-col animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 bg-white z-[80] flex flex-col h-[100dvh] animate-in slide-in-from-bottom duration-300">
            <div className="flex justify-between items-center p-4 pt-12 border-b bg-white shadow-sm shrink-0">
               <div className="flex items-center gap-3">
                  <button onClick={() => {setIsMemoEditorOpen(false); setIsCalcOpen(false);}} className="text-gray-500 p-2 bg-gray-50 rounded-full"><ChevronLeftCircle size={24}/></button>
@@ -784,31 +813,52 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  <button onClick={saveMemo} className="bg-pink-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-md">저장</button>
               </div>
            </div>
-           <div className="flex-1 p-5 relative overflow-hidden flex flex-col bg-amber-50/20">
-              <textarea value={memoText} onChange={(e) => setMemoText(e.target.value)} className="w-full flex-1 bg-transparent resize-none outline-none text-lg font-bold text-gray-800 whitespace-pre-wrap no-scrollbar" placeholder="내용과 금액을 자유롭게 입력하세요..." autoFocus />
-              
-              {isCalcOpen && (
-                 // 계산기 뒷배경을 반투명(backdrop-blur)하게 만들어 메모가 비치도록 설정
-                 <div className="absolute top-[20px] left-4 right-4 bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/50 p-4 z-[90] animate-in slide-in-from-top-2">
-                    {/* 💡 계산기 내리기 버튼 */}
-                    <button onClick={() => setIsCalcOpen(false)} className="w-full bg-gray-700/80 text-white py-2 rounded-xl font-bold text-xs mb-3 active:scale-95 shadow-sm border border-gray-600">
-                       🔽 계산기 내리기
-                    </button>
-                    
-                    <button onClick={handleAutoCalc} className="w-full bg-indigo-500 text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2 transition-transform">
-                       AI 자동합계 계산 🤖
-                    </button>
-                    
-                    <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20"><div className="font-black text-white text-3xl">{formatEquation(calcInput || '0')}</div></div>
-                    <div className="grid grid-cols-4 gap-2.5 mb-4">
-                       {['AC','+/-','%','÷', '7','8','9','×', '4','5','6','-', '1','2','3','+', '⌫','0','.','='].map(btn => (
-                          <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 rounded-full font-black text-xl active:scale-90 transition-transform ${['÷','×','-','+','='].includes(btn) ? 'bg-orange-500 text-white' : ['AC','+/-','%','⌫'].includes(btn) ? 'bg-gray-400 text-gray-900' : 'bg-gray-700 text-white'}`}>{btn}</button>
-                       ))}
-                    </div>
-                    <button onClick={() => { if(calcInput && calcInput !== 'Error') { setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatMoney(calcInput)}원`); setIsCalcOpen(false); } }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95 transition-transform">금액 메모에 넣기 ✍️</button>
-                 </div>
-              )}
+
+           <div className="flex-1 p-5 relative overflow-y-auto no-scrollbar flex flex-col bg-amber-50/20">
+              <textarea 
+                 value={memoText} 
+                 onChange={(e) => setMemoText(e.target.value)} 
+                 className="w-full flex-1 bg-transparent resize-none outline-none text-lg font-bold text-gray-800 whitespace-pre-wrap no-scrollbar min-h-[50vh]" 
+                 placeholder="내용과 금액을 자유롭게 입력하세요..." 
+                 autoFocus 
+              />
            </div>
+              
+           {isCalcOpen && (
+              <div className="absolute top-[88px] left-4 right-4 bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/50 p-4 z-[90] animate-in slide-in-from-top-2">
+                 {calcConfirm.show ? (
+                     <div className="bg-gray-800/90 rounded-2xl p-5 mb-4 text-center text-white border border-gray-600 shadow-xl animate-in zoom-in-95">
+                        <div className="text-sm font-bold text-blue-300 mb-2">총 {calcConfirm.count}건, {formatLargeMoney(calcConfirm.total)}원을 더한 결과입니다.</div>
+                        <div className="text-base font-black mb-5">자동입력 하시겠습니까?</div>
+                        <div className="flex gap-2">
+                           <button onClick={() => { 
+                               setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatLargeMoney(calcConfirm.total)}원`); 
+                               setCalcConfirm({show:false, count:0, total:0}); 
+                               setIsCalcOpen(false); 
+                           }} className="flex-1 bg-blue-500 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform shadow-md">✅ 예</button>
+                           <button onClick={() => setCalcConfirm({show:false, count:0, total:0})} className="flex-1 bg-gray-600 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform shadow-sm">❌ 아니오</button>
+                        </div>
+                     </div>
+                 ) : (
+                     <>
+                         <button onClick={() => setIsCalcOpen(false)} className="w-full bg-gray-700/80 text-white py-2 rounded-xl font-bold text-xs mb-3 active:scale-95 shadow-sm border border-gray-600">
+                            🔽 계산기 내리기
+                         </button>
+                         <button onClick={handleAutoCalc} className="w-full bg-indigo-500 text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2 transition-transform">
+                            AI 자동합계 계산 🤖
+                         </button>
+                         
+                         <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20"><div className="font-black text-white text-3xl">{formatEquation(calcInput || '0')}</div></div>
+                         <div className="grid grid-cols-4 gap-2.5 mb-4">
+                            {['AC','+/-','%','÷', '7','8','9','×', '4','5','6','-', '1','2','3','+', '⌫','0','.','='].map(btn => (
+                               <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 rounded-full font-black text-xl active:scale-90 transition-transform ${['÷','×','-','+','='].includes(btn) ? 'bg-orange-500 text-white' : ['AC','+/-','%','⌫'].includes(btn) ? 'bg-gray-400 text-gray-900' : 'bg-gray-700 text-white'}`}>{btn}</button>
+                            ))}
+                         </div>
+                         <button onClick={() => { if(calcInput && calcInput !== 'Error') { setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatLargeMoney(calcInput)}원`); setIsCalcOpen(false); } }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95 transition-transform">금액 메모에 넣기 ✍️</button>
+                     </>
+                 )}
+              </div>
+           )}
         </div>
       )}
     </div>
@@ -1002,7 +1052,13 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           {timerActive ? <Timer className="w-5 h-5 text-blue-500 animate-pulse" /> : <Play className="w-5 h-5 text-slate-400" />}
           <div>
             <div className="text-sm font-black text-gray-800">실시간 기록 {timerActive && <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>}</div>
-            <div className="text-[10px] text-blue-400 font-bold">{timerActive ? `${formatTimeStr(new Date(trackingStartTime))}부터 근무중` : '시작 버튼을 눌러주세요'}</div>
+            <div className="text-[10px] text-blue-400 font-bold">
+               {timerActive ? (() => {
+                  const sd = new Date(trackingStartTime);
+                  const dayName = ['일','월','화','수','목','금','토'][sd.getDay()];
+                  return `${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}(${dayName}) ${formatTimeStr(sd)}분부터 근무중`;
+               })() : '시작 버튼을 눌러주세요'}
+            </div>
           </div>
         </div>
         <button onClick={() => { 
@@ -1039,7 +1095,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   <span className={`text-[11px] font-black ${idx === 0 ? "text-blue-600" : "text-gray-500"}`}>{pd.slice(5).replace('-','/')}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${idx === 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'}`}>{idx === 0 ? '이번주' : '다음주'}</span>
                 </div>
-                <div className={`text-2xl font-black ${idx === 0 ? 'text-blue-600' : 'text-gray-700'}`}>{formatMoney(group.total)}<span className="text-base">원</span></div>
+                <div className={`text-2xl font-black ${idx === 0 ? 'text-blue-600' : 'text-gray-700'}`}>{formatLargeMoney(group.total)}<span className="text-base">원</span></div>
               </div>
             )
           })
@@ -1051,11 +1107,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         <div className="flex justify-between items-end mb-3 relative z-10">
           <div>
             <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
-            <div className="text-4xl font-black tracking-tighter leading-none">{formatMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
+            <div className="text-4xl font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
           </div>
           <div className="text-right">
-            <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold mb-1.5 inline-block">{selectedYear}년 누적: {formatMoney(deliveryYearlyTotal)}원</div>
-            <div className="text-[10px] font-bold opacity-90 flex flex-col items-end"><span>총 {formatMoney(deliveryFilteredCount)}건</span><span>평단 {formatMoney(deliveryAvgPerDelivery)}원</span></div>
+            <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}원</div>
+            <div className="text-[10px] font-bold opacity-90 flex flex-col items-end"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span></div>
           </div>
         </div>
         
@@ -1064,15 +1120,15 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
            const pct = Math.min(100, (deliveryFilteredTotal / goal) * 100);
            return (
              <div className="mb-2 relative z-10">
-               <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90"><span>목표 {formatMoney(goal)}원</span><span>{pct.toFixed(1)}% 달성</span></div>
+               <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90"><span>목표 {formatLargeMoney(goal)}원</span><span>{pct.toFixed(1)}% 달성</span></div>
                <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden"><div className="bg-white h-full rounded-full transition-all duration-1000" style={{width: `${pct}%`}}></div></div>
              </div>
            );
         })()}
 
         <div className="flex bg-white/10 rounded-xl p-3 mt-3 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
-          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
-          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
+          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
+          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
         </div>
       </div>
 
@@ -1120,7 +1176,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           {pastPaydays.map(pDate => (
             <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
               <div><div className="text-xs text-gray-400 font-bold mb-1.5">{pDate.slice(5).replace('-', '/')} 입금완료</div><div className="font-black text-gray-800 text-base">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</div></div>
-              <div className="text-right"><div className="text-xl font-black text-blue-600">{formatMoney(paydayGroups[pDate].total)}원</div></div>
+              <div className="text-right"><div className="text-xl font-black text-blue-600">{formatLargeMoney(paydayGroups[pDate].total)}원</div></div>
             </div>
           ))}
         </div>
@@ -1133,7 +1189,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             const allItemsForDay = shiftList.flatMap(s => s.items);
             const dayMetrics = calcDailyMetrics(allItemsForDay);
             
-            // 💡 날짜별 요일과 색상 적용
             const dateObj = new Date(date);
             const dayIndex = dateObj.getDay();
             const dayName = ['일','월','화','수','목','금','토'][dayIndex];
@@ -1142,19 +1197,19 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             return (
               <div key={date} className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-200">
                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
-                   <div className="overflow-hidden pr-2">
-                     {/* 💡 truncate 속성을 끄고 whitespace-nowrap 적용하여 요일이 잘리지 않게 함 */}
+                   <div className="overflow-hidden pr-2 flex-1">
                      <div className={`text-sm font-black flex items-center gap-1.5 mb-1.5 whitespace-nowrap ${dateColorClass}`}>
-                        <CalendarCheck size={14} className="shrink-0" />{date} ({dayName})
+                        <CalendarCheck size={14} className="shrink-0" />
+                        <span>{date} ({dayName})</span>
                      </div>
                      {dayMetrics.durationStr && <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1 truncate"><Timer size={12}/> {dayMetrics.durationStr} 근무</div>}
                    </div>
-                   <div className="text-right flex-shrink-0">
-                     <div className="text-lg font-black text-blue-600 mb-1.5">{formatMoney(dayMetrics.totalAmt)}원</div>
-                     <div className="flex gap-1 justify-end items-center flex-nowrap overflow-x-auto no-scrollbar">
+                   <div className="text-right shrink-0">
+                     <div className="text-lg font-black text-blue-600 mb-1.5">{formatLargeMoney(dayMetrics.totalAmt)}원</div>
+                     <div className="flex gap-1 justify-end items-center flex-wrap max-w-[150px]">
                        <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border whitespace-nowrap">총 {dayMetrics.totalCnt}건</span>
-                       <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border whitespace-nowrap">평단 {formatMoney(dayMetrics.perDelivery)}원</span>
-                       {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-[9px] font-black text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">시급 {formatMoney(dayMetrics.hourlyRate)}원</span>}
+                       <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border whitespace-nowrap">평단 {formatLargeMoney(dayMetrics.perDelivery)}원</span>
+                       {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-[9px] font-black text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">시급 {formatLargeMoney(dayMetrics.hourlyRate)}원</span>}
                      </div>
                    </div>
                  </div>
@@ -1175,7 +1230,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                             </div>
                             <div className="text-[10px] font-bold mt-1 flex gap-1 items-center">
                                {shift.items.map(item => (
-                                  <span key={item.id} className={`px-1 rounded border shadow-sm ${item.platform === '배민' ? 'bg-[#2ac1bc]/10 text-[#2ac1bc] border-[#2ac1bc]/20' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                  <span key={item.id} className={`px-1.5 py-0.5 rounded border shadow-sm ${item.platform === '배민' ? 'bg-[#2ac1bc]/10 text-[#2ac1bc] border-[#2ac1bc]/20' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
                                      {item.earner} {item.platform}
                                   </span>
                                ))}
@@ -1184,7 +1239,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="text-right">
-                             <div className="font-black text-base text-gray-900">{formatMoney(shift.totalAmt)}원</div>
+                             <div className="font-black text-base text-gray-900">{formatLargeMoney(shift.totalAmt)}원</div>
                              <div className={`text-[9px] font-bold mt-0.5 ${pDay && pDay >= todayStr ? 'text-blue-500' : 'text-gray-500'}`}>{pDay && pDay >= todayStr ? `${pDay.slice(5).replace('-','/')} 입금 대기` : '정산 완료'}</div>
                           </div>
                         </div>
@@ -1221,7 +1276,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                               <span className="font-black text-sm text-gray-700">{item.earner}</span>
                               <span className="text-[10px] font-bold text-gray-400 ml-1">({item.count}건)</span>
                            </div>
-                           <div className="font-black text-gray-900">{formatMoney(item.amount)}원</div>
+                           <div className="font-black text-gray-900">{formatLargeMoney(item.amount)}원</div>
                         </div>
                      ))}
                   </div>
@@ -1234,7 +1289,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                      <div className="text-right">
                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">총 정산 금액</div>
                         <div className="text-3xl font-black tracking-tighter text-blue-600">
-                           {formatMoney(selectedShiftDetail.totalAmt)}<span className="text-base text-gray-800 font-bold ml-1">원</span>
+                           {formatLargeMoney(selectedShiftDetail.totalAmt)}<span className="text-base text-gray-800 font-bold ml-1">원</span>
                         </div>
                      </div>
                   </div>
@@ -1268,12 +1323,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                        <Bike className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 rotate-12" fill="white" />
                        <div className="relative z-10">
                            <div className="text-blue-200 text-xs font-bold mb-1">총 정산 금액</div>
-                           <div className="text-4xl font-black tracking-tighter mb-6">{formatMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
+                           <div className="text-4xl font-black tracking-tighter mb-6">{formatLargeMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
                            
                            <div className="grid grid-cols-2 gap-4 gap-y-6 border-t border-white/10 pt-5">
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
-                                 <div className="text-xl font-black">{formatMoney(metrics.totalCnt)}건</div>
+                                 <div className="text-xl font-black">{formatLargeMoney(metrics.totalCnt)}건</div>
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">근무 시간</div>
@@ -1281,11 +1336,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
-                                 <div className="text-xl font-black">{formatMoney(metrics.perDelivery)}원</div>
+                                 <div className="text-xl font-black">{formatLargeMoney(metrics.perDelivery)}원</div>
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
-                                 <div className="text-xl font-black">{formatMoney(metrics.hourlyRate)}원</div>
+                                 <div className="text-xl font-black">{formatLargeMoney(metrics.hourlyRate)}원</div>
                               </div>
                            </div>
                        </div>
@@ -1297,6 +1352,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
+      {/* 💡 4개(정훈/현아 x 배민/쿠팡) 동시 기록 및 통합 수정 폼 [건수 -> 금액 순서로 변경] */}
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[90] p-4 py-8 overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
@@ -1308,18 +1364,45 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="w-[85px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료</label><input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1 h-[40px] font-bold text-xs outline-none" /></div>
               </div>
 
+              {/* 정훈 수익 폼 (건수 -> 금액 순) */}
               <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
                 <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
                 <div className="space-y-2">
-                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" /></div>
-                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" /></div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
+                     <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative">
+                        <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
+                     <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative">
+                        <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     </div>
+                  </div>
                 </div>
               </div>
+              
+              {/* 현아 수익 폼 (건수 -> 금액 순) */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
                 <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                 <div className="space-y-2">
-                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" /></div>
-                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" /></div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
+                     <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative">
+                        <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
+                     <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative">
+                        <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
                 </div>
               </div>
               <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
@@ -1429,11 +1512,11 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
           <Landmark className="absolute -right-6 -bottom-6 w-36 h-36 opacity-10" />
           <div className="relative z-10">
             <div className="text-indigo-200 text-xs font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
-            <div className="text-3xl font-black mb-4 tracking-tight leading-none">{formatMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
+            <div className="text-3xl font-black mb-4 tracking-tight leading-none">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
-              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 총 납입 예정</span><span className="text-base font-black text-white">{formatMoney(totalMonthlyPayment)}원</span></div>
-              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 납부 완료</span><span className="text-base font-black text-emerald-300">{formatMoney(totalPaidThisMonth)}원</span></div>
-              <div className="flex justify-between items-center pt-3 border-t border-indigo-400/50 mt-1"><span className="text-sm text-white font-bold">이번 달 남은 납입금</span><span className="text-xl font-black text-white">{formatMoney(totalUnpaidThisMonth)}원</span></div>
+              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 총 납입 예정</span><span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span></div>
+              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 납부 완료</span><span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span></div>
+              <div className="flex justify-between items-center pt-3 border-t border-indigo-400/50 mt-1"><span className="text-sm text-white font-bold">이번 달 남은 납입금</span><span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span></div>
             </div>
           </div>
         </div>
@@ -1463,14 +1546,14 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
                   <div className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-widest flex justify-between items-center">잔액
                     {isManageMode && <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200"><input type="text" value={loan.rate || ''} onChange={(e) => updateAsset('loans', loan.id, 'rate', e.target.value)} className="w-12 text-right text-xs font-black text-indigo-600 outline-none bg-transparent" placeholder="0.0" /><span className="text-[10px] font-bold text-gray-500">%</span></div>}
                   </div>
-                  {isManageMode ? <input type="text" value={loan.principal ? formatMoney(loan.principal) : ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none" /> : <div className="text-xl font-black text-gray-900 tracking-tight leading-none">{formatMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
+                  {isManageMode ? <input type="text" value={loan.principal ? formatLargeMoney(loan.principal) : ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none" /> : <div className="text-xl font-black text-gray-900 tracking-tight leading-none">{formatLargeMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
                 </div>
                 <div className="text-right ml-3 bg-gray-50 p-2 rounded-2xl border border-gray-200 min-w-[100px] shadow-sm">
                   <div className="flex justify-end gap-1 mb-1">
                     {isManageMode && <div className="text-[9px] font-bold text-gray-500 bg-white px-1 py-0.5 rounded border border-gray-200 flex items-center"><input type="text" value={loan.paymentDate || ''} onChange={(e) => updateAsset('loans', loan.id, 'paymentDate', e.target.value)} className="w-6 text-center outline-none bg-transparent" placeholder="일"/></div>}
                     <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">{isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset('loans', loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}</div>
                   </div>
-                  <div className="font-black text-[14px] text-indigo-600 leading-none mt-1.5">{formatMoney(getMonthlyPayment(loan))}원</div>
+                  <div className="font-black text-[14px] text-indigo-600 leading-none mt-1.5">{formatLargeMoney(getMonthlyPayment(loan))}원</div>
                 </div>
               </div>
 
@@ -1497,7 +1580,7 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
                   <div className="mt-2 space-y-1.5">
                     {loan.prepaymentHistory.map(h => (
                       <div key={h.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-100/50 shadow-sm">
-                        <div><div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div><div className="text-xs font-black text-gray-800 truncate">원금 {formatMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatMoney(h.interestAmount)}원)</span>}</div></div>
+                        <div><div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div><div className="text-xs font-black text-gray-800 truncate">원금 {formatLargeMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatLargeMoney(h.interestAmount)}원)</span>}</div></div>
                         {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg shrink-0 border"><X size={12}/></button>}
                       </div>
                     ))}
@@ -1517,7 +1600,7 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
              <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 대출 추가</h2><button onClick={() => setIsAddLoanModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
              <form onSubmit={handleAddAssetItem} className="space-y-4">
                <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출명</label><input type="text" value={newLoanFormData.name} onChange={e => setNewLoanFormData({...newLoanFormData, name: e.target.value})} placeholder="예: 주담대, 마통" className="w-full bg-gray-50 border rounded-xl px-4 h-[48px] font-black text-sm outline-none" /></div>
-               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출 원금 (잔액)</label><div className="relative"><input type="text" value={newLoanFormData.principal ? formatMoney(newLoanFormData.principal) : ''} onChange={e => setNewLoanFormData({...newLoanFormData, principal: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /><span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span></div></div>
+               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출 원금 (잔액)</label><div className="relative"><input type="text" value={newLoanFormData.principal ? formatLargeMoney(newLoanFormData.principal) : ''} onChange={e => setNewLoanFormData({...newLoanFormData, principal: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /><span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span></div></div>
                <div className="flex gap-3 w-full pt-2">
                  <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">금리 (%)</label><input type="text" value={newLoanFormData.rate} onChange={e => setNewLoanFormData({...newLoanFormData, rate: e.target.value})} placeholder="0.0" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
                  <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">매월 납부일</label><input type="number" value={newLoanFormData.paymentDate} onChange={e => setNewLoanFormData({...newLoanFormData, paymentDate: e.target.value})} placeholder="1" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
@@ -1538,8 +1621,8 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
             <form onSubmit={handlePrepaySubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100"><span className="text-xs font-bold text-indigo-600 block mb-1">상환 대상 대출</span><span className="font-black text-indigo-900 text-lg">{(assets?.loans||[]).find(l => l.id === prepayFormData.loanId)?.name}</span></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatLargeMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatLargeMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
               </div>
               <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border" /></div>
               <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border border-indigo-700">상환 처리 완료</button>
@@ -1585,7 +1668,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
-  // 💡 달력 진입 시 오늘 날짜 중앙 정렬 스크롤 애니메이션
   useEffect(() => {
     setTimeout(() => {
       const todayEl = document.getElementById('duty-today');
@@ -1639,17 +1721,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setReplyText(''); setReplyingTo(null);
   };
 
-  // 💡 톡 과거 보관소 - 시스템 알림 영구 삭제 처리 로직
   const handleCheckMessage = async (id) => {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
-    
     if (msg.author === '시스템' || msg.isSystemLog) {
-      // 시스템 알림은 과거 보관함에 넣지 않고 영구 삭제
       if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', id));
       else setMessages(messages.filter(m => m.id !== id));
     } else {
-      // 부부 톡은 보관함으로 이동 (isChecked: true)
       if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', id), { isChecked: true, checkedAt: todayStr });
       else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
     }
@@ -1695,7 +1773,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setIsDutyBatchModalOpen(true);
   };
 
-  // 💡 연속 모드에서 DAY/EVE/OFF/BACK 버튼을 눌렀을 때 처리하는 함수
   const handleContinuousStamp = (duty) => {
     if (duty === 'BACK') {
        const d = new Date(continuousCursorDateStr);
@@ -1988,7 +2065,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                      <button onClick={() => handleContinuousStamp('DAY')} className="flex-1 bg-blue-50 text-blue-600 font-black py-4 rounded-[1.2rem] border border-blue-200 active:scale-95 transition-transform shadow-sm">DAY</button>
                      <button onClick={() => handleContinuousStamp('EVE')} className="flex-1 bg-orange-50 text-orange-600 font-black py-4 rounded-[1.2rem] border border-orange-200 active:scale-95 transition-transform shadow-sm">EVE</button>
                      <button onClick={() => handleContinuousStamp('OFF')} className="flex-1 bg-pink-50 text-pink-600 font-black py-4 rounded-[1.2rem] border border-pink-200 active:scale-95 transition-transform shadow-sm">OFF</button>
-                     <button onClick={() => handleContinuousStamp('BACK')} className="flex-none px-4 bg-gray-100 text-gray-600 font-black py-4 rounded-[1.2rem] border border-gray-200 active:scale-95 flex flex-col items-center justify-center gap-1 transition-transform shadow-sm"><RefreshCw size={14}/><span className="text-[10px]">취소</span></button>
+                     <button onClick={() => handleContinuousUndo()} className="flex-none px-4 bg-gray-100 text-gray-600 font-black py-4 rounded-[1.2rem] border border-gray-200 active:scale-95 flex flex-col items-center justify-center gap-1 transition-transform shadow-sm"><RefreshCw size={14}/><span className="text-[10px]">취소</span></button>
                   </div>
                )}
                {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
