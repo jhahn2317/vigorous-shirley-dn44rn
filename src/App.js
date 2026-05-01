@@ -224,7 +224,7 @@ const AutoScaleValue = ({ value, isNet = false }) => {
 // ==========================================
 // 4. SETTINGS COMPONENT
 // ==========================================
-function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user }) {
+function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages }) {
   const [settingsTab, setSettingsTab] = useState('common');
 
   const moveTab = (index, direction) => {
@@ -298,6 +298,18 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
                 </div>
               ))}
             </div>
+          </div>
+          {/* 채팅 / 시스템 로그 데이터 관리 버튼 추가 */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
+             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
+               <Trash2 size={16} className="text-red-500"/> 데이터 관리
+             </h3>
+             <div className="p-4 bg-red-50/50 rounded-xl border border-red-100 text-center">
+               <p className="text-xs font-bold text-red-600 mb-4 leading-relaxed">모든 한줄톡 채팅 내역과 시스템 알림 로그를<br/>데이터베이스에서 영구적으로 삭제합니다.</p>
+               <button onClick={handleClearAllMessages} className="w-full bg-red-500 text-white py-3 rounded-xl text-sm font-black active:scale-95 shadow-sm border border-red-600">
+                 채팅 / 로그 전체 초기화
+               </button>
+             </div>
           </div>
         </>
       ) : (
@@ -1703,9 +1715,17 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setEvents((events||[]).filter(e => e.id !== id));
   };
 
+  // 💡 수정됨: 메시지 전송 시 시간 정보(time)를 정확히 생성하여 저장
   const handleSendMessage = async () => {
     if(!messageFormData.text.trim() || !user) return;
-    const newMsg = { author: currentUser, text: messageFormData.text, createdAt: todayStr, isChecked: false, replies: [] };
+    
+    const d = new Date(); 
+    let hh = d.getHours();
+    const ampm = hh >= 12 ? '오후' : '오전';
+    hh = hh % 12 || 12;
+    const timeStr = `${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+    const newMsg = { author: currentUser, text: messageFormData.text, createdAt: todayStr, time: timeStr, isChecked: false, replies: [] };
     if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData({ text: '' });
@@ -1733,6 +1753,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
   };
 
+  // 💡 수정됨: 시스템 로그 생성 시 시간 정보(time) 포맷 개선
   const handleQuickDutyUpdate = async (dateStr, newDuty) => {
     if (!user) return;
     const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
@@ -1759,7 +1780,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     if (changed) {
       const msgText = `- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ? existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}`;
-      const d = new Date(); const timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+      const d = new Date(); 
+      let hh = d.getHours();
+      const ampm = hh >= 12 ? '오후' : '오전';
+      hh = hh % 12 || 12;
+      const timeStr = `${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
+      
       const newMsg = { author: '시스템', title: `${currentUser}님의 듀티변경`, text: msgText, createdAt: todayStr, time: timeStr, isChecked: false, isSystemLog: true };
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
       else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
@@ -1822,7 +1848,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               if (m.isSystemLog || m.author === '시스템') {
                 return (
                   <div key={m.id} className="bg-emerald-50 p-3.5 rounded-2xl shadow-sm border border-emerald-100/50">
-                    <div className="flex justify-between items-start mb-2"><div className="flex flex-col gap-1"><span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black w-max">시스템 알림</span><span className="text-[11px] font-black text-emerald-900">{m.title || '알림'}</span></div><span className="text-[10px] font-bold text-emerald-600/70 bg-emerald-100/50 px-2 py-1 rounded-lg border">{m.time || (typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/'))}</span></div>
+                    <div className="flex justify-between items-start mb-2">
+                       <div className="flex flex-col gap-1"><span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black w-max">시스템 알림</span><span className="text-[11px] font-black text-emerald-900">{m.title || '알림'}</span></div>
+                       {/* 💡 수정됨: 시스템 알림 시간 노출 추가 */}
+                       <span className="text-[10px] font-bold text-emerald-600/70 bg-emerald-100/50 px-2 py-1 rounded-lg border">
+                          {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
+                       </span>
+                    </div>
                     <div className="text-xs font-bold text-emerald-800 leading-relaxed whitespace-pre-wrap pl-1 border-l-2 border-emerald-200 ml-1">{m.text}</div>
                     <div className="mt-2 text-right"><button onClick={() => handleCheckMessage(m.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border px-3 py-1.5 rounded-xl text-[10px] font-black active:scale-95 flex items-center gap-1 ml-auto"><CheckCircle2 size={12}/> 확인</button></div>
                   </div>
@@ -1832,7 +1864,11 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <div key={m.id} className={`bg-white p-4 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
                    <div className="flex justify-between items-start mb-1.5">
                       <div>
-                         <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1"><span className={`px-1.5 py-0.5 rounded text-white ${m.author === '현아' ? 'bg-pink-400' : 'bg-blue-400'}`}>{m.author}</span>{typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')}</div>
+                         {/* 💡 수정됨: 일반 채팅 시간 노출 추가 */}
+                         <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">
+                            <span className={`px-1.5 py-0.5 rounded text-white ${m.author === '현아' ? 'bg-pink-400' : 'bg-blue-400'}`}>{m.author}</span>
+                            {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
+                         </div>
                          <div className="text-base font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
                       </div>
                    </div>
@@ -1929,9 +1965,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                   {archivedMessages.map(m => (
                      <div key={m.id} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-start mb-1.5">
+                           {/* 💡 수정됨: 과거 보관소 시간 노출 추가 */}
                            <div className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
                               <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 shadow-inner">{m.author}</span>
-                              {m.createdAt}
+                              {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
                            </div>
                         </div>
                         <div className="text-sm font-black text-gray-600 leading-relaxed">{m.text}</div>
@@ -2152,11 +2189,36 @@ function AppContent() {
     if (isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), { timerActive: false, trackingStartTime: null });
   };
 
+  // 💡 추가됨: 메시지 및 로그 전체 삭제 로직
+  const handleClearAllMessages = async () => {
+    if(!window.confirm("⚠️ 경고 ⚠️\n\n정말 모든 채팅과 시스템 로그를 영구적으로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) return;
+    if (isFirebaseEnabled && user) {
+      for (const m of messages) {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', m.id));
+      }
+      alert("모든 메시지와 로그가 성공적으로 삭제되었습니다.");
+    } else {
+      setMessages([]);
+      alert("모든 메시지와 로그가 삭제되었습니다. (로컬)");
+    }
+  };
+
   const appBgColor = activeTab === 'ledger' ? 'bg-pink-50/30' : activeTab === 'delivery' ? 'bg-slate-50' : 'bg-gray-50/80';
 
   return (
     <div className={`min-h-screen font-sans text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor}`}>
       
+      {/* 💡 추가됨: 가로 모드 시 화면 강제 회전 안내 오버레이 (CSS와 연동) */}
+      <div className="portrait-lock hidden fixed inset-0 z-[99999] bg-gray-900 flex-col items-center justify-center text-white p-6 text-center">
+         <Smartphone className="w-20 h-20 mb-6 text-pink-400 animate-pulse rotate-90" />
+         <h2 className="text-2xl font-black mb-3 text-pink-400 tracking-tighter">세로 모드로 돌려주세요! 📱</h2>
+         <p className="text-gray-300 font-bold text-sm leading-relaxed">
+           이 앱은 세로 화면에 최적화되어 있습니다.<br/>
+           가로 모드에서는 정상적인 사용이 어려우니<br/>
+           기기를 세로로 세워서 사용해 주세요.
+         </p>
+      </div>
+
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl pb-2 shadow-sm border-b border-gray-200/60">
         <header className="pt-10 pb-4 px-6 flex justify-between items-center">
           <div>
@@ -2184,7 +2246,7 @@ function AppContent() {
         </div>
       </div>
 
-      {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} />}
+      {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} />}
 
       <main className="px-5 max-w-md mx-auto pt-2">
         {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
@@ -2213,6 +2275,11 @@ function AppContent() {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         #csb-edit-btn, a[href*="codesandbox.io"] { display: none !important; }
+        
+        /* 💡 추가됨: 가로 모드일 때 화면 덮는 CSS 로직 (모바일 기기 한정) */
+        @media screen and (orientation: landscape) and (max-width: 900px) {
+           .portrait-lock { display: flex !important; }
+        }
       `}} />
     </div>
   );
