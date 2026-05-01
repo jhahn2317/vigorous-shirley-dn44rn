@@ -485,6 +485,20 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
   const [calcInput, setCalcInput] = useState('');
   const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
 
+  // 💡 하이브리드 검색창 상태 (포커스 아웃 감지용)
+  const suggestionRef = useRef(null);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
+        setIsSuggestionOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const getSortedCategories = (type) => {
     let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
@@ -540,7 +554,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
       .map(e => e[0].split('|'));
   }, [ledger]);
 
-  // 💡 [수정됨] 스마트 자동완성 로직: 카테고리 필터 제거 (글로벌 검색)
+  // 글로벌 검색 자동완성
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -555,7 +569,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note]);
 
-  // 💡 [수정됨] 과거 내역 힌트: 날짜 + 금액 노출
+  // 과거 금액 힌트 (날짜 노출 포함)
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
     const lastTx = [...ledger]
@@ -956,7 +970,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                      </div>
                   </div>
                )}
-               {/* 💡 복사 버튼이 추가된 3열 그리드 */}
+               {/* 복사 버튼이 추가된 3열 그리드 */}
                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 내역 복사</button>
                   <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 내용 수정</button>
@@ -966,7 +980,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
          </div>
       )}
 
-      {/* 💡 가계부 입력/수정 메인 모달 (입력 순서가 완벽하게 개편된 폼) */}
+      {/* 가계부 입력/수정 메인 모달 (입력 순서가 완벽하게 개편된 폼) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
@@ -979,13 +993,16 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
             <form className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
               
-              {/* 💡 자주 쓰는 내역 (고정비) 템플릿 로드 버튼 */}
+              {/* 자주 쓰는 내역 (고정비) 템플릿 로드 버튼 */}
               {!editingLedgerId && frequentItems.length > 0 && (
                 <div className="mb-2">
                   <div className="text-[10px] font-black text-gray-400 ml-1 mb-2 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 내역 불러오기</div>
                   <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2">
                     {frequentItems.map(([cat, note], idx) => (
-                       <button key={idx} type="button" onClick={() => setFormData({...formData, type: '지출', category: cat, note: note})} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
+                       <button key={idx} type="button" onClick={() => {
+                          setFormData({...formData, type: '지출', category: cat, note: note});
+                          setIsSuggestionOpen(false); // 템플릿 클릭 시 드롭다운 방지
+                       }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
                          <span className="text-pink-500 mr-1">[{cat}]</span>{note}
                        </button>
                     ))}
@@ -998,25 +1015,42 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
-              {/* 💡 1순위: 상세 내용(이름) 입력 및 글로벌 스마트 자동완성 */}
-              <div className="relative">
+              {/* 1순위: 상세 내용(이름) 입력 및 글로벌 스마트 자동완성 (하이브리드 방식) */}
+              <div className="relative z-50" ref={suggestionRef}>
                  <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block">상세 내용 (어디서 쓰셨나요?)</label>
-                 <input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="예: 이마트, 관리비" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] font-bold text-base outline-none border focus:border-pink-300 transition-colors" />
+                 <input type="text" value={formData.note} 
+                    onChange={e => {
+                       setFormData({...formData, note: e.target.value});
+                       setIsSuggestionOpen(true);
+                    }}
+                    onFocus={() => setIsSuggestionOpen(true)}
+                    placeholder="예: 이마트, 관리비" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] font-bold text-base outline-none border focus:border-pink-300 transition-colors" />
                  
-                 {formData.note && suggestedNotes.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 animate-in slide-in-from-top-1">
+                 {isSuggestionOpen && formData.note && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[200px] overflow-y-auto">
+                       {/* 💡 상환 그대로 사용 버튼 최상단 고정 */}
+                       <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-3 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
+                          ✨ '{formData.note}' 그대로 사용
+                       </button>
+
                        {suggestedNotes.map(sn => (
-                          <button key={sn.note} type="button" onClick={() => setFormData({...formData, note: sn.note, category: sn.category, type: sn.type})} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
+                          <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
+                                setFormData({...formData, note: sn.note, category: sn.category, type: sn.type});
+                                setIsSuggestionOpen(false);
+                             }} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
                              <span className="text-pink-400 mr-2 text-[10px] border border-pink-200 bg-white px-1.5 py-0.5 rounded shadow-sm">[{sn.category}]</span> 
                              {sn.note}
                           </button>
                        ))}
+                       {suggestedNotes.length === 0 && (
+                          <div className="px-3 py-2 text-xs text-gray-400 font-bold text-center">추천 내역이 없습니다.</div>
+                       )}
                     </div>
                  )}
               </div>
 
-              {/* 💡 2순위: 금액 입력 및 엄청난 과거 힌트 노출 */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+              {/* 2순위: 금액 입력 및 엄청난 과거 힌트 노출 */}
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative z-40">
                  <div className="flex justify-between items-end mb-2">
                     <label className="text-[10px] font-black text-gray-400 block">금액</label>
                  </div>
@@ -1031,8 +1065,8 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  )}
               </div>
 
-              {/* 💡 3순위: 날짜 & 카테고리 (자동 변경됨) */}
-              <div className="flex gap-4 w-full">
+              {/* 3순위: 날짜 & 카테고리 (자동 변경됨) */}
+              <div className="flex gap-4 w-full relative z-30">
                 <div className="w-[110px] shrink-0">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                    <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border focus:border-pink-300 transition-colors" />
@@ -1056,13 +1090,13 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  </div>
               )}
 
-              <div>
+              <div className="relative z-20">
                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">세부 내역 메모 (선택)</label>
                  <textarea value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="어떤 물건을 샀는지 상세히 적어보세요." className="w-full bg-gray-50 rounded-xl px-4 py-3 h-[80px] font-bold text-sm outline-none border resize-none focus:border-pink-300 transition-colors" />
               </div>
 
-              {/* 💡 연속 입력 / 닫기 버튼 */}
-              <div className="flex gap-2 mt-4 pt-2">
+              {/* 연속 입력 / 닫기 버튼 */}
+              <div className="flex gap-2 mt-4 pt-2 relative z-10">
                  <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note} className={`flex-1 bg-white border-2 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50 disabled:border-gray-200 disabled:text-gray-400`}>
                     기록하고 계속 입력
                  </button>
@@ -1075,7 +1109,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         </div>
       )}
 
-      {/* 💡 메모 에디터 모달 (AI 하이브리드 계산기 포함) */}
+      {/* 메모 에디터 모달 (AI 하이브리드 계산기 포함) */}
       {isMemoEditorOpen && (
         <div className="fixed inset-0 bg-white z-[80] flex flex-col h-[100dvh] animate-in slide-in-from-bottom duration-300">
            <div className="flex justify-between items-center p-4 pt-12 border-b bg-white shadow-sm shrink-0">
