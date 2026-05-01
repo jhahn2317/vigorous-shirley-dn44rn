@@ -151,7 +151,7 @@ function AppContent() {
 
   const [editingDeliveryId, setEditingDeliveryId] = useState(null);
   const [editingEventId, setEditingEventId] = useState(null); 
-  const [editingLedgerId, setEditingLedgerId] = useState(null); // 가계부 기존내역 수정용
+  const [editingLedgerId, setEditingLedgerId] = useState(null); 
 
   const [prepayFormData, setPrepayFormData] = useState({ loanId: '', date: todayStr, principalAmount: '', interestAmount: '' });
   const [isPrepayModalOpen, setIsPrepayModalOpen] = useState(false);
@@ -169,7 +169,6 @@ function AppContent() {
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
 
-  // 가계부 폼 - subNote(세부내역) 추가
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '' });
   const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
 
@@ -187,7 +186,11 @@ function AppContent() {
   const [ledgerSubTab, setLedgerSubTab] = useState('daily'); 
   const [deliverySubTab, setDeliverySubTab] = useState('daily'); 
   const [loanSortBy, setLoanSortBy] = useState(() => localStorage.getItem('hyunaLoanSortBy') || 'date'); 
-  const [expandedLedgers, setExpandedLedgers] = useState({}); // 세부내역 아코디언 상태
+  const [expandedLedgers, setExpandedLedgers] = useState({}); 
+
+  // 💡 가계부 상세내역 뷰 및 달력 리스트 뷰 상태
+  const [selectedLedgerForDetail, setSelectedLedgerForDetail] = useState(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
 
   // 메모장 상태
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
@@ -271,7 +274,6 @@ function AppContent() {
     } catch (error) {}
   }, [selectedMonth, activeTab]);
 
-  // 달력 탭 진입 시 TODAY 듀티만 살짝 보여주기
   useEffect(() => {
     if (activeTab === 'calendar') {
       setTimeout(() => {
@@ -313,7 +315,6 @@ function AppContent() {
     return formatMoney(val);
   };
 
-  // 달력용 짧은 금액 포맷 (100만 이상은 소수점 완전 제거)
   const formatCompactMoney = (val) => {
     if (!val || val === 0) return '0';
     const absVal = Math.abs(val);
@@ -362,7 +363,6 @@ function AppContent() {
     return `${yyyy}년 ${parseInt(mm)}월 ${parseInt(dd)}일 ${ampm} ${hh}:${min}`;
   };
 
-  // 아이폰 배열 5x4 계산기 로직
   const handleCalcBtn = (val) => {
     if (val === 'AC') { setCalcInput(''); }
     else if (val === '⌫') { setCalcInput(prev => prev.slice(0, -1)); }
@@ -707,6 +707,8 @@ function AppContent() {
     setEditingDeliveryId(null);
     setEditingLedgerId(null);
     setDutyBatchMode('touch');
+    setSelectedLedgerForDetail(null);
+    setSelectedCalendarDate(null);
     setNewLoanFormData({ name: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
     setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '' });
   };
@@ -815,18 +817,19 @@ function AppContent() {
     closeModals();
   };
 
-  const openEditLedger = (e, t) => {
-    e.stopPropagation();
+  const handleEditFromDetail = () => {
+    if(!selectedLedgerForDetail) return;
     setFormData({
-        date: t.date,
-        type: t.type,
-        amount: String(t.amount),
-        category: t.category,
-        note: t.note || '',
-        subNote: t.subNote || ''
+        date: selectedLedgerForDetail.date,
+        type: selectedLedgerForDetail.type,
+        amount: String(selectedLedgerForDetail.amount),
+        category: selectedLedgerForDetail.category,
+        note: selectedLedgerForDetail.note || '',
+        subNote: selectedLedgerForDetail.subNote || ''
     });
-    setEditingLedgerId(t.id);
+    setEditingLedgerId(selectedLedgerForDetail.id);
     setIsCustomCategory(false);
+    setSelectedLedgerForDetail(null);
     setIsModalOpen(true);
   };
 
@@ -1471,8 +1474,11 @@ function AppContent() {
                        const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                        const dayData = dataByDate[dateStr] || { inc: 0, exp: 0 };
                        const hasData = dayData.inc > 0 || dayData.exp > 0;
+                       
                        return (
-                         <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
+                         <div key={`day-${i}`} 
+                              onClick={() => { if(hasData) setSelectedCalendarDate(dateStr); }}
+                              className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start transition-all ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm cursor-pointer active:scale-95 hover:bg-pink-100/50':'border-gray-100 bg-white'}`}>
                            <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                            {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter overflow-hidden">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
                            {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter overflow-hidden">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
@@ -1530,7 +1536,6 @@ function AppContent() {
               </div>
             )}
 
-            {/* 💡 가계부 메모장 리스트 뷰 */}
             {ledgerSubTab === 'memo' && (
               <div className="space-y-3 animate-in slide-in-from-right duration-300">
                  <div className="flex justify-between items-center px-1 mb-2">
@@ -1560,8 +1565,8 @@ function AppContent() {
                       {(groupedLedger[date]||[]).map(t => {
                         const isExpanded = expandedLedgers[t.id];
                         return (
-                          <div key={t.id} onClick={() => toggleLedgerExpand(t.id)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl hover:bg-pink-50/50 transition-colors cursor-pointer shadow-sm">
-                            <div className="flex justify-between items-center p-3">
+                          <div key={t.id} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl hover:bg-pink-50/50 transition-colors shadow-sm mb-2">
+                            <div className="flex justify-between items-center p-3 cursor-pointer" onClick={() => setSelectedLedgerForDetail(t)}>
                               <div className="flex items-center gap-3 overflow-hidden flex-1">
                                 <div className={`p-2.5 rounded-xl flex-shrink-0 shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
                                   {getCategoryIcon(t.category, t.type)}
@@ -1569,26 +1574,23 @@ function AppContent() {
                                 <div className="truncate pr-2">
                                   <div className="text-[10px] font-bold text-gray-500 truncate flex items-center gap-1">
                                     {t.category} 
-                                    {t.subNote && <ChevronDown size={10} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />}
                                   </div>
                                   <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 flex-shrink-0 pl-2">
+                              <div className="flex items-center gap-1 flex-shrink-0 pl-2">
                                 <span className={`font-black text-base tracking-tight ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
-                                {isManageMode && (
-                                  <div className="flex items-center gap-1 ml-1">
-                                    <button onClick={(e) => openEditLedger(e, t)} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl shadow-sm border border-gray-100 active:scale-95"><Edit3 size={14}/></button>
-                                    <button onClick={(e) => { e.stopPropagation(); deleteTransaction(t.id); }} className="text-gray-400 hover:text-pink-500 bg-white p-2 rounded-xl shadow-sm border border-gray-100 active:scale-95"><Trash2 size={14}/></button>
-                                  </div>
+                                {t.subNote && (
+                                  <button onClick={(e) => { e.stopPropagation(); toggleLedgerExpand(t.id); }} className="p-1.5 ml-1 text-gray-400 hover:bg-gray-200 rounded-full transition-colors active:scale-95">
+                                    <ChevronDown size={16} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                  </button>
                                 )}
                               </div>
                             </div>
                             
-                            {/* 세부 내역 아코디언 펼침 */}
                             {isExpanded && t.subNote && (
                                <div className="px-4 pb-4 animate-in slide-in-from-top-2">
-                                  <div className="bg-white p-3.5 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner">
+                                  <div className="bg-white p-3.5 rounded-xl border border-gray-100 text-[12px] font-bold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner">
                                      {t.subNote}
                                   </div>
                                </div>
@@ -1813,7 +1815,6 @@ function AppContent() {
                          </div>
                          <div className="text-right flex-shrink-0">
                            <div className="text-lg font-black text-blue-600 mb-1.5 tracking-tight">{formatLargeMoney(dayMetrics.totalAmt)}원</div>
-                           {/* 💡 배달 통계 뱃지 1줄 강제 정렬 */}
                            <div className="flex gap-1 justify-end items-center flex-nowrap overflow-x-auto no-scrollbar">
                              <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">총 {dayMetrics.totalCnt}건</span>
                              <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">평단 {formatMoney(dayMetrics.perDelivery)}원</span>
@@ -1838,7 +1839,7 @@ function AppContent() {
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="font-black text-base text-gray-900 tracking-tight">{formatLargeMoney(d.amount)}원</span>
-                                {isManageMode && <button onClick={() => {
+                                <button onClick={() => {
                                   setDeliveryFormData({
                                     date: d.date, earner: d.earner, platform: d.platform, amount: String(d.amount||''),
                                     count: String(d.count || ''), startTime: d.startTime || '', endTime: d.endTime || '',
@@ -1847,8 +1848,8 @@ function AppContent() {
                                   });
                                   setEditingDeliveryId(d.id);
                                   setIsDeliveryModalOpen(true);
-                                }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Edit3 size={14}/></button>}
-                                {isManageMode && <button onClick={() => deleteDailyDelivery(d.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Trash2 size={14}/></button>}
+                                }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Edit3 size={14}/></button>
+                                <button onClick={() => deleteDailyDelivery(d.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200"><Trash2 size={14}/></button>
                               </div>
                             </div>
                           );
@@ -1916,12 +1917,11 @@ function AppContent() {
                 {sortedLoans.map((loan) => {
                   const isPaidThisMonth = loan.paidMonths?.includes(currentMonthKey);
                   return (
-                  <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : isPaidThisMonth ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
+                  <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border leading-tight ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : isPaidThisMonth ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
                     
                     <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2.5">
                       <span className="font-bold text-gray-800 flex items-center text-base">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-4 h-4 text-green-500 ml-1.5"/>}</span>
                       
-                      {/* 💡 대출 금리 왼쪽 이동 및 줄간격 축소 */}
                       <div className="flex items-center gap-1.5">
                         {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
                         {loan.status !== '완납' && (
@@ -1998,7 +1998,7 @@ function AppContent() {
                             <Coins size={12}/> 중도상환
                           </button>
                         )}
-                        {isManageMode && <button onClick={() => deleteAsset('loans', loan.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200 ml-1"><Trash2 size={14}/></button>}
+                        <button onClick={() => deleteAsset('loans', loan.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200 ml-1"><Trash2 size={14}/></button>
                       </div>
 
                       {loan.prepaymentHistory?.length > 0 && (
@@ -2035,7 +2035,6 @@ function AppContent() {
                <div className="space-y-3 mb-4">
                   {activeMessages.length === 0 && <div className="text-center text-gray-400 font-bold text-[10px] py-6 bg-white/50 rounded-2xl border border-pink-100/50">새로운 메시지가 없습니다.</div>}
                   {activeMessages.map(m => {
-                    // 💡 시스템 변경 알림 분기 처리 (2줄 렌더링 & 시간 우측 상단)
                     if (m.isSystemLog || m.author === '시스템') {
                       return (
                         <div key={m.id} className="bg-emerald-50 p-3.5 rounded-2xl shadow-sm border border-emerald-100/50">
@@ -2231,428 +2230,93 @@ function AppContent() {
       {activeTab === 'delivery' && <button onClick={() => { setEditingDeliveryId(null); setDeliveryFormData({ date: todayStr, earner: '정훈', platform: '배민', amount: '', count: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>}
       {activeTab === 'calendar' && <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-emerald-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-emerald-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-emerald-400"><Plus size={28}/></button>}
 
-      {/* --- 메모장 전체화면 에디터 --- */}
-      {isMemoEditorOpen && (
-        <div className="fixed inset-0 bg-white z-[80] flex flex-col animate-in slide-in-from-bottom duration-300">
-           <div className="flex justify-between items-center p-4 pt-12 border-b border-gray-100 bg-white shadow-sm shrink-0">
-              <div className="flex items-center gap-3">
-                 <button onClick={closeMemoEditor} className="text-gray-500 p-2 bg-gray-50 rounded-full active:scale-95"><ChevronLeftCircle size={24}/></button>
-                 {/* 💡 계산기 버튼 좌측 상단으로 이동 (크기 확대) */}
-                 <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`p-2.5 rounded-full shadow-sm transition-colors active:scale-90 ${isCalcOpen ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                    <Calculator size={22}/>
-                 </button>
-              </div>
-              <span className="font-black text-gray-800 text-base absolute left-1/2 -translate-x-1/2">📝 노트 작성</span>
-              <div className="flex items-center gap-3">
-                 {currentMemoId && <button onClick={deleteMemo} className="text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors active:scale-90"><Trash2 size={20}/></button>}
-                 <button onClick={saveMemo} className="bg-pink-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-md shadow-pink-200 active:scale-95 transition-transform">저장</button>
-              </div>
-           </div>
-           
-           <div className="flex-1 p-5 relative overflow-hidden flex flex-col bg-amber-50/20">
-              <textarea 
-                 ref={memoTextareaRef}
-                 value={memoText} 
-                 onChange={e => setMemoText(e.target.value)} 
-                 className="w-full flex-1 bg-transparent resize-none outline-none text-lg font-bold text-gray-800 leading-relaxed whitespace-pre-wrap no-scrollbar"
-                 placeholder="내용을 자유롭게 입력하세요..."
-                 autoFocus
-              />
-              
-              {/* 💡 아이폰 배열 풀사이즈 미니 계산기 */}
-              {isCalcOpen && (() => {
-                 const formattedCalcStr = formatEquation(calcInput || '0');
-                 const calcTextSize = formattedCalcStr.length > 12 ? 'text-xl' : formattedCalcStr.length > 9 ? 'text-2xl' : 'text-3xl';
-                 return (
-                 <div className="absolute top-[20px] left-4 right-4 bg-gray-900 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-gray-800 p-4 z-[90] animate-in slide-in-from-top-2">
-                    <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20">
-                       <div className={`font-black text-white truncate ${calcTextSize}`}>{formattedCalcStr}</div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2.5 mb-4">
-                       {['AC','+/-','%','÷', '7','8','9','×', '4','5','6','-', '1','2','3','+', '⌫','0','.','='].map(btn => {
-                          let btnClass = 'bg-gray-700 text-white';
-                          if (['÷','×','-','+','='].includes(btn)) btnClass = 'bg-orange-500 text-white';
-                          if (['AC','+/-','%','⌫'].includes(btn)) btnClass = 'bg-gray-400 text-gray-900';
-                          return (
-                            <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 rounded-full font-black text-xl active:scale-90 transition-transform ${btnClass}`}>
-                               {btn}
-                            </button>
-                          );
-                       })}
-                    </div>
-                    <button onClick={insertCalcResult} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95 transition-transform shadow-sm">
-                       현재 금액 메모에 넣기 ✍️
-                    </button>
-                 </div>
-                 );
-              })()}
-           </div>
-        </div>
-      )}
-
-      {/* --- 가계부 작성 Bottom Sheet --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black text-gray-800">✨ {editingLedgerId ? '내역 수정' : '내역 기록'}</h2><button onClick={closeModals} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border border-pink-100 shadow-sm"><X size={20}/></button></div>
-            <form onSubmit={handleTransactionSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner"><button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500 hover:text-gray-700'}`}>지출하기</button><button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-3 rounded-xl text-base font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>수입얻기</button></div>
-              <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
-              
-              {/* 💡 날짜, 카테고리 폼 겹침 방지 픽셀 강제고정 */}
-              <div className="flex gap-4 w-full">
-                <div className="w-[110px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800 tracking-tighter`} />
-                </div>
-                <div className="w-[130px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label>
-                  <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm truncate outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select>
-                </div>
-              </div>
-              {isCustomCategory && <div className="animate-in fade-in slide-in-from-top-2">
-                  <input type="text" placeholder="새로운 카테고리명 입력" value={customCategoryInput} onChange={(e) => setCustomCategoryInput(e.target.value)} className={`w-full bg-white rounded-xl px-4 h-[48px] font-black text-base outline-none border ${formData.type === '수입' ? 'border-blue-200 focus:border-blue-400' : 'border-pink-200 focus:border-pink-400'} shadow-sm`} />
-                  <label className="flex items-center gap-2 mt-2 ml-1 cursor-pointer">
-                    <input type="checkbox" checked={saveToCategoryList} onChange={(e) => setSaveToCategoryList(e.target.checked)} className="w-5 h-5 text-pink-500 rounded focus:ring-pink-400 focus:ring-2" />
-                    <span className="text-xs font-bold text-gray-500">이 항목을 내 카테고리 목록에도 정식 추가하기</span>
-                  </label>
-                </div>}
-              
-              <div><label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block uppercase">상세 내용 (선택)</label><input type="text" value={formData.note} onChange={e=>setFormData({...formData, note:e.target.value})} placeholder="어디서 쓰셨나요?" className={`w-full bg-gray-50 rounded-xl px-4 h-[48px] font-bold text-base outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`} /></div>
-              
-              {/* 💡 가계부 세부 내역 3줄 폼 추가 */}
-              <div>
-                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1 uppercase">세부 내역 기록 (선택)</label>
-                 <textarea value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="마트 장본 목록이나 상세 품목을 적어두세요!" className={`w-full bg-gray-50 rounded-xl px-4 py-3 h-[80px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800 resize-none`} />
-              </div>
-
-              <button type="submit" className={`w-full ${formData.type === '수입' ? 'bg-blue-500 shadow-blue-200 border border-blue-600' : 'bg-pink-500 shadow-pink-200 border border-pink-600'} mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl`}>기록 완료 {formData.type === '수입' ? '💰' : '🎀'}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- 가족 일정 작성 Bottom Sheet --- */}
-      {isEventModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-5 shrink-0">
-              <h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2>
-              <button onClick={closeModals} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border border-emerald-100 shadow-sm"><X size={20}/></button>
-            </div>
-            <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex gap-4 w-full">
-                <div className="w-[110px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800 tracking-tighter" />
-                </div>
-                <div className="w-[130px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
-                  <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base truncate outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
-                    <option value="가족일정">가족일정</option>
-                    <option value="회식">회식</option>
-                    <option value="기타">기타</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label>
-                <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800" />
-              </div>
-
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
-                <div>
-                  <div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 등록</div>
-                  <div className="text-[10px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 강조되어 표시됩니다.</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div>
-                </label>
-              </div>
-
-              <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-emerald-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-emerald-200 border border-emerald-600 disabled:opacity-50">
-                {editingEventId ? '일정 수정 완료' : '일정 등록 완료'} 🌿
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- 개별 듀티 수정 미니 Bottom Sheet --- */}
-      {isDutyEditModalOpen && selectedDutyEditDate && (() => {
-         const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
-         const currentDuty = existingEvent ? existingEvent.title : 'OFF';
-
-         return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar">
-            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300">
-               <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-xl font-black text-gray-900">
-                      {parseInt(selectedDutyEditDate.slice(5,7))}월 {parseInt(selectedDutyEditDate.slice(8,10))}일 스케줄
-                    </h2>
-                    <p className="text-[10px] text-gray-500 font-bold mt-1">
-                      {isDutyEditing ? '변경할 근무를 선택하세요.' : '현재 등록된 스케줄입니다.'}
-                    </p>
-                  </div>
-                  <button onClick={() => setIsDutyEditModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
-               </div>
-
-               <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-center border border-gray-100 shadow-inner">
-                 <span className="text-[10px] font-bold text-gray-400 block mb-1">현재 스케줄</span>
-                 <span className={`text-4xl font-black tracking-tighter ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span>
-               </div>
-
-               {!isDutyEditing ? (
-                  <button onClick={() => setIsDutyEditing(true)} className="w-full bg-emerald-500 text-white py-4 rounded-[1.5rem] font-black text-lg active:scale-95 transition-transform shadow-md shadow-emerald-200 border border-emerald-600">
-                    수정하기
-                  </button>
-               ) : (
-                  <div className="grid grid-cols-2 gap-3 animate-in fade-in zoom-in-95">
-                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">DAY</button>
-                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'EVE')} className="bg-orange-50 text-orange-600 border border-orange-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">EVE</button>
-                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'OFF')} className="bg-pink-50 text-pink-600 border border-pink-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 transition-transform">OFF</button>
-                    <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'DELETE')} className="bg-gray-100 text-gray-600 border border-gray-200 py-4 rounded-[1.5rem] font-black text-lg shadow-sm active:scale-95 flex items-center justify-center gap-1 transition-transform"><Trash2 size={16}/> 삭제</button>
-                  </div>
-               )}
-            </div>
-          </div>
-         );
-      })()}
-
-      {/* --- 배달 수익 기록 Bottom Sheet --- */}
-      {isDeliveryModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[60] p-4 py-8 overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-2xl font-black text-gray-900">{editingDeliveryId ? '배달 단건 수정' : '배달 동시 기록 🏍️'}</h2>
-              <button onClick={closeModals} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border border-blue-100 shadow-sm"><X size={20}/></button>
-            </div>
-            <form onSubmit={handleDeliverySubmit} className="space-y-4">
-              
-              <div className="bg-gradient-to-br from-blue-900 to-slate-800 p-4 rounded-2xl text-white shadow-md flex justify-around mb-2">
-                <div className="text-center">
-                  <div className="text-[10px] font-bold text-blue-200 mb-1">예상 통합 시급</div>
-                  <div className="font-black text-cyan-400 text-lg">
-                    {formatMoney(
-                      calcDailyMetrics([{
-                        startTime: deliveryFormData.startTime, 
-                        endTime: deliveryFormData.endTime, 
-                        amount: editingDeliveryId 
-                          ? parseInt(String(deliveryFormData.amount||0).replace(/,/g,'')) 
-                          : (parseInt(String(deliveryFormData.amountHyunaBaemin||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountHyunaCoupang||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountJunghoonBaemin||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountJunghoonCoupang||0).replace(/,/g,''))||0),
-                        count: editingDeliveryId 
-                          ? parseInt(deliveryFormData.count||0)
-                          : (parseInt(deliveryFormData.countHyunaBaemin)||0) + 
-                            (parseInt(deliveryFormData.countHyunaCoupang)||0) + 
-                            (parseInt(deliveryFormData.countJunghoonBaemin)||0) + 
-                            (parseInt(deliveryFormData.countJunghoonCoupang)||0)
-                      }]).hourlyRate
-                    )}<span className="text-[10px] ml-0.5 font-normal text-blue-100">원</span>
-                  </div>
-                </div>
-                <div className="w-px bg-blue-700/50 mx-2"></div>
-                <div className="text-center">
-                  <div className="text-[10px] font-bold text-blue-200 mb-1">건당 평단</div>
-                  <div className="font-black text-blue-300 text-lg">
-                    {formatMoney(
-                      calcDailyMetrics([{
-                        startTime: deliveryFormData.startTime, 
-                        endTime: deliveryFormData.endTime, 
-                        amount: editingDeliveryId 
-                          ? parseInt(String(deliveryFormData.amount||0).replace(/,/g,'')) 
-                          : (parseInt(String(deliveryFormData.amountHyunaBaemin||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountHyunaCoupang||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountJunghoonBaemin||0).replace(/,/g,''))||0) + 
-                            (parseInt(String(deliveryFormData.amountJunghoonCoupang||0).replace(/,/g,''))||0),
-                        count: editingDeliveryId 
-                          ? parseInt(deliveryFormData.count||0)
-                          : (parseInt(deliveryFormData.countHyunaBaemin)||0) + 
-                            (parseInt(deliveryFormData.countHyunaCoupang)||0) + 
-                            (parseInt(deliveryFormData.countJunghoonBaemin)||0) + 
-                            (parseInt(deliveryFormData.countJunghoonCoupang)||0)
-                      }]).perDelivery
-                    )}<span className="text-[10px] ml-0.5 font-normal text-blue-100">원</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 💡 배달 기록 2줄 분리 및 겹침 방지 간격 고정 */}
-              <div className="flex gap-3 pb-4 border-b border-gray-100 mb-2 w-full">
-                <div className="w-[100px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
-                </div>
-                <div className="w-[85px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작</label>
-                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
-                </div>
-                <div className="w-[85px] shrink-0">
-                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료</label>
-                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
-                </div>
-              </div>
-
-              {editingDeliveryId ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black transition-all ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black transition-all ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm border border-blue-100':'text-gray-500 hover:text-gray-700'}`}>현아</button></div></div>
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black transition-all ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black transition-all ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500 hover:text-gray-700'}`}>쿠팡</button></div></div>
-                  </div>
-                  <div className="flex gap-4 items-end mt-4 mb-2">
-                    <div className="flex-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 block mb-1">수익금</label>
-                      <div className="relative">
-                        <input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" autoFocus /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span>
-                      </div>
-                    </div>
-                    <div className="w-24">
-                      <label className="text-[10px] font-black text-gray-400 ml-1 block uppercase mb-1">건수</label>
-                      <div className="relative">
-                        <input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[44px] font-black text-lg outline-none focus:ring-2 ring-blue-200" />
-                        <span className="absolute right-3 top-2.5 text-sm font-black text-gray-400">건</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button type="submit" disabled={!deliveryFormData.amount} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 border border-blue-700">수정 완료</button>
-                </>
-              ) : (
-                <>
-                  <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
-                    <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
-                    <div className="space-y-2">
-                      <div className="flex gap-3 items-center">
-                        <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
-                        <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                        <div className="w-[90px] relative">
-                          <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-center">
-                        <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
-                        <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                        <div className="w-[90px] relative">
-                          <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
-                    <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
-                    <div className="space-y-2">
-                      <div className="flex gap-3 items-center">
-                        <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">배민</span>
-                        <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                        <div className="w-[90px] relative">
-                          <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-center">
-                        <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0 shadow-sm">쿠팡</span>
-                        <div className="flex-1 relative">
-                          <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                        <div className="w-[90px] relative">
-                          <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-full text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400 transition-colors shadow-sm" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:active:scale-100 border border-blue-700">
-                    동시 저장 완료 🚀
-                  </button>
-                </>
-              )}
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- 대출 추가 전용 미니 Bottom Sheet (원샷 폼) --- */}
-      {isAddLoanModalOpen && (
+      {/* 💡 가계부 달력 일일 상세 프리뷰 (캘린더 데이 모달) */}
+      {selectedCalendarDate && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300">
-             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-             <div className="flex justify-between items-center mb-6">
-               <h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 대출 추가</h2>
-               <button onClick={() => setIsAddLoanModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
-             </div>
-             <form onSubmit={handleAddAssetItem} className="space-y-4">
-               <div>
-                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출명</label>
-                 <input type="text" value={newLoanFormData.name} onChange={e => setNewLoanFormData({...newLoanFormData, name: e.target.value})} placeholder="예: 주담대, 전세자금대출, 마통" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-4 h-[48px] font-black text-sm outline-none focus:ring-2 ring-indigo-200" />
-               </div>
-               <div>
-                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출 원금 (잔액)</label>
-                 <div className="relative">
-                   <input type="text" value={newLoanFormData.principal ? formatMoney(newLoanFormData.principal) : ''} onChange={e => setNewLoanFormData({...newLoanFormData, principal: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" />
-                   <span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span>
-                 </div>
-               </div>
-               <div className="flex gap-3 w-full pt-2">
-                 <div className="flex-1">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">금리 (%)</label>
-                   <input type="text" value={newLoanFormData.rate} onChange={e => setNewLoanFormData({...newLoanFormData, rate: e.target.value})} placeholder="0.0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-black text-sm outline-none focus:ring-2 ring-indigo-200 text-center" />
-                 </div>
-                 <div className="flex-1">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">매월 납부일</label>
-                   <input type="number" value={newLoanFormData.paymentDate} onChange={e => setNewLoanFormData({...newLoanFormData, paymentDate: e.target.value})} placeholder="1" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-black text-sm outline-none focus:ring-2 ring-indigo-200 text-center" />
-                 </div>
-                 <div className="flex-1">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">상환 방식</label>
-                   <select value={newLoanFormData.paymentMethod} onChange={e => setNewLoanFormData({...newLoanFormData, paymentMethod: e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-black text-sm outline-none focus:ring-2 ring-indigo-200 text-center appearance-none">
-                     <option value="이자">이자</option>
-                     <option value="원리금">원리금</option>
-                   </select>
-                 </div>
-               </div>
-               <button type="submit" disabled={!newLoanFormData.name.trim() || !newLoanFormData.principal} className="w-full bg-indigo-600 mt-6 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 transition-transform shadow-lg shadow-indigo-200 border border-indigo-700 disabled:opacity-50">대출 등록 완료</button>
-             </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- 대출 중도 상환 Bottom Sheet --- */}
-      {isPrepayModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
+          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black flex items-center gap-2 text-gray-800"><Coins size={24} className="text-indigo-500"/> 상환 이력 추가</h2><button onClick={closeModals} className="bg-indigo-50 text-indigo-500 p-2.5 rounded-2xl border border-indigo-100 shadow-sm"><X size={20}/></button></div>
-            <form onSubmit={handlePrepaySubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm"><span className="text-xs font-bold text-indigo-600 block mb-1">상환 대상 대출</span><span className="font-black text-indigo-900 text-lg">{(assets?.loans||[]).find(l => l.id === prepayFormData.loanId)?.name}</span></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent text-gray-900" /></div>
-              </div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border border-gray-200 focus:ring-2 ring-indigo-200 text-gray-800 tracking-tighter" /></div>
-              <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 transition-all shadow-xl shadow-indigo-200 border border-indigo-700">상환 처리 완료</button>
-            </form>
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
+                <CalendarDays className="text-pink-500" size={24}/>
+                {parseInt(selectedCalendarDate.slice(5,7))}월 {parseInt(selectedCalendarDate.slice(8,10))}일 내역
+              </h2>
+              <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+            </div>
+            <div className="space-y-3 overflow-y-auto no-scrollbar flex-1 pb-4">
+              {(groupedLedger[selectedCalendarDate]||[]).length === 0 && <div className="text-center py-10 text-gray-400 font-bold">이 날의 내역이 없습니다.</div>}
+              {(groupedLedger[selectedCalendarDate]||[]).map(t => (
+                <div key={t.id} onClick={() => setSelectedLedgerForDetail(t)} className="bg-gray-50/50 border border-gray-100/50 p-4 rounded-2xl hover:bg-pink-50/50 transition-colors shadow-sm cursor-pointer active:scale-95 flex justify-between items-center">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className={`p-2.5 rounded-xl flex-shrink-0 shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                      {getCategoryIcon(t.category, t.type)}
+                    </div>
+                    <div className="truncate pr-2">
+                      <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
+                      <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
+                    </div>
+                  </div>
+                  <div className={`font-black text-base tracking-tight flex-shrink-0 ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>
+                    {t.type === '수입' ? '+' : '-'}{formatLargeMoney(t.amount)}원
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #csb-edit-btn, a[href*="codesandbox.io"] { display: none !important; }
-      `}} />
+      {/* 💡 가계부 1화면 상세 뷰 (디지털 영수증) 모달 */}
+      {selectedLedgerForDetail && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-y-auto no-scrollbar">
+          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-start mb-6 shrink-0">
+              <div className={`p-3.5 rounded-2xl shadow-sm ${selectedLedgerForDetail.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                 {getCategoryIcon(selectedLedgerForDetail.category, selectedLedgerForDetail.type)}
+              </div>
+              <button onClick={() => setSelectedLedgerForDetail(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-full active:scale-95"><X size={20}/></button>
+            </div>
+
+            <div className="text-center mb-8 shrink-0">
+              <div className="text-[12px] font-bold text-gray-400 mb-1">{selectedLedgerForDetail.category}</div>
+              <div className="text-4xl font-black text-gray-900 tracking-tighter mb-2">{formatLargeMoney(selectedLedgerForDetail.amount)}<span className="text-xl ml-1">원</span></div>
+              <div className="inline-block bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-[11px] font-bold">
+                {selectedLedgerForDetail.date.replace(/-/g, '.')}
+              </div>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
+                <div className="text-[10px] font-bold text-gray-400 mb-1">상세 내용</div>
+                <div className="text-base font-black text-gray-800">{selectedLedgerForDetail.note || selectedLedgerForDetail.category}</div>
+              </div>
+
+              {selectedLedgerForDetail.subNote && (
+                <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 shadow-inner">
+                  <div className="text-[10px] font-bold text-amber-600/70 mb-2">세부 내역 기록</div>
+                  <div className="text-[13px] font-bold text-gray-800 whitespace-pre-wrap leading-relaxed">
+                    {selectedLedgerForDetail.subNote}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-100 mt-2 shrink-0">
+              <button onClick={handleEditFromDetail} className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-[1.5rem] font-black text-lg active:scale-95 transition-transform flex justify-center items-center gap-2">
+                 <Edit3 size={18}/> 수정
+              </button>
+              <button onClick={() => {
+                 if(window.confirm('이 가계부 내역을 정말 삭제하시겠습니까?')){
+                   deleteTransaction(selectedLedgerForDetail.id);
+                   setSelectedLedgerForDetail(null);
+                 }
+              }} className="flex-1 bg-rose-50 text-rose-500 py-4 rounded-[1.5rem] font-black text-lg active:scale-95 transition-transform flex justify-center items-center gap-2 border border-rose-100">
+                 <Trash2 size={18}/> 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
