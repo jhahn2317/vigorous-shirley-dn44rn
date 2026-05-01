@@ -469,6 +469,36 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     else { if (calcInput === 'Error') setCalcInput(val); else setCalcInput(prev => prev + val); }
   };
 
+  // 💡 메모장 내 수식/금액 추출 자동 계산
+  const handleAutoCalc = () => {
+    if (!memoText.trim()) return;
+    const lines = memoText.split('\n');
+    let total = 0;
+    let hasMath = false;
+    
+    try {
+        const lastLine = lines[lines.length - 1].replace(/[^\d+\-*/().]/g, '');
+        if (/[+\-*/]/.test(lastLine)) {
+            // eslint-disable-next-line no-new-func
+            total = new Function('return ' + lastLine)();
+            hasMath = true;
+        }
+    } catch(e) {}
+
+    if (!hasMath) {
+        const matches = memoText.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d+\b/g);
+        if (matches) {
+            total = matches.reduce((acc, val) => {
+                const num = parseInt(val.replace(/,/g, ''), 10);
+                if (num < 100 || (num >= 2020 && num <= 2030)) return acc; 
+                return acc + num;
+            }, 0);
+        }
+    }
+    if (total > 0) setCalcInput(String(total));
+    else alert("계산할 금액이나 수식을 찾지 못했습니다. 🥲");
+  };
+
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
       <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center">
@@ -533,7 +563,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -603,7 +633,6 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
       {ledgerSubTab === 'daily' && (
         <div className="space-y-3 animate-in slide-in-from-left duration-300">
           {ledgerDates.map(date => {
-             // 💡 가계부 상세내역 날짜에도 요일과 색상 적용
              const dObj = new Date(date);
              const dIndex = dObj.getDay();
              const dName = ['일','월','화','수','목','금','토'][dIndex];
@@ -748,15 +777,20 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
            </div>
            <div className="flex-1 p-5 relative overflow-hidden flex flex-col bg-amber-50/20">
               <textarea value={memoText} onChange={e => setMemoText(e.target.value)} className="w-full flex-1 bg-transparent resize-none outline-none text-lg font-bold text-gray-800 whitespace-pre-wrap no-scrollbar" placeholder="자유롭게 입력하세요..." autoFocus />
+              
               {isCalcOpen && (
                  <div className="absolute top-[20px] left-4 right-4 bg-gray-900 rounded-3xl shadow-2xl border border-gray-800 p-4 z-[90]">
+                    <button onClick={handleAutoCalc} className="w-full bg-indigo-500 text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2">
+                       메모장 수식/금액 자동계산 🤖
+                    </button>
+
                     <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20"><div className="font-black text-white text-3xl">{formatEquation(calcInput || '0')}</div></div>
                     <div className="grid grid-cols-4 gap-2.5 mb-4">
                        {['AC','+/-','%','÷', '7','8','9','×', '4','5','6','-', '1','2','3','+', '⌫','0','.','='].map(btn => (
                           <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 rounded-full font-black text-xl ${['÷','×','-','+','='].includes(btn) ? 'bg-orange-500 text-white' : ['AC','+/-','%','⌫'].includes(btn) ? 'bg-gray-400 text-gray-900' : 'bg-gray-700 text-white'}`}>{btn}</button>
                        ))}
                     </div>
-                    <button onClick={() => { if(calcInput && calcInput !== 'Error') { setMemoText(prev => prev + formatMoney(calcInput)); setIsCalcOpen(false); } }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm">금액 메모에 넣기 ✍️</button>
+                    <button onClick={() => { if(calcInput && calcInput !== 'Error') { setMemoText(prev => prev + formatMoney(calcInput)); setIsCalcOpen(false); } }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95">금액 메모에 넣기 ✍️</button>
                  </div>
               )}
            </div>
@@ -774,12 +808,13 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
-  const [selectedDeliveryDetail, setSelectedDeliveryDetail] = useState(null);
+  const [selectedShiftDetail, setSelectedShiftDetail] = useState(null);
   const [selectedWeeklySummary, setSelectedWeeklySummary] = useState(null);
   const [selectedDailySummary, setSelectedDailySummary] = useState(null);
 
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-  const [editingDeliveryId, setEditingDeliveryId] = useState(null);
+  const [editingDeliveryShift, setEditingDeliveryShift] = useState(null);
+  
   const [deliveryFormData, setDeliveryFormData] = useState({ 
     date: todayStr, startTime: '', endTime: '', 
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
@@ -801,6 +836,39 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const filteredHyunaItems = filteredDailyDeliveries.filter(d => d.earner === '현아');
   const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
   const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
+
+  const dailyShifts = useMemo(() => {
+    const shiftsByDate = {};
+    filteredDailyDeliveries.forEach(d => {
+        if(!d.date) return;
+        if(!shiftsByDate[d.date]) shiftsByDate[d.date] = {};
+        
+        const shiftKey = (d.startTime && d.endTime) ? `${d.startTime}-${d.endTime}` : `no-time-${d.id}`;
+        
+        if(!shiftsByDate[d.date][shiftKey]) {
+            shiftsByDate[d.date][shiftKey] = {
+                id: shiftKey,
+                date: d.date,
+                startTime: d.startTime,
+                endTime: d.endTime,
+                items: [],
+                totalAmt: 0,
+                totalCnt: 0
+            };
+        }
+        shiftsByDate[d.date][shiftKey].items.push(d);
+        shiftsByDate[d.date][shiftKey].totalAmt += (d.amount || 0);
+        shiftsByDate[d.date][shiftKey].totalCnt += (d.count || 0);
+    });
+    
+    const result = {};
+    Object.keys(shiftsByDate).sort((a,b)=>new Date(b)-new Date(a)).forEach(date => {
+        result[date] = Object.values(shiftsByDate[date]).sort((a,b) => (b.startTime||'').localeCompare(a.startTime||''));
+    });
+    return result;
+  }, [filteredDailyDeliveries]);
+
+  const dailyDates = Object.keys(dailyShifts);
 
   const paydayGroups = useMemo(() => {
     const groups = {};
@@ -833,9 +901,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   }, [globalPending]);
   const upcomingPaydays = Object.keys(pendingByPayday).sort();
   
-  const groupedDaily = filteredDailyDeliveries.reduce((acc, curr) => { if(curr.date){ if(!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {});
-  const dailyDates = Object.keys(groupedDaily).sort((a,b) => new Date(b) - new Date(a));
-
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -852,13 +917,17 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     
     if (adds.length === 0) return;
 
-    if (editingDeliveryId) {
+    if (editingDeliveryShift) {
       if (isFirebaseEnabled) {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', editingDeliveryId));
-        for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+        for(const item of editingDeliveryShift.items) {
+           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
+        }
+        for(const newDel of adds) {
+           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+        }
       } else {
         setDailyDeliveries(prev => {
-           const filtered = (prev||[]).filter(item => item.id !== editingDeliveryId);
+           const filtered = (prev||[]).filter(p => !editingDeliveryShift.items.find(old => old.id === p.id));
            const newItems = adds.map(a => ({...a, id: Date.now().toString() + Math.random()}));
            return [...newItems, ...filtered];
         });
@@ -872,34 +941,43 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     }
     
     setIsDeliveryModalOpen(false); 
-    setEditingDeliveryId(null);
+    setEditingDeliveryShift(null);
   };
 
-  const openEditDeliveryForm = (d) => {
-    const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
-    const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
-
-    setDeliveryFormData({
-      date: d.date,
-      startTime: d.startTime || '',
-      endTime: d.endTime || '',
+  const openEditShiftForm = (shift) => {
+    const form = {
+      date: shift.date,
+      startTime: shift.startTime || '',
+      endTime: shift.endTime || '',
       amountHyunaBaemin: '', countHyunaBaemin: '',
       amountHyunaCoupang: '', countHyunaCoupang: '',
       amountJunghoonBaemin: '', countJunghoonBaemin: '',
       amountJunghoonCoupang: '', countJunghoonCoupang: '',
-      [`amount${earnerEng}${platformEng}`]: String(d.amount || ''),
-      [`count${earnerEng}${platformEng}`]: String(d.count || ''),
+    };
+    
+    shift.items.forEach(d => {
+       const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
+       const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
+       form[`amount${earnerEng}${platformEng}`] = String(d.amount || '');
+       form[`count${earnerEng}${platformEng}`] = String(d.count || '');
     });
-    setEditingDeliveryId(d.id);
-    setSelectedDeliveryDetail(null);
-    setIsDeliveryModalOpen(true);
+    
+    setDeliveryFormData(form);
+    setEditingDeliveryShift(shift);
+    setSelectedShiftDetail(null); 
+    setIsDeliveryModalOpen(true); 
   };
 
-  const deleteDailyDelivery = async (id) => {
-    if(!window.confirm('기록을 삭제하시겠습니까?')) return;
-    if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', id));
-    else setDailyDeliveries((dailyDeliveries||[]).filter(d => d.id !== id));
-    setSelectedDeliveryDetail(null);
+  const deleteShift = async (shift) => {
+    if(!window.confirm('이 시간대의 기록을 통째로 모두 삭제하시겠습니까?')) return;
+    if (isFirebaseEnabled && user) {
+        for(const item of shift.items) {
+           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
+        }
+    } else {
+        setDailyDeliveries(prev => (prev||[]).filter(p => !shift.items.find(old => old.id === p.id)));
+    }
+    setSelectedShiftDetail(null);
   };
 
   return (
@@ -923,7 +1001,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               startTime: formatTimeStr(startObj),
               endTime: formatTimeStr(end)
             });
-            setEditingDeliveryId(null);
+            setEditingDeliveryShift(null);
             handleEndDelivery();
             setIsDeliveryModalOpen(true);
           } else {
@@ -954,7 +1032,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       </div>
 
       <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mt-1">
-        <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" />
+        <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
         <div className="flex justify-between items-end mb-3 relative z-10">
           <div>
             <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
@@ -1036,9 +1114,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {deliverySubTab === 'daily' && (
         <div className="space-y-3 animate-in slide-in-from-left duration-300 mt-1">
           {dailyDates.map(date => {
-            const dayMetrics = calcDailyMetrics(groupedDaily[date]);
+            const shiftList = dailyShifts[date] || [];
+            const allItemsForDay = shiftList.flatMap(s => s.items);
+            const dayMetrics = calcDailyMetrics(allItemsForDay);
             
-            // 💡 날짜별 요일과 색상 적용
             const dateObj = new Date(date);
             const dayIndex = dateObj.getDay();
             const dayName = ['일','월','화','수','목','금','토'][dayIndex];
@@ -1058,24 +1137,39 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                      <div className="flex gap-1 justify-end items-center flex-nowrap overflow-x-auto no-scrollbar">
                        <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border whitespace-nowrap">총 {dayMetrics.totalCnt}건</span>
                        <span className="bg-slate-50 text-[9px] font-black text-gray-500 px-1.5 py-0.5 rounded border whitespace-nowrap">평단 {formatMoney(dayMetrics.perDelivery)}원</span>
+                       {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-[9px] font-black text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">시급 {formatMoney(dayMetrics.hourlyRate)}원</span>}
                      </div>
                    </div>
                  </div>
+
                  <div className="space-y-2">
-                  {(groupedDaily[date]||[]).map(d => {
-                    const pDay = getPaydayStr(d.date);
+                  {shiftList.map(shift => {
+                    const pDay = getPaydayStr(shift.date);
                     return (
-                      <div key={d.id} onClick={() => setSelectedDeliveryDetail(d)} className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50 cursor-pointer active:scale-95">
+                      <div key={shift.id} onClick={() => setSelectedShiftDetail(shift)} className="flex justify-between items-center bg-slate-50/50 p-3.5 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50 cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-xs shrink-0 shadow-sm ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div>
+                          <div className={`w-11 h-11 rounded-2xl flex flex-col items-center justify-center font-black text-white text-[10px] shrink-0 shadow-sm bg-blue-500`}>
+                             <div className="text-lg leading-none">{shift.totalCnt}</div>
+                             <div className="font-normal opacity-80 mt-0.5 text-[9px]">건</div>
+                          </div>
                           <div className="truncate">
-                            <div className="font-black text-sm text-gray-800 truncate">{d.earner} <span className="text-gray-400 text-[10px] font-bold">| {d.count}건</span></div>
-                            <div className={`text-[10px] font-bold mt-1 truncate ${pDay && pDay >= todayStr ? 'text-blue-500' : 'text-gray-500'}`}>{pDay && pDay >= todayStr ? `${pDay.slice(5).replace('-','/')} 입금 대기` : '정산 완료'}</div>
+                            <div className="font-black text-sm text-gray-800 truncate">
+                               {shift.startTime && shift.endTime ? `${shift.startTime} ~ ${shift.endTime}` : '시간 미지정 기록'}
+                            </div>
+                            <div className="text-[10px] font-bold mt-1 flex gap-1 items-center">
+                               {shift.items.map(item => (
+                                  <span key={item.id} className={`px-1 rounded border shadow-sm ${item.platform === '배민' ? 'bg-[#2ac1bc]/10 text-[#2ac1bc] border-[#2ac1bc]/20' : 'bg-gray-100 text-gray-700 border-gray-200'}`}>
+                                     {item.earner[0]}·{item.platform[0]}
+                                  </span>
+                               ))}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-black text-base text-gray-900">{formatMoney(d.amount)}원</span>
-                          {isManageMode && <button onClick={(e) => { e.stopPropagation(); openEditDeliveryForm(d); }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl border ml-1 shadow-sm"><Edit3 size={14}/></button>}
+                          <div className="text-right">
+                             <div className="font-black text-base text-gray-900">{formatMoney(shift.totalAmt)}원</div>
+                             <div className={`text-[9px] font-bold mt-0.5 ${pDay && pDay >= todayStr ? 'text-blue-500' : 'text-gray-500'}`}>{pDay && pDay >= todayStr ? `${pDay.slice(5).replace('-','/')} 입금 대기` : '정산 완료'}</div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1087,44 +1181,61 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         </div>
       )}
 
-      {/* 💡 개별 배달 영수증 상세 뷰 모달 */}
-      {selectedDeliveryDetail && (
+      {selectedShiftDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
             <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border border-gray-100">
                <div className="absolute top-0 left-0 right-0 h-2 bg-blue-500"></div>
-               <div className="flex justify-between items-start mb-6 mt-2">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white text-base shadow-sm ${selectedDeliveryDetail.platform === '배민' ? 'bg-[#2ac1bc]' : selectedDeliveryDetail.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>
-                     {selectedDeliveryDetail.platform}
-                  </div>
-                  <button onClick={() => setSelectedDeliveryDetail(null)} className="text-gray-400 p-2 bg-gray-50 rounded-full active:scale-95 border border-gray-200"><X size={20}/></button>
+               <div className="flex justify-between items-start mb-4 mt-2">
+                  <h3 className="text-lg font-black text-gray-900 flex items-center gap-1.5"><Bike size={20} className="text-blue-500"/> 근무 타임 상세</h3>
+                  <button onClick={() => setSelectedShiftDetail(null)} className="text-gray-400 p-2 bg-gray-50 rounded-full active:scale-95 border border-gray-200"><X size={20}/></button>
                </div>
-               <div className="mb-6">
-                  <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarCheck size={12}/> {selectedDeliveryDetail.date}</div>
-                  <div className="text-2xl font-black text-gray-900 mb-2">{selectedDeliveryDetail.earner} 수익</div>
-                  <div className="flex gap-2 mb-5">
-                     <span className="text-[11px] font-bold text-gray-500 px-2.5 py-1 bg-gray-100 rounded-lg shadow-inner">{selectedDeliveryDetail.count}건 배달</span>
-                     {selectedDeliveryDetail.startTime && <span className="text-[11px] font-bold text-gray-500 px-2.5 py-1 bg-gray-100 rounded-lg shadow-inner">{selectedDeliveryDetail.startTime} ~ {selectedDeliveryDetail.endTime}</span>}
+               
+               <div className="mb-5">
+                  <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarCheck size={12}/> {selectedShiftDetail.date}</div>
+                  <div className="text-2xl font-black text-gray-900 mb-3 tracking-tighter">
+                     {selectedShiftDetail.startTime && selectedShiftDetail.endTime ? `${selectedShiftDetail.startTime} ~ ${selectedShiftDetail.endTime}` : '시간 미지정 기록'}
                   </div>
-                  <div className="text-right">
-                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">정산 금액</div>
-                     <div className="text-4xl font-black tracking-tighter text-blue-600">
-                        {formatMoney(selectedDeliveryDetail.amount)}<span className="text-lg text-gray-800 font-bold ml-1">원</span>
+                  
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 mb-5">
+                     {selectedShiftDetail.items.map(item => (
+                        <div key={item.id} className="flex justify-between items-center">
+                           <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white shadow-sm ${item.platform === '배민' ? 'bg-[#2ac1bc]' : 'bg-[#111111]'}`}>{item.platform}</span>
+                              <span className="font-black text-sm text-gray-700">{item.earner}</span>
+                              <span className="text-[10px] font-bold text-gray-400 ml-1">({item.count}건)</span>
+                           </div>
+                           <div className="font-black text-gray-900">{formatMoney(item.amount)}원</div>
+                        </div>
+                     ))}
+                  </div>
+
+                  <div className="flex justify-between items-end border-t border-gray-100 pt-4 mt-2">
+                     <div>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">총 배달 건수</div>
+                        <div className="text-lg font-black text-gray-800">{selectedShiftDetail.totalCnt}건</div>
+                     </div>
+                     <div className="text-right">
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">총 정산 금액</div>
+                        <div className="text-3xl font-black tracking-tighter text-blue-600">
+                           {formatMoney(selectedShiftDetail.totalAmt)}<span className="text-base text-gray-800 font-bold ml-1">원</span>
+                        </div>
                      </div>
                   </div>
                </div>
+
                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
-                  <button onClick={() => openEditDeliveryForm(selectedDeliveryDetail)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 수정</button>
-                  <button onClick={() => deleteDailyDelivery(selectedDeliveryDetail.id)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 삭제</button>
+                  <button onClick={() => openEditShiftForm(selectedShiftDetail)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 타임 전체 수정</button>
+                  <button onClick={() => deleteShift(selectedShiftDetail)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 삭제</button>
                </div>
             </div>
          </div>
       )}
 
-      {/* 💡 주간/일간 대시보드 요약 모달 */}
       { (selectedWeeklySummary || selectedDailySummary) && (() => {
           const isWeekly = !!selectedWeeklySummary;
           const pd = selectedWeeklySummary || selectedDailySummary;
-          const items = isWeekly ? (pendingByPayday[pd]?.items || paydayGroups[pd]?.items || []) : (groupedDaily[pd] || []);
+          const items = isWeekly ? (pendingByPayday[pd]?.items || paydayGroups[pd]?.items || []) 
+                                 : (dailyShifts[pd] ? dailyShifts[pd].flatMap(s => s.items) : []);
           const title = isWeekly ? `${pd.slice(5).replace('-','/')} 입금 ${pd >= todayStr ? '예정' : '완료'}` : `${pd.slice(5).replace('-','/')} 일일 정산`;
           const metrics = calcDailyMetrics(items);
 
@@ -1136,7 +1247,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                       <button onClick={() => {setSelectedWeeklySummary(null); setSelectedDailySummary(null);}} className="bg-gray-100 text-gray-500 p-2 rounded-full active:scale-95"><X size={20}/></button>
                    </div>
 
-                   {/* 💡 하단 리스트를 뺀 오직 대시보드 카드만 남긴 형태 */}
                    <div className="bg-gradient-to-br from-slate-800 to-blue-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden border border-slate-700">
                        <Bike className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 rotate-12" fill="white" />
                        <div className="relative z-10">
@@ -1168,13 +1278,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           );
       })()}
 
-      <button onClick={() => { setEditingDeliveryId(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
+      <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
-      {/* 💡 4개(정훈/현아 x 배민/쿠팡) 동시 기록 및 통합 수정 폼 */}
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[90] p-4 py-8 overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
-            <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryId ? '배달 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
             <form onSubmit={handleDeliverySubmit} className="space-y-4">
               <div className="flex gap-3 pb-4 border-b border-gray-100 mb-2 w-full">
                 <div className="w-[100px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none" /></div>
@@ -1197,7 +1306,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
               <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
-                {editingDeliveryId ? '수정 완료 🚀' : '동시 저장 완료 🚀'}
+                {editingDeliveryShift ? '수정 완료 🚀' : '동시 저장 완료 🚀'}
               </button>
             </form>
           </div>
