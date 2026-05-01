@@ -533,7 +533,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -602,29 +602,36 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
       {ledgerSubTab === 'daily' && (
         <div className="space-y-3 animate-in slide-in-from-left duration-300">
-          {ledgerDates.map(date => (
-            <div key={date} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80">
-               <div className="text-xs font-bold text-gray-400 mb-2.5 ml-1">{date}</div>
-               <div className="space-y-2.5">
-                {(groupedLedger[date]||[]).map(t => (
-                  <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:bg-pink-50/50 transition-colors">
-                    <div className="flex justify-between items-center p-3">
-                      <div className="flex items-center gap-3 overflow-hidden flex-1">
-                        <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
-                        <div className="truncate pr-2">
-                          <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
-                          <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
+          {ledgerDates.map(date => {
+             // 💡 가계부 상세내역 날짜에도 요일과 색상 적용
+             const dObj = new Date(date);
+             const dIndex = dObj.getDay();
+             const dName = ['일','월','화','수','목','금','토'][dIndex];
+             const dColor = dIndex === 0 ? 'text-red-500' : dIndex === 6 ? 'text-blue-500' : 'text-gray-400';
+             return (
+              <div key={date} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80">
+                 <div className={`text-xs font-bold mb-2.5 ml-1 ${dColor}`}>{date} ({dName})</div>
+                 <div className="space-y-2.5">
+                  {(groupedLedger[date]||[]).map(t => (
+                    <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:bg-pink-50/50 transition-colors">
+                      <div className="flex justify-between items-center p-3">
+                        <div className="flex items-center gap-3 overflow-hidden flex-1">
+                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+                          <div className="truncate pr-2">
+                            <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
+                            <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 pl-2">
+                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}원</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                        <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatMoney(t.amount)}원</span>
-                      </div>
                     </div>
-                  </div>
-                ))}
-               </div>
-            </div>
-          ))}
+                  ))}
+                 </div>
+              </div>
+             );
+          })}
         </div>
       )}
 
@@ -767,7 +774,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
-  // 💡 상세 뷰 및 대시보드를 위한 새로운 상태 추가
   const [selectedDeliveryDetail, setSelectedDeliveryDetail] = useState(null);
   const [selectedWeeklySummary, setSelectedWeeklySummary] = useState(null);
   const [selectedDailySummary, setSelectedDailySummary] = useState(null);
@@ -775,9 +781,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [editingDeliveryId, setEditingDeliveryId] = useState(null);
   const [deliveryFormData, setDeliveryFormData] = useState({ 
-    date: todayStr, earner: '정훈', platform: '배민', amount: '', count: '', 
+    date: todayStr, startTime: '', endTime: '', 
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
-    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' 
+    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
   });
 
   const filteredDailyDeliveries = useMemo(() => {
@@ -796,7 +802,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
   const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
 
-  // 💡 paydayGroups와 pendingByPayday에 items 배열을 추가하여 요약 계산에 사용합니다.
   const paydayGroups = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
@@ -834,33 +839,67 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
+
+    const adds = [];
+    const createAdd = (amountStr, countStr, earner, platform) => {
+      const amt = parseInt(String(amountStr||0).replace(/,/g, ''), 10);
+      if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime });
+    };
+    createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
+    createAdd(deliveryFormData.amountJunghoonCoupang, deliveryFormData.countJunghoonCoupang, '정훈', '쿠팡');
+    createAdd(deliveryFormData.amountHyunaBaemin, deliveryFormData.countHyunaBaemin, '현아', '배민');
+    createAdd(deliveryFormData.amountHyunaCoupang, deliveryFormData.countHyunaCoupang, '현아', '쿠팡');
+    
+    if (adds.length === 0) return;
+
     if (editingDeliveryId) {
-      if (!deliveryFormData.amount) return;
-      const newDel = { date: deliveryFormData.date, earner: deliveryFormData.earner, platform: deliveryFormData.platform, amount: parseInt(String(deliveryFormData.amount).replace(/,/g, ''), 10), count: parseInt(deliveryFormData.count) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime };
-      if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', editingDeliveryId), newDel);
-      else setDailyDeliveries(prev => (prev||[]).map(item => item.id === editingDeliveryId ? {...newDel, id: item.id} : item));
+      if (isFirebaseEnabled) {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', editingDeliveryId));
+        for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+      } else {
+        setDailyDeliveries(prev => {
+           const filtered = (prev||[]).filter(item => item.id !== editingDeliveryId);
+           const newItems = adds.map(a => ({...a, id: Date.now().toString() + Math.random()}));
+           return [...newItems, ...filtered];
+        });
+      }
     } else {
-      const adds = [];
-      const createAdd = (amountStr, countStr, earner, platform) => {
-        const amt = parseInt(String(amountStr||0).replace(/,/g, ''), 10);
-        if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime });
-      };
-      createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
-      createAdd(deliveryFormData.amountJunghoonCoupang, deliveryFormData.countJunghoonCoupang, '정훈', '쿠팡');
-      createAdd(deliveryFormData.amountHyunaBaemin, deliveryFormData.countHyunaBaemin, '현아', '배민');
-      createAdd(deliveryFormData.amountHyunaCoupang, deliveryFormData.countHyunaCoupang, '현아', '쿠팡');
-      
-      if (adds.length === 0) return;
-      if (isFirebaseEnabled) { for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel); } 
-      else setDailyDeliveries([...adds.map(a => ({...a, id: Date.now().toString() + Math.random()})), ...(dailyDeliveries||[])]);
+      if (isFirebaseEnabled) {
+        for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+      } else {
+        setDailyDeliveries(prev => [...adds.map(a => ({...a, id: Date.now().toString() + Math.random()})), ...(prev||[])]);
+      }
     }
-    setIsDeliveryModalOpen(false); setEditingDeliveryId(null);
+    
+    setIsDeliveryModalOpen(false); 
+    setEditingDeliveryId(null);
+  };
+
+  const openEditDeliveryForm = (d) => {
+    const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
+    const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
+
+    setDeliveryFormData({
+      date: d.date,
+      startTime: d.startTime || '',
+      endTime: d.endTime || '',
+      amountHyunaBaemin: '', countHyunaBaemin: '',
+      amountHyunaCoupang: '', countHyunaCoupang: '',
+      amountJunghoonBaemin: '', countJunghoonBaemin: '',
+      amountJunghoonCoupang: '', countJunghoonCoupang: '',
+      [`amount${earnerEng}${platformEng}`]: String(d.amount || ''),
+      [`count${earnerEng}${platformEng}`]: String(d.count || ''),
+    });
+    setEditingDeliveryId(d.id);
+    setSelectedDeliveryDetail(null);
+    setIsDeliveryModalOpen(true);
   };
 
   const deleteDailyDelivery = async (id) => {
     if(!window.confirm('기록을 삭제하시겠습니까?')) return;
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', id));
     else setDailyDeliveries((dailyDeliveries||[]).filter(d => d.id !== id));
+    setSelectedDeliveryDetail(null);
   };
 
   return (
@@ -874,13 +913,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           </div>
         </div>
         <button onClick={() => { 
-          // 💡 타이머 종료 시 시작/종료 시간이 폼에 자동으로 채워지도록 수정되었습니다.
           if(timerActive) {
             const end = new Date();
             const startObj = new Date(trackingStartTime);
             setDeliveryFormData({
               date: getKSTDateStr(),
-              earner: '정훈', platform: '배민', amount: '', count: '',
               amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '',
               amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '',
               startTime: formatTimeStr(startObj),
@@ -904,7 +941,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           upcomingPaydays.slice(0,2).map((pd, idx) => {
             const group = pendingByPayday[pd];
             return (
-              // 💡 클릭 시 해당 주차(이번주/다음주) 상세 요약 팝업 오픈
               <div key={pd} onClick={() => setSelectedWeeklySummary(pd)} className={`bg-white rounded-2xl p-3.5 shadow-sm border ${idx === 0 ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200'} flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}>
                 <div className="flex justify-between items-start mb-2">
                   <span className={`text-[11px] font-black ${idx === 0 ? "text-blue-600" : "text-gray-500"}`}>{pd.slice(5).replace('-','/')}</span>
@@ -971,11 +1007,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
              <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
-                 if(!d) return <div key={`empty-${i}`} className="h-[60px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
+                 if(!d) return <div key={`empty-${i}`} className="h-[60px] bg-white rounded-xl border border-gray-100"></div>;
                  const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                  const dayData = dataByDate[dateStr] || { amt: 0 };
                  return (
-                   // 💡 달력의 날짜 클릭 시 해당 날짜의 일간 요약 팝업 오픈
                    <div key={`day-${i}`} onClick={() => { if(dayData.amt > 0) setSelectedDailySummary(dateStr); }} className={`h-[60px] border rounded-xl p-1 flex flex-col items-center justify-center ${dayData.amt>0?'border-blue-200 bg-blue-50/40 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-gray-100 bg-white'}`}>
                      <span className={`text-[11px] font-bold mb-1 ${(i%7)===0?'text-red-400':(i%7)===6?'text-blue-400':'text-gray-600'}`}>{d}</span>
                      {dayData.amt > 0 && <span className="text-[10px] font-black text-blue-600 w-full text-center truncate tracking-tighter">{formatCompactMoney(dayData.amt).replace('+','')}</span>}
@@ -990,7 +1025,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {deliverySubTab === 'weekly' && (
         <div className="space-y-3 animate-in slide-in-from-right duration-300 mt-1">
           {pastPaydays.map(pDate => (
-            // 💡 과거 주간 내역 클릭 시 주간 요약 팝업 오픈
             <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
               <div><div className="text-xs text-gray-400 font-bold mb-1.5">{pDate.slice(5).replace('-', '/')} 입금완료</div><div className="font-black text-gray-800 text-base">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</div></div>
               <div className="text-right"><div className="text-xl font-black text-blue-600">{formatMoney(paydayGroups[pDate].total)}원</div></div>
@@ -1003,11 +1037,20 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         <div className="space-y-3 animate-in slide-in-from-left duration-300 mt-1">
           {dailyDates.map(date => {
             const dayMetrics = calcDailyMetrics(groupedDaily[date]);
+            
+            // 💡 날짜별 요일과 색상 적용
+            const dateObj = new Date(date);
+            const dayIndex = dateObj.getDay();
+            const dayName = ['일','월','화','수','목','금','토'][dayIndex];
+            const dateColorClass = dayIndex === 0 ? 'text-red-500' : dayIndex === 6 ? 'text-blue-500' : 'text-gray-800';
+
             return (
               <div key={date} className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-slate-200">
                  <div className="flex justify-between items-start mb-4 border-b border-gray-100 pb-3">
                    <div className="overflow-hidden pr-2">
-                     <div className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-1.5 truncate"><CalendarCheck size={14} className="text-blue-500" />{date}</div>
+                     <div className={`text-sm font-black flex items-center gap-1.5 mb-1.5 truncate ${dateColorClass}`}>
+                        <CalendarCheck size={14} />{date} ({dayName})
+                     </div>
                      {dayMetrics.durationStr && <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1 truncate"><Timer size={12}/> {dayMetrics.durationStr} 근무</div>}
                    </div>
                    <div className="text-right flex-shrink-0">
@@ -1022,7 +1065,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   {(groupedDaily[date]||[]).map(d => {
                     const pDay = getPaydayStr(d.date);
                     return (
-                      // 💡 개별 내역 터치 시 영수증 뷰 오픈 (관리 모드 상관없이 언제든 수정/삭제 가능)
                       <div key={d.id} onClick={() => setSelectedDeliveryDetail(d)} className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50 cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-xs shrink-0 shadow-sm ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div>
@@ -1033,6 +1075,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="font-black text-base text-gray-900">{formatMoney(d.amount)}원</span>
+                          {isManageMode && <button onClick={(e) => { e.stopPropagation(); openEditDeliveryForm(d); }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl border ml-1 shadow-sm"><Edit3 size={14}/></button>}
                         </div>
                       </div>
                     );
@@ -1070,13 +1113,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   </div>
                </div>
                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
-                  <button onClick={() => {
-                      setDeliveryFormData({...selectedDeliveryDetail, amount: String(selectedDeliveryDetail.amount||''), count: String(selectedDeliveryDetail.count||''), startTime: selectedDeliveryDetail.startTime||'', endTime: selectedDeliveryDetail.endTime||''});
-                      setEditingDeliveryId(selectedDeliveryDetail.id);
-                      setSelectedDeliveryDetail(null);
-                      setIsDeliveryModalOpen(true);
-                  }} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 수정</button>
-                  <button onClick={() => { deleteDailyDelivery(selectedDeliveryDetail.id); setSelectedDeliveryDetail(null); }} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 삭제</button>
+                  <button onClick={() => openEditDeliveryForm(selectedDeliveryDetail)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 수정</button>
+                  <button onClick={() => deleteDailyDelivery(selectedDeliveryDetail.id)} className="py-3.5 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 삭제</button>
                </div>
             </div>
          </div>
@@ -1091,58 +1129,38 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           const metrics = calcDailyMetrics(items);
 
           return (
-             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden">
-                <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[85vh]">
-                   <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-                   <div className="flex justify-between items-center mb-6 shrink-0">
+             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-5">
+                <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col relative overflow-hidden">
+                   <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
                       <h2 className="text-xl font-black text-gray-800 flex items-center gap-2"><Target className="text-blue-500" size={24}/> {title}</h2>
-                      <button onClick={() => {setSelectedWeeklySummary(null); setSelectedDailySummary(null);}} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+                      <button onClick={() => {setSelectedWeeklySummary(null); setSelectedDailySummary(null);}} className="bg-gray-100 text-gray-500 p-2 rounded-full active:scale-95"><X size={20}/></button>
                    </div>
 
-                   <div className="overflow-y-auto no-scrollbar pb-4 flex-1">
-                       <div className="bg-gradient-to-br from-slate-800 to-blue-900 rounded-3xl p-6 text-white shadow-xl mb-6 relative overflow-hidden border border-slate-700 shrink-0">
-                           <Bike className="absolute -right-4 -bottom-4 w-28 h-28 opacity-10 rotate-12" fill="white" />
-                           <div className="relative z-10">
-                               <div className="text-blue-200 text-xs font-bold mb-1">총 정산 금액</div>
-                               <div className="text-4xl font-black tracking-tighter mb-5">{formatMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
-                               
-                               <div className="grid grid-cols-2 gap-4 gap-y-5 border-t border-white/10 pt-4">
-                                  <div>
-                                     <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
-                                     <div className="text-lg font-black">{formatMoney(metrics.totalCnt)}건</div>
-                                  </div>
-                                  <div>
-                                     <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">근무 시간</div>
-                                     <div className="text-lg font-black">{metrics.durationStr || '-'}</div>
-                                  </div>
-                                  <div>
-                                     <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
-                                     <div className="text-lg font-black">{formatMoney(metrics.perDelivery)}원</div>
-                                  </div>
-                                  <div>
-                                     <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
-                                     <div className="text-lg font-black">{formatMoney(metrics.hourlyRate)}원</div>
-                                  </div>
-                               </div>
-                           </div>
-                       </div>
-                       
-                       <div className="space-y-2">
-                          <div className="text-xs font-black text-gray-500 mb-2 px-1">포함된 개별 내역 ({items.length}건)</div>
-                          {items.length === 0 && <div className="text-center py-6 text-gray-400 font-bold text-sm bg-gray-50 rounded-2xl border border-dashed border-gray-200">내역이 없습니다.</div>}
-                          {items.map(d => (
-                              // 💡 요약 뷰 안에서도 내역을 누르면 상세 영수증 팝업으로 이동합니다.
-                              <div key={d.id} onClick={() => { setSelectedWeeklySummary(null); setSelectedDailySummary(null); setSelectedDeliveryDetail(d); }} className="flex justify-between items-center bg-gray-50 p-3.5 rounded-2xl hover:bg-blue-50 transition-colors border border-gray-200 shadow-sm cursor-pointer active:scale-95">
-                                  <div className="flex items-center gap-3">
-                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-[11px] shrink-0 shadow-sm ${d.platform === '배민' ? 'bg-[#2ac1bc]' : d.platform === '쿠팡' ? 'bg-[#111111]' : 'bg-gray-400'}`}>{d.platform}</div>
-                                     <div>
-                                        <div className="font-black text-sm text-gray-800">{d.earner} <span className="text-gray-400 text-[10px] font-bold">| {d.count}건</span></div>
-                                        <div className="text-[10px] text-gray-500 font-bold mt-0.5">{d.date.slice(5).replace('-','/')} {d.startTime && `(${d.startTime}~${d.endTime})`}</div>
-                                     </div>
-                                  </div>
-                                  <span className="font-black text-base text-blue-600">{formatMoney(d.amount)}원</span>
+                   {/* 💡 하단 리스트를 뺀 오직 대시보드 카드만 남긴 형태 */}
+                   <div className="bg-gradient-to-br from-slate-800 to-blue-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden border border-slate-700">
+                       <Bike className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 rotate-12" fill="white" />
+                       <div className="relative z-10">
+                           <div className="text-blue-200 text-xs font-bold mb-1">총 정산 금액</div>
+                           <div className="text-4xl font-black tracking-tighter mb-6">{formatMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
+                           
+                           <div className="grid grid-cols-2 gap-4 gap-y-6 border-t border-white/10 pt-5">
+                              <div>
+                                 <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
+                                 <div className="text-xl font-black">{formatMoney(metrics.totalCnt)}건</div>
                               </div>
-                          ))}
+                              <div>
+                                 <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">근무 시간</div>
+                                 <div className="text-xl font-black">{metrics.durationStr || '-'}</div>
+                              </div>
+                              <div>
+                                 <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
+                                 <div className="text-xl font-black">{formatMoney(metrics.perDelivery)}원</div>
+                              </div>
+                              <div>
+                                 <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
+                                 <div className="text-xl font-black">{formatMoney(metrics.hourlyRate)}원</div>
+                              </div>
+                           </div>
                        </div>
                    </div>
                 </div>
@@ -1150,50 +1168,37 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           );
       })()}
 
-      <button onClick={() => { setEditingDeliveryId(null); setDeliveryFormData({ date: todayStr, earner: '정훈', platform: '배민', amount: '', count: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
+      <button onClick={() => { setEditingDeliveryId(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
-      {/* 배달 모달 */}
+      {/* 💡 4개(정훈/현아 x 배민/쿠팡) 동시 기록 및 통합 수정 폼 */}
       {isDeliveryModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[60] p-4 py-8 overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[90] p-4 py-8 overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
-            <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryId ? '배달 단건 수정' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryId ? '배달 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
             <form onSubmit={handleDeliverySubmit} className="space-y-4">
               <div className="flex gap-3 pb-4 border-b border-gray-100 mb-2 w-full">
                 <div className="w-[100px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none" /></div>
                 <div className="w-[85px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작</label><input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1 h-[40px] font-bold text-xs outline-none" /></div>
                 <div className="w-[85px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료</label><input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1 h-[40px] font-bold text-xs outline-none" /></div>
               </div>
-              {editingDeliveryId ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">수익자</label><div className="flex bg-gray-50 border p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'정훈'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black ${deliveryFormData.earner==='정훈'?'bg-white text-blue-600 shadow-sm':'text-gray-500'}`}>정훈</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, earner:'현아'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black ${deliveryFormData.earner==='현아'?'bg-white text-blue-600 shadow-sm':'text-gray-500'}`}>현아</button></div></div>
-                    <div><label className="text-[10px] font-black text-gray-400 ml-1 block">플랫폼</label><div className="flex bg-gray-50 border p-1 rounded-xl shadow-inner"><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'배민'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black ${deliveryFormData.platform==='배민'?'bg-[#2ac1bc] text-white shadow-sm':'text-gray-500'}`}>배민</button><button type="button" onClick={() => setDeliveryFormData({...deliveryFormData, platform:'쿠팡'})} className={`flex-1 h-[40px] rounded-lg text-sm font-black ${deliveryFormData.platform==='쿠팡'?'bg-[#111111] text-white shadow-sm':'text-gray-500'}`}>쿠팡</button></div></div>
-                  </div>
-                  <div className="flex gap-4 items-end mt-4 mb-2">
-                    <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">수익금</label><div className="relative"><input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent" autoFocus /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span></div></div>
-                    <div className="w-24"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">건수</label><div className="relative"><input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border rounded-xl px-3 h-[44px] font-black text-lg outline-none" /><span className="absolute right-3 top-2.5 text-sm font-black text-gray-400">건</span></div></div>
-                  </div>
-                  <button type="submit" disabled={!deliveryFormData.amount} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl">수정 완료</button>
-                </>
-              ) : (
-                <>
-                  <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
-                    <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
-                    <div className="space-y-2">
-                      <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200" /><input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200" /></div>
-                      <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200" /><input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200" /></div>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
-                    <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
-                    <div className="space-y-2">
-                      <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200" /><input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200" /></div>
-                      <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200" /><input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200" /></div>
-                    </div>
-                  </div>
-                  <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">동시 저장 완료 🚀</button>
-                </>
-              )}
+
+              <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
+                <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
+                <div className="space-y-2">
+                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" /></div>
+                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" /></div>
+                </div>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
+                <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
+                <div className="space-y-2">
+                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span><input type="text" value={deliveryFormData.amountHyunaBaemin ? formatMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" /></div>
+                  <div className="flex gap-3 items-center"><span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span><input type="text" value={deliveryFormData.amountHyunaCoupang ? formatMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" /><input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-[90px] text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" /></div>
+                </div>
+              </div>
+              <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
+                {editingDeliveryId ? '수정 완료 🚀' : '동시 저장 완료 🚀'}
+              </button>
             </form>
           </div>
         </div>
