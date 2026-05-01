@@ -102,7 +102,7 @@ function AppContent() {
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
   const [events, setEvents] = useState([]); 
   const [messages, setMessages] = useState([]); 
-  const [memos, setMemos] = useState([]); // 가계부 메모장 데이터
+  const [memos, setMemos] = useState([]); 
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {} });
 
@@ -175,6 +175,7 @@ function AppContent() {
   const memoTextareaRef = useRef(null);
 
   const [isDutyBatchModalOpen, setIsDutyBatchModalOpen] = useState(false);
+  const [isDutyBatchEditMode, setIsDutyBatchEditMode] = useState(false);
   const [dutyBatchMode, setDutyBatchMode] = useState('touch'); 
   const [dutyBatchYear, setDutyBatchYear] = useState(selectedYear);
   const [dutyBatchMonth, setDutyBatchMonth] = useState(selectedMonth);
@@ -693,6 +694,16 @@ function AppContent() {
     }
     setIsMemoEditorOpen(false);
   };
+
+  // 💡 메모 삭제 기능 (확인 팝업 포함)
+  const deleteMemo = async () => {
+    if (!currentMemoId || !user) return;
+    if (window.confirm("이 메모를 정말 삭제하시겠습니까?")) {
+      if (isFirebaseEnabled) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memos', currentMemoId));
+      else setMemos(memos.filter(m => m.id !== currentMemoId));
+      closeMemoEditor();
+    }
+  };
   
   const clearFilters = (e) => { e.preventDefault(); setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({ start: '', end: '' }); };
 
@@ -879,11 +890,12 @@ function AppContent() {
     }
 
     if (changed) {
-      const actionText = newDuty === 'DELETE' ? '삭제' : `${newDuty}(으)로 변경`;
+      const actionText = newDuty === 'DELETE' ? '삭제됨' : newDuty;
+      const msgText = `🔔 [시스템변경알림]\n${currentUser}님의 듀티변경\n- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ? existingEvent.title : 'OFF'} ➔ ${actionText}`;
+      
       const curTime = new Date();
       const timeStr = `${curTime.getHours()}:${String(curTime.getMinutes()).padStart(2,'0')}`;
-      const msgText = `🔔 [스케줄 변경 알림]\n${currentUser}님이 듀티를 변경했습니다.\n- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ? existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}\n⏱ 수정 시간: ${todayStr.slice(5).replace('-','/')} ${timeStr}`;
-      const newMsg = { author: '시스템', text: msgText, createdAt: todayStr, isChecked: false };
+      const newMsg = { author: '시스템', text: msgText, createdAt: `${todayStr} ${timeStr}`, isChecked: false };
       
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
       else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
@@ -980,9 +992,9 @@ function AppContent() {
         const oldVal = oldDutyMap[date];
         const newVal = batchDuties[date];
         if (oldVal !== newVal) {
-            if (!oldVal && newVal) changes.push(`- ${date.slice(5).replace('-','/')}: ${newVal} 등록`);
-            else if (oldVal && !newVal) changes.push(`- ${date.slice(5).replace('-','/')}: 삭제됨`);
-            else changes.push(`- ${date.slice(5).replace('-','/')}: ${oldVal} ➔ ${newVal}`);
+            if (!oldVal && newVal) changes.push(`- ${parseInt(date.slice(8,10))}일: ${newVal} 등록`);
+            else if (oldVal && !newVal) changes.push(`- ${parseInt(date.slice(8,10))}일: 삭제됨`);
+            else changes.push(`- ${parseInt(date.slice(8,10))}일: ${oldVal} ➔ ${newVal}`);
         }
     });
     
@@ -998,10 +1010,20 @@ function AppContent() {
       if (changes.length > 0) {
          const curTime = new Date();
          const timeStr = `${curTime.getHours()}:${String(curTime.getMinutes()).padStart(2,'0')}`;
-         const msgText = `🔔 [스케줄 변경 알림]\n${currentUser}님이 듀티를 업데이트했습니다.\n${changes.join('\n')}\n⏱ 수정 시간: ${todayStr.slice(5).replace('-','/')} ${timeStr}`;
-         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
-            author: '시스템', text: msgText, createdAt: todayStr, isChecked: false
-         });
+         
+         if (oldDuties.length === 0 && changes.length > 5) {
+             // 최초 등록이면서 변경사항이 많을 때 (도배 방지)
+             const msgText = `🔔 [시스템 알림]\n${currentUser}님이 ${dutyBatchMonth}월 근무표를 최초 등록했습니다! 🗓️`;
+             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
+                author: '시스템', text: msgText, createdAt: `${todayStr} ${timeStr}`, isChecked: false
+             });
+         } else {
+             // 일반적인 수정 시 상세 내역 표시
+             const msgText = `🔔 [시스템변경알림]\n${currentUser}님의 듀티변경\n${changes.join('\n')}`;
+             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
+                author: '시스템', text: msgText, createdAt: `${todayStr} ${timeStr}`, isChecked: false
+             });
+         }
       }
     } else {
       const kept = events.filter(e => !(e.type === '듀티' && e.date && e.date.startsWith(monthPrefix)));
@@ -1391,8 +1413,8 @@ function AppContent() {
                        return (
                          <div key={`day-${i}`} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white'}`}>
                            <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
-                           {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter overflow-hidden">+{formatCompactMoney(dayData.inc)}</span>}
-                           {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter overflow-hidden">-{formatCompactMoney(dayData.exp)}</span>}
+                           {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center tracking-tighter overflow-hidden">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
+                           {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center tracking-tighter overflow-hidden">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
                          </div>
                        )
                      })}
@@ -1937,6 +1959,7 @@ function AppContent() {
                             </div>
                             <div className="text-sm font-black text-emerald-900 leading-tight break-all whitespace-pre-wrap">{m.text}</div>
                          </div>
+                         {/* 시스템 메시지는 보관소에 안 가고 바로 삭제(확인)됨 */}
                          <button onClick={() => handleDeleteSystemMessage(m.id)} className="bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-[10px] font-black shrink-0 active:scale-90 transition-transform shadow-sm flex items-center gap-1"><CheckCircle2 size={12}/> 확인</button>
                       </div>
                     ) : (
@@ -2122,7 +2145,11 @@ function AppContent() {
            <div className="flex justify-between items-center p-4 pt-12 border-b border-gray-100 bg-white shadow-sm shrink-0">
               <button onClick={closeMemoEditor} className="text-gray-500 p-2"><ChevronLeftCircle size={28}/></button>
               <span className="font-black text-gray-800 text-lg">📝 노트 작성</span>
-              <button onClick={saveMemo} className="bg-pink-500 text-white px-5 py-2 rounded-full font-black text-sm shadow-sm active:scale-95 transition-transform border border-pink-600">저장</button>
+              <div className="flex items-center gap-1.5">
+                 <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`p-2 rounded-full transition-colors ${isCalcOpen ? 'bg-pink-100 text-pink-600' : 'bg-gray-100 text-gray-600'}`}><Calculator size={20}/></button>
+                 {currentMemoId && <button onClick={deleteMemo} className="text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"><Trash2 size={20}/></button>}
+                 <button onClick={saveMemo} className="bg-pink-500 text-white px-4 py-1.5 rounded-full font-black text-sm shadow-sm active:scale-95 transition-transform ml-1">저장</button>
+              </div>
            </div>
            
            <div className="flex-1 p-5 relative overflow-hidden flex flex-col bg-amber-50/20">
@@ -2135,9 +2162,9 @@ function AppContent() {
                  autoFocus
               />
               
-              {/* 플로팅 미니 계산기 */}
+              {/* 플로팅 미니 계산기 (상단 배치) */}
               {isCalcOpen && (
-                 <div className="absolute bottom-24 right-5 w-64 bg-white rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-gray-200 p-5 animate-in slide-in-from-bottom-5">
+                 <div className="absolute top-[80px] right-4 w-64 bg-white rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-gray-200 p-5 z-[90] animate-in slide-in-from-top-2">
                     <div className="bg-gray-100 rounded-xl p-3 mb-4 text-right overflow-hidden border border-gray-200 shadow-inner">
                        <div className="text-2xl font-black text-gray-800 truncate">{calcInput || '0'}</div>
                     </div>
@@ -2153,10 +2180,6 @@ function AppContent() {
                     </button>
                  </div>
               )}
-              
-              <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`absolute bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.2)] active:scale-90 transition-transform ${isCalcOpen ? 'bg-pink-500 text-white' : 'bg-gray-800 text-white border border-gray-700'}`}>
-                 {isCalcOpen ? <X size={24}/> : <Calculator size={24}/>}
-              </button>
            </div>
         </div>
       )}
@@ -2211,11 +2234,11 @@ function AppContent() {
               <div><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 block">금액</label><div className="relative"><input type="text" value={formData.amount ? formatMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none transition-colors bg-transparent text-gray-900`} /><span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span></div></div>
               
               <div className="flex gap-4 w-full">
-                <div className="w-[110px] flex-shrink-0">
+                <div className="w-[110px] shrink-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className={`w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800 tracking-tighter`} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label>
                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className={`w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm truncate outline-none border border-gray-200/60 focus:ring-2 ${formData.type === '수입' ? 'ring-blue-200' : 'ring-pink-200'} text-gray-800`}>{getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}<option value="직접입력">+ 직접입력 (신규)</option></select>
                 </div>
@@ -2246,11 +2269,11 @@ function AppContent() {
             </div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="flex gap-4 w-full">
-                <div className="w-[110px] flex-shrink-0">
+                <div className="w-[110px] shrink-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800 tracking-tighter" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
                   <select value={eventFormData.type} onChange={(e) => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base truncate outline-none border border-gray-200/60 focus:ring-2 ring-emerald-200 text-gray-800">
                     <option value="가족일정">가족일정</option>
@@ -2494,20 +2517,18 @@ function AppContent() {
               </div>
 
               {/* 💡 배달 기록 2줄 분리 (가로 스크롤/겹침 완전 차단) */}
-              <div className="space-y-3 pb-4 border-b border-gray-100 mb-2 w-full">
-                <div>
+              <div className="flex gap-3 pb-3 border-b border-gray-100 mb-2 w-full">
+                <div className="w-[110px] shrink-0">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
                 </div>
-                <div className="flex gap-4 w-full">
-                  <div className="flex-1">
-                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작 시간</label>
-                    <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[48px] font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료 시간</label>
-                    <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-2 h-[48px] font-bold text-sm outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작 시간</label>
+                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료 시간</label>
+                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none focus:ring-2 ring-blue-200 text-gray-800 tracking-tighter" />
                 </div>
               </div>
 
@@ -2524,7 +2545,7 @@ function AppContent() {
                         <input type="text" value={deliveryFormData.amount ? formatMoney(deliveryFormData.amount) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-4xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-blue-500 bg-transparent text-gray-900" autoFocus /><span className="absolute right-2 bottom-4 text-xl font-black text-gray-300">원</span>
                       </div>
                     </div>
-                    <div className="w-[100px]">
+                    <div className="w-24">
                       <label className="text-[10px] font-black text-gray-400 ml-1 block uppercase mb-1">건수</label>
                       <div className="relative">
                         <input type="number" value={deliveryFormData.count} onChange={e=>setDeliveryFormData({...deliveryFormData, count:e.target.value})} placeholder="0" className="w-full bg-gray-50 border border-gray-200/60 rounded-xl px-3 h-[48px] font-black text-lg outline-none focus:ring-2 ring-blue-200" />
