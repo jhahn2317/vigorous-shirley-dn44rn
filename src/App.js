@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -222,10 +222,73 @@ const AutoScaleValue = ({ value, isNet = false }) => {
 };
 
 // ==========================================
-// 4. SETTINGS COMPONENT
+// 4. LOCK SCREEN COMPONENT (새로 추가됨)
+// ==========================================
+function LockScreenView({ correctPin, onUnlock }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState(false);
+
+  const handlePress = (num) => {
+    if (pin.length < 4) {
+      const newPin = pin + num;
+      setPin(newPin);
+      if (newPin.length === 4) {
+        if (newPin === correctPin) {
+          onUnlock();
+        } else {
+          setError(true);
+          setTimeout(() => { setPin(''); setError(false); }, 500);
+        }
+      }
+    }
+  };
+
+  const handleDelete = () => setPin(prev => prev.slice(0, -1));
+
+  return (
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-slate-800 z-[99999] flex flex-col items-center justify-center animate-in fade-in duration-300">
+      <div className="mb-12 flex flex-col items-center">
+        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4 shadow-lg border border-white/20">
+          <Lock className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-black text-white tracking-tight">비밀번호를 입력하세요</h2>
+        <p className="text-gray-400 text-sm mt-2 font-bold">Hope Fam 플래너 보호 중</p>
+      </div>
+
+      <div className={`flex gap-4 mb-16 ${error ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/20'}`} />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-10 max-w-sm w-full">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+          <button key={num} onClick={() => handlePress(num.toString())} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">
+            {num}
+          </button>
+        ))}
+        <div /> {/* 빈 칸 */}
+        <button onClick={() => handlePress('0')} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">
+          0
+        </button>
+        <button onClick={handleDelete} className="w-16 h-16 rounded-full text-white/70 flex items-center justify-center active:bg-white/10 active:scale-95 transition-all mx-auto">
+          <Delete className="w-8 h-8" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 4-1. SETTINGS COMPONENT
 // ==========================================
 function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages }) {
   const [settingsTab, setSettingsTab] = useState('common');
+
+  // 💡 앱 잠금 설정 상태
+  const [lockEnabled, setLockEnabled] = useState(() => localStorage.getItem('hyunaLockEnabled') === 'true');
+  const [lockPin, setLockPin] = useState(() => localStorage.getItem('hyunaLockPin') || '0000');
+  const [lockTimeout, setLockTimeout] = useState(() => localStorage.getItem('hyunaLockTimeout') || '0');
 
   const moveTab = (index, direction) => {
     const newOrder = [...tabOrder];
@@ -241,6 +304,22 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
     const newSettings = { ...userSettings, [field]: value };
     if(isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), newSettings);
     else setUserSettings(newSettings);
+  };
+
+  // 💡 앱 잠금 설정 업데이트 함수
+  const toggleLock = (e) => {
+    const isChecked = e.target.checked;
+    setLockEnabled(isChecked);
+    localStorage.setItem('hyunaLockEnabled', isChecked ? 'true' : 'false');
+  };
+  const changeLockPin = (e) => {
+    const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+    setLockPin(val);
+    if(val.length === 4) localStorage.setItem('hyunaLockPin', val);
+  };
+  const changeLockTimeout = (e) => {
+    setLockTimeout(e.target.value);
+    localStorage.setItem('hyunaLockTimeout', e.target.value);
   };
 
   const getSortedCategories = (type) => [...(categories[type] || [])].sort((a, b) => (a||'').localeCompare(b||''));
@@ -278,6 +357,37 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
               <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
             </div>
           </div>
+
+          {/* 💡 앱 잠금 설정 섹션 추가 */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
+            <div className="flex justify-between items-center mb-3">
+               <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Shield size={16} className="text-slate-600"/> 보안 / 앱 잠금</h3>
+               <label className="relative inline-flex items-center cursor-pointer">
+                 <input type="checkbox" className="sr-only peer" checked={lockEnabled} onChange={toggleLock} />
+                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-700"></div>
+               </label>
+            </div>
+            
+            {lockEnabled && (
+              <div className="space-y-3 mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2">
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 block mb-1">앱 비밀번호 (4자리 숫자)</label>
+                    <input type="password" pattern="[0-9]*" inputMode="numeric" value={lockPin} onChange={changeLockPin} placeholder="0000" className="w-full bg-gray-50 border rounded-xl px-4 py-2 font-black text-lg outline-none focus:border-slate-400 tracking-widest text-slate-700" />
+                 </div>
+                 <div>
+                    <label className="text-[10px] font-black text-gray-400 block mb-1">자동 잠금 유예시간</label>
+                    <select value={lockTimeout} onChange={changeLockTimeout} className="w-full bg-gray-50 border rounded-xl px-3 h-[40px] font-bold text-sm outline-none text-slate-700">
+                       <option value="0">즉시 잠금 (앱을 나갈 때마다)</option>
+                       <option value="1">1분 후 잠금</option>
+                       <option value="5">5분 후 잠금</option>
+                       <option value="10">10분 후 잠금</option>
+                    </select>
+                    <p className="text-[9px] text-gray-400 font-bold mt-1.5 leading-relaxed">이 설정은 현재 사용 중인 스마트폰 기기에만 저장됩니다. 유예시간 내에 돌아오면 비밀번호를 생략합니다.</p>
+                 </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-left-2">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
             <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-pink-50/50 border-pink-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
@@ -1715,7 +1825,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setEvents((events||[]).filter(e => e.id !== id));
   };
 
-  // 💡 수정됨: 메시지 전송 시 시간 정보(time)를 정확히 생성하여 저장
   const handleSendMessage = async () => {
     if(!messageFormData.text.trim() || !user) return;
     
@@ -1753,7 +1862,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
   };
 
-  // 💡 수정됨: 시스템 로그 생성 시 시간 정보(time) 포맷 개선
   const handleQuickDutyUpdate = async (dateStr, newDuty) => {
     if (!user) return;
     const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
@@ -1850,7 +1958,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                   <div key={m.id} className="bg-emerald-50 p-3.5 rounded-2xl shadow-sm border border-emerald-100/50">
                     <div className="flex justify-between items-start mb-2">
                        <div className="flex flex-col gap-1"><span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black w-max">시스템 알림</span><span className="text-[11px] font-black text-emerald-900">{m.title || '알림'}</span></div>
-                       {/* 💡 수정됨: 시스템 알림 시간 노출 추가 */}
                        <span className="text-[10px] font-bold text-emerald-600/70 bg-emerald-100/50 px-2 py-1 rounded-lg border">
                           {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
                        </span>
@@ -1864,7 +1971,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <div key={m.id} className={`bg-white p-4 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
                    <div className="flex justify-between items-start mb-1.5">
                       <div>
-                         {/* 💡 수정됨: 일반 채팅 시간 노출 추가 */}
                          <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">
                             <span className={`px-1.5 py-0.5 rounded text-white ${m.author === '현아' ? 'bg-pink-400' : 'bg-blue-400'}`}>{m.author}</span>
                             {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
@@ -1965,7 +2071,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                   {archivedMessages.map(m => (
                      <div key={m.id} className="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-start mb-1.5">
-                           {/* 💡 수정됨: 과거 보관소 시간 노출 추가 */}
                            <div className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
                               <span className="px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 shadow-inner">{m.author}</span>
                               {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
@@ -2145,6 +2250,55 @@ function AppContent() {
   const [trackingStartTime, setTrackingStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  // 💡 앱 잠금 로직 관련 상태 추가
+  const [isAppLocked, setIsAppLocked] = useState(false);
+
+  useEffect(() => {
+    // 💡 앱 잠금 검사 로직
+    const checkLockStatus = () => {
+      const lockEnabled = localStorage.getItem('hyunaLockEnabled') === 'true';
+      if (!lockEnabled) {
+         setIsAppLocked(false);
+         return;
+      }
+
+      const lockTimeout = parseInt(localStorage.getItem('hyunaLockTimeout') || '0', 10);
+      const lastActiveStr = localStorage.getItem('hyunaLastActive');
+      
+      // 즉시 잠금이거나, 최초 실행(lastActive 없음)인 경우
+      if (lockTimeout === 0 || !lastActiveStr) {
+         setIsAppLocked(true);
+      } else {
+         const lastActive = parseInt(lastActiveStr, 10);
+         const now = Date.now();
+         const expiredTime = lastActive + (lockTimeout * 60 * 1000);
+         if (now > expiredTime) {
+            setIsAppLocked(true);
+         } else {
+            setIsAppLocked(false);
+         }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        localStorage.setItem('hyunaLastActive', Date.now().toString());
+      } else {
+        checkLockStatus();
+      }
+    };
+
+    checkLockStatus();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  const handleUnlock = () => {
+     setIsAppLocked(false);
+     localStorage.setItem('hyunaLastActive', Date.now().toString());
+  };
+
+
   useEffect(() => {
     if (!isFirebaseEnabled) return;
     const initAuth = async () => {
@@ -2189,7 +2343,6 @@ function AppContent() {
     if (isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), { timerActive: false, trackingStartTime: null });
   };
 
-  // 💡 추가됨: 메시지 및 로그 전체 삭제 로직
   const handleClearAllMessages = async () => {
     if(!window.confirm("⚠️ 경고 ⚠️\n\n정말 모든 채팅과 시스템 로그를 영구적으로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) return;
     if (isFirebaseEnabled && user) {
@@ -2206,82 +2359,92 @@ function AppContent() {
   const appBgColor = activeTab === 'ledger' ? 'bg-pink-50/30' : activeTab === 'delivery' ? 'bg-slate-50' : 'bg-gray-50/80';
 
   return (
-    <div className={`min-h-screen font-sans text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor}`}>
+    <>
+      {/* 💡 잠금 화면 렌더링 */}
+      {isAppLocked && <LockScreenView correctPin={localStorage.getItem('hyunaLockPin') || '0000'} onUnlock={handleUnlock} />}
       
-      {/* 💡 추가됨: 가로 모드 시 화면 강제 회전 안내 오버레이 (CSS와 연동) */}
-      <div className="portrait-lock hidden fixed inset-0 z-[99999] bg-gray-900 flex-col items-center justify-center text-white p-6 text-center">
-         <Smartphone className="w-20 h-20 mb-6 text-pink-400 animate-pulse rotate-90" />
-         <h2 className="text-2xl font-black mb-3 text-pink-400 tracking-tighter">세로 모드로 돌려주세요! 📱</h2>
-         <p className="text-gray-300 font-bold text-sm leading-relaxed">
-           이 앱은 세로 화면에 최적화되어 있습니다.<br/>
-           가로 모드에서는 정상적인 사용이 어려우니<br/>
-           기기를 세로로 세워서 사용해 주세요.
-         </p>
-      </div>
-
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl pb-2 shadow-sm border-b border-gray-200/60">
-        <header className="pt-10 pb-4 px-6 flex justify-between items-center">
-          <div>
-            <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : activeTab === 'calendar' ? 'text-emerald-500' : 'text-indigo-500'}`}>
-               {activeTab === 'ledger' ? '🌸 Lovely Planner' : activeTab === 'delivery' ? '🏍️ Delivery Pro' : activeTab === 'calendar' ? '🌿 Family Calendar' : 'Family Planner'}
-            </span>
-            <h1 className="text-xl font-black tracking-tight">현아에셋 PRO</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center bg-white rounded-full px-3 py-1.5 text-sm font-black text-gray-700 shadow-sm border border-gray-200">
-              <button onClick={() => setSelectedYear(selectedYear - 1)} className="p-1 hover:bg-gray-100 rounded-full"><ChevronLeft size={16}/></button>
-              <span className="mx-2">{selectedYear}년</span>
-              <button onClick={() => setSelectedYear(selectedYear + 1)} className="p-1 hover:bg-gray-100 rounded-full"><ChevronRight size={16}/></button>
-            </div>
-            <button onClick={() => setIsManageMode(!isManageMode)} className={`p-2.5 rounded-full transition-all duration-300 shadow-sm border border-gray-200 ${isManageMode ? (activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500' : 'bg-indigo-600') + ' text-white shadow-md rotate-90' : 'bg-white text-gray-500'}`}><Settings size={20}/></button>
-          </div>
-        </header>
-
-        <div className="flex overflow-x-auto no-scrollbar gap-2 py-1 px-5 scroll-smooth">
-          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-            <button key={m} onClick={() => setSelectedMonth(m)} className={`flex-none px-5 py-2 rounded-[1.2rem] font-black text-sm transition-all shadow-sm ${selectedMonth === m ? (activeTab === 'ledger' ? 'bg-pink-500 text-white border-pink-500' : activeTab === 'delivery' ? 'bg-blue-600 text-white border-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-indigo-600 text-white border-indigo-600') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'} border`}>
-              {m}월
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} />}
-
-      <main className="px-5 max-w-md mx-auto pt-2">
-        {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
-        {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
-        {activeTab === 'loans' && <LoanView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
-        {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} />}
-      </main>
-
-      <nav className="fixed bottom-6 left-4 right-4 h-[72px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-200/50 flex justify-around items-center z-50 px-2">
-        {tabOrder.map((tabId) => {
-          const config = tabConfig[tabId];
-          const Icon = config.icon;
-          const isActive = activeTab === tabId;
-          return (
-            <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${config.colorClass} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
-              <Icon size={22}/>
-              <span className="text-[10px] font-black mt-1.5">{config.label}</span>
-            </button>
-          )
-        })}
-      </nav>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #csb-edit-btn, a[href*="codesandbox.io"] { display: none !important; }
+      <div className={`min-h-screen font-sans text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor} ${isAppLocked ? 'hidden' : ''}`}>
         
-        /* 💡 추가됨: 가로 모드일 때 화면 덮는 CSS 로직 (모바일 기기 한정) */
-        @media screen and (orientation: landscape) and (max-width: 900px) {
-           .portrait-lock { display: flex !important; }
-        }
-      `}} />
-    </div>
+        <div className="portrait-lock hidden fixed inset-0 z-[99999] bg-gray-900 flex-col items-center justify-center text-white p-6 text-center">
+          <Smartphone className="w-20 h-20 mb-6 text-pink-400 animate-pulse rotate-90" />
+          <h2 className="text-2xl font-black mb-3 text-pink-400 tracking-tighter">세로 모드로 돌려주세요! 📱</h2>
+          <p className="text-gray-300 font-bold text-sm leading-relaxed">
+            이 앱은 세로 화면에 최적화되어 있습니다.<br/>
+            가로 모드에서는 정상적인 사용이 어려우니<br/>
+            기기를 세로로 세워서 사용해 주세요.
+          </p>
+        </div>
+
+        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl pb-2 shadow-sm border-b border-gray-200/60">
+          <header className="pt-10 pb-4 px-6 flex justify-between items-center">
+            <div>
+              <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : activeTab === 'calendar' ? 'text-emerald-500' : 'text-indigo-500'}`}>
+                {activeTab === 'ledger' ? '🌸 Lovely Planner' : activeTab === 'delivery' ? '🏍️ Delivery Pro' : activeTab === 'calendar' ? '🌿 Family Calendar' : 'Family Planner'}
+              </span>
+              <h1 className="text-xl font-black tracking-tight">현아에셋 PRO</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-white rounded-full px-3 py-1.5 text-sm font-black text-gray-700 shadow-sm border border-gray-200">
+                <button onClick={() => setSelectedYear(selectedYear - 1)} className="p-1 hover:bg-gray-100 rounded-full"><ChevronLeft size={16}/></button>
+                <span className="mx-2">{selectedYear}년</span>
+                <button onClick={() => setSelectedYear(selectedYear + 1)} className="p-1 hover:bg-gray-100 rounded-full"><ChevronRight size={16}/></button>
+              </div>
+              <button onClick={() => setIsManageMode(!isManageMode)} className={`p-2.5 rounded-full transition-all duration-300 shadow-sm border border-gray-200 ${isManageMode ? (activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500' : 'bg-indigo-600') + ' text-white shadow-md rotate-90' : 'bg-white text-gray-500'}`}><Settings size={20}/></button>
+            </div>
+          </header>
+
+          <div className="flex overflow-x-auto no-scrollbar gap-2 py-1 px-5 scroll-smooth">
+            {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+              <button key={m} onClick={() => setSelectedMonth(m)} className={`flex-none px-5 py-2 rounded-[1.2rem] font-black text-sm transition-all shadow-sm ${selectedMonth === m ? (activeTab === 'ledger' ? 'bg-pink-500 text-white border-pink-500' : activeTab === 'delivery' ? 'bg-blue-600 text-white border-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-indigo-600 text-white border-indigo-600') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'} border`}>
+                {m}월
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} />}
+
+        <main className="px-5 max-w-md mx-auto pt-2">
+          {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'loans' && <LoanView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} />}
+        </main>
+
+        <nav className="fixed bottom-6 left-4 right-4 h-[72px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-200/50 flex justify-around items-center z-50 px-2">
+          {tabOrder.map((tabId) => {
+            const config = tabConfig[tabId];
+            const Icon = config.icon;
+            const isActive = activeTab === tabId;
+            return (
+              <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${config.colorClass} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
+                <Icon size={22}/>
+                <span className="text-[10px] font-black mt-1.5">{config.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        <style dangerouslySetInnerHTML={{__html: `
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+          body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+          .no-scrollbar::-webkit-scrollbar { display: none; }
+          .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+          #csb-edit-btn, a[href*="codesandbox.io"] { display: none !important; }
+          
+          @media screen and (orientation: landscape) and (max-width: 900px) {
+            .portrait-lock { display: flex !important; }
+          }
+          
+          /* 잠금 화면 애니메이션 */
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+          }
+        `}} />
+      </div>
+    </>
   );
 }
 
