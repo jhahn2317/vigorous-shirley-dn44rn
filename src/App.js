@@ -2560,32 +2560,22 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           </div>
          );
       })()}
-
-      {/* 듀티 일괄/연속 수정 모달 (풀화면 스와이프 미적용 유지) */}
+{/* 듀티 일괄/연속 수정 모달 (풀화면 스와이프 미적용 유지) */}
       {isDutyBatchModalOpen && (
          <div className="fixed inset-0 bg-white z-[80] flex flex-col animate-in slide-in-from-bottom">
-            <div className="flex justify-between items-center p-4 pt-10 border-b">
+            {/* 💡 헤더: '수정' 버튼 없애고, 에디트 모드일 때만 '저장' 버튼 등장 */}
+            <div className="flex justify-between items-center p-4 pt-10 border-b shrink-0">
                <button onClick={() => setIsDutyBatchModalOpen(false)} className="text-gray-500 p-2"><ChevronLeft size={24}/></button>
                <span className="font-black text-lg">한달 스케줄 관리</span>
-               {isDutyBatchEditMode ? <button onClick={saveBatchDuties} className={`${theme.text500} font-black`}>저장</button> : <button onClick={() => setIsDutyBatchEditMode(true)} className="text-blue-500 font-black">수정</button>}
+               <div className="w-10 flex justify-end">
+                 {isDutyBatchEditMode && <button onClick={saveBatchDuties} className={`${theme.text500} font-black text-base`}>저장</button>}
+               </div>
             </div>
             
             <div className="p-4 flex-1 flex flex-col overflow-auto no-scrollbar">
-               {isDutyBatchEditMode && (
-                 <div className="mb-4 text-center">
-                    <h2 className="text-xl font-black text-gray-900">한달 스케줄 등록</h2>
-                    <p className="text-[10px] text-gray-500 mt-1">하단 버튼을 눌러 연속으로 입력하세요.</p>
-                 </div>
-               )}
-
-               {isDutyBatchEditMode && (
-                 <div className="flex gap-2 mb-4 bg-gray-50 p-1.5 rounded-2xl justify-center border border-gray-100 shadow-inner">
-                    <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'touch' ? `bg-white shadow-sm ${theme.text600} border border-gray-200` : 'text-gray-500'}`}>👆 터치 모드</button>
-                    <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'continuous' ? `bg-white shadow-sm text-blue-600 border border-gray-200` : 'text-gray-500'}`}>⏩ 연속 모드</button>
-                 </div>
-               )}
-
-               <div className="border border-gray-200 rounded-[2rem] p-4 shadow-sm">
+               
+               {/* 💡 1. 달력 영역 (공간만 차지하던 텍스트 삭제 및 상단 배치) */}
+               <div className="border border-gray-200 rounded-[2rem] p-4 shadow-sm shrink-0">
                   <div className="flex justify-center items-center gap-6 mb-4 mt-2">
                      <button onClick={() => setDutyBatchMonth(m => m === 1 ? 12 : m - 1)} className="p-2 text-gray-800 active:scale-95"><ChevronLeft size={20}/></button>
                      <span className={`font-black text-lg ${theme.text600}`}>{dutyBatchYear}년 {dutyBatchMonth}월</span>
@@ -2609,7 +2599,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                                  if (dutyBatchMode === 'touch') setBatchDuties(prev => ({...prev, [dateStr]: selectedStamp === 'DELETE' ? null : selectedStamp}));
                                  else setContinuousCursorDateStr(dateStr);
                               }
-                          }} className={`h-[52px] rounded-2xl border flex flex-col items-center justify-center cursor-pointer transition-all ${dutyColor}`}>
+                          }} className={`h-[50px] rounded-2xl border flex flex-col items-center justify-center cursor-pointer transition-all ${dutyColor}`}>
                              <span className="text-[10px] font-bold mb-0.5">{d}</span>
                              <span className="text-xs font-black">{duty || ''}</span>
                           </div>
@@ -2618,10 +2608,27 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                   </div>
                </div>
 
+               {/* 유연한 공간 (달력과 버튼 사이 간격을 알아서 띄워줌) */}
                <div className="flex-1"></div>
 
+               {/* 💡 2. 모드 선택 탭 (달력 아래 배치, '연속 모드' 무조건 왼쪽 1빠따!) */}
+               <div className="flex gap-2 mt-4 bg-gray-50 p-1.5 rounded-2xl justify-center border border-gray-100 shadow-inner shrink-0">
+                  <button onClick={() => { setIsDutyBatchEditMode(true); setDutyBatchMode('continuous'); }} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${isDutyBatchEditMode && dutyBatchMode === 'continuous' ? `bg-white shadow-sm ${theme.text600} border border-gray-200` : 'text-gray-500 hover:bg-gray-100'}`}>⏩ 연속 모드</button>
+                  <button onClick={() => { setIsDutyBatchEditMode(true); setDutyBatchMode('touch'); }} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${isDutyBatchEditMode && dutyBatchMode === 'touch' ? `bg-white shadow-sm ${theme.text600} border border-gray-200` : 'text-gray-500 hover:bg-gray-100'}`}>👆 터치 모드</button>
+               </div>
+
+               {/* 💡 3. 액션 버튼 (탭을 눌러서 모드가 활성화되면 아래에 툭 튀어나옴) */}
+               {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
+                 <div className="mt-3 flex gap-2 pb-6 shrink-0 animate-in slide-in-from-bottom-2">
+                     <button onClick={() => handleContinuousStamp('DAY')} className="flex-1 bg-blue-50 text-blue-600 font-black py-4 rounded-[1.2rem] border border-blue-200 active:scale-95 transition-transform shadow-sm">DAY</button>
+                     <button onClick={() => handleContinuousStamp('EVE')} className="flex-1 bg-orange-50 text-orange-600 font-black py-4 rounded-[1.2rem] border border-orange-200 active:scale-95 transition-transform shadow-sm">EVE</button>
+                     <button onClick={() => handleContinuousStamp('OFF')} className="flex-1 bg-pink-50 text-pink-600 font-black py-4 rounded-[1.2rem] border border-pink-200 active:scale-95 transition-transform shadow-sm">OFF</button>
+                     <button onClick={() => handleContinuousStamp('BACK')} className="flex-none px-4 bg-gray-100 text-gray-600 font-black py-4 rounded-[1.2rem] border border-gray-200 active:scale-95 flex flex-col items-center justify-center gap-1 transition-transform shadow-sm"><RefreshCw size={14}/><span className="text-[10px]">취소</span></button>
+                  </div>
+               )}
+
                {isDutyBatchEditMode && dutyBatchMode === 'touch' && (
-                 <div className="flex gap-2 mt-6 pb-6 justify-center">
+                 <div className="mt-3 flex gap-2 pb-6 shrink-0 animate-in slide-in-from-bottom-2">
                     {['DAY', 'EVE', 'OFF', 'DELETE'].map(stamp => (
                        <button key={stamp} onClick={() => setSelectedStamp(stamp)} className={`flex-1 py-4 rounded-[1.2rem] font-black text-sm transition-all ${selectedStamp === stamp ? `${theme.bg500} text-white shadow-md` : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'}`}>
                           {stamp === 'DELETE' ? '지우개' : stamp}
@@ -2630,23 +2637,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  </div>
                )}
 
-               {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
-                 <div className="mt-6 pt-4 border-t border-gray-100 flex gap-2 pb-6">
-                     <button onClick={() => handleContinuousStamp('DAY')} className="flex-1 bg-blue-50 text-blue-600 font-black py-4 rounded-[1.2rem] border border-blue-200 active:scale-95 transition-transform shadow-sm">DAY</button>
-                     <button onClick={() => handleContinuousStamp('EVE')} className="flex-1 bg-orange-50 text-orange-600 font-black py-4 rounded-[1.2rem] border border-orange-200 active:scale-95 transition-transform shadow-sm">EVE</button>
-                     <button onClick={() => handleContinuousStamp('OFF')} className="flex-1 bg-pink-50 text-pink-600 font-black py-4 rounded-[1.2rem] border border-pink-200 active:scale-95 transition-transform shadow-sm">OFF</button>
-                     <button onClick={() => handleContinuousStamp('BACK')} className="flex-none px-4 bg-gray-100 text-gray-600 font-black py-4 rounded-[1.2rem] border border-gray-200 active:scale-95 flex flex-col items-center justify-center gap-1 transition-transform shadow-sm"><RefreshCw size={14}/><span className="text-[10px]">취소</span></button>
-                  </div>
-               )}
-               {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
-                  <button onClick={saveBatchDuties} className={`w-full ${theme.bg500} text-white font-black py-4 rounded-[1.5rem] shadow-xl mb-6 active:scale-95 transition-transform`}>연속 입력 완료 및 저장</button>
-               )}
             </div>
          </div>
       )}
-    </div>
-  );
-}
+
 
 // 9. MAIN APP CONTENT
 function AppContent() {
