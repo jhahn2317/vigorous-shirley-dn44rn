@@ -2794,7 +2794,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
         
         {/* 💡 [V4.5] TODAY 뱃지 짤림 픽스 (pt-4 로 넉넉하게 변경) */}
-        <div className="relative pt-2">
+        <div className="relative pt-4">
           <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-1">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
@@ -2806,7 +2806,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} 
                      className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative transition-all ${dutyColor} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 scale-105 z-10 shadow-sm' : ''}`}>
                   {/* 💡 [V4.5] 뱃지 좌표 -top-3 로 안전하게 안착 */}
-                  {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-4 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
+                  {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-1 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
                   <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                   <div className="text-xs font-black">{['일','월','화','수','목','금','토'][new Date(d).getDay()]}</div>
                   <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
