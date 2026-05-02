@@ -259,7 +259,7 @@ export const handleTouchEnd = (e, closeFunction) => {
 
   e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
 
-  if (swipeDistance > modalHeight * 0.28) {
+  if (swipeDistance > modalHeight * 0.29) {
     e.currentTarget.style.transform = 'translateY(100%)';
     setTimeout(() => {
       closeFunction();
