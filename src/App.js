@@ -2194,18 +2194,24 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
- // 💡 듀티 캘린더 & 가족 일정 타임라인 동시 자동 스크롤 엔진
+// 💡 듀티 캘린더 & 가족 일정 타임라인 동시 자동 스크롤 엔진
   useEffect(() => {
     setTimeout(() => {
-      // 1. 현아 근무 스케줄(가로) 오늘 날짜로 휙!
+      // 1. 현아 근무 스케줄(가로)
       const dutyTodayEl = document.getElementById('duty-today');
       if (dutyTodayEl) dutyTodayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
-      // 2. 가족 일정 타임라인(세로) 다가오는 일정으로 휙!
+      // 2. 가족 일정 타임라인 (상단에서 약간 띄워서 2번째 칸에 오도록 설정)
       const timelineTodayEl = document.getElementById('timeline-today');
-      if (timelineTodayEl) timelineTodayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (timelineTodayEl) {
+        // scrollIntoView 대신 window.scrollTo나 parent의 scrollTop을 조절할 수도 있지만, 
+        // 가장 깔끔한 건 엘리먼트 위치로 이동 후 약간의 오프셋을 주는 겁니다.
+        const yOffset = -100; // 이 값을 조절해서 위쪽 일정이 보이는 정도를 맞춥니다.
+        const y = timelineTodayEl.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({top: y, behavior: 'smooth'});
+      }
     }, 300);
-  }, []);
+  }, [activeTab]); // 탭 전환 시에도 작동하도록 의존성 추가
 
   // 💡 오늘 또는 오늘 이후의 가장 가까운 일정의 위치(Index)를 찾는 로직 (없으면 맨 마지막 과거 일정으로)
   const upcomingEventIndex = useMemo(() => {
@@ -2456,26 +2462,49 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
         <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
           {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
-         {familyEventsList.map((e, i, arr) => (
-            // 💡 1단계에서 찾은 다가오는 일정에 'timeline-today'라는 GPS 태그를 달아줍니다!
-            <div key={e.id} id={i === upcomingEventIndex ? 'timeline-today' : undefined}>
-              {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
-                <div className="relative flex items-center justify-center py-4"><div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">{e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월</div></div>
-              )}
-              <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 ${e.date < todayStr ? 'opacity-60 grayscale-[50%]' : ''}`}>
-                <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-gray-50 shadow shrink-0 z-10">{getEventIcon(e.type)}</div>
-                <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl bg-gray-50 border shadow-sm ml-3">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div className="flex flex-col gap-0.5"><span className="text-[10px] font-black text-pink-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span><span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span></div>
-                    <div className="flex gap-1"><button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button><button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button></div>
+{familyEventsList.map((e, i, arr) => {
+            const isTodayEvent = i === upcomingEventIndex;
+            return (
+              <div key={e.id} id={isTodayEvent ? 'timeline-today' : undefined}>
+                {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
+                  <div className="relative flex items-center justify-center py-4">
+                    <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">
+                      {e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월
+                    </div>
                   </div>
-                  <div className="font-bold text-gray-800 text-base flex items-center gap-1.5 mt-1.5">{e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}</div>
+                )}
+                
+                {/* 💡 오늘 일정일 경우 scale을 살짝 키우고 투명도 조절 제외 */}
+                <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${e.date < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
+                  
+                  {/* 💡 아이콘 부분: 오늘이면 핑크색 시계 아이콘으로 강조 */}
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-gray-50'}`}>
+                    {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : getEventIcon(e.type)}
+                  </div>
+                  
+                  {/* 💡 내용 박스: 오늘이면 bg-pink-50 음영 추가 */}
+                  <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="flex justify-between items-start mb-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
+                          {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})
+                          {isTodayEvent && " ✨ 오늘"}
+                        </span>
+                        <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button>
+                        <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button>
+                      </div>
+                    </div>
+                    <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : 'text-gray-800'}`}>
+                      {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            );
+          })}
 
       <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
