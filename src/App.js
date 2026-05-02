@@ -2794,7 +2794,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
         
         {/* 💡 [V4.5] TODAY 뱃지 짤림 픽스 (pt-4 로 넉넉하게 변경) */}
-        <div className="relative pt-6">
+        <div className="relative pt-2">
           <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-1">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
