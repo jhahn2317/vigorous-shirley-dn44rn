@@ -2897,7 +2897,10 @@ function AppContent() {
     <>
       {isAppLocked && <LockScreenView correctPin={localStorage.getItem('hyunaLockPin') || '0000'} onUnlock={handleUnlock} />}
       
-      <div className={`min-h-screen font-sans text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor} ${isAppLocked ? 'hidden' : ''}`}>
+      <div 
+        className={`min-h-screen text-gray-900 select-none pb-32 transition-colors duration-500 ${appBgColor} ${isAppLocked ? 'hidden' : ''}`}
+        style={{ fontFamily: appFont }}
+      >
         
         <div className="portrait-lock hidden fixed inset-0 z-[99999] bg-gray-900 flex-col items-center justify-center text-white p-6 text-center">
           <Smartphone className="w-20 h-20 mb-6 text-pink-400 animate-pulse rotate-90" />
