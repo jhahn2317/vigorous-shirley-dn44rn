@@ -2230,10 +2230,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     return idx !== -1 ? idx : familyEventsList.length - 1;
   }, [familyEventsList, todayStr]);
 
-  // 💡 [V3.0] 박스 독립 스마트 스크롤 엔진
+// 💡 [V3.0] 박스 독립 스마트 스크롤 엔진 (데이터 로딩 대기 기능 추가 완벽판!)
   useEffect(() => {
-    setTimeout(() => {
-      // 가로 듀티 스크롤
+    // 💡 데이터가 아직 안 왔으면(길이가 0이면) 헛발질하지 않고 기다립니다.
+    if (familyEventsList.length === 0) return;
+
+    const timer = setTimeout(() => {
+      // 1. 가로 듀티 스크롤
       const dutyContainer = dutyTimelineRef.current;
       const dutyTodayEl = document.getElementById('duty-today');
       if (dutyContainer && dutyTodayEl) {
@@ -2243,7 +2246,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         });
       }
 
-      // 세로 타임라인 박스 스크롤
+      // 2. 세로 타임라인 박스 스크롤
       const timelineContainer = document.getElementById('timeline-scroll-area');
       const timelineTodayEl = document.getElementById('timeline-today');
       if (timelineContainer && timelineTodayEl) {
@@ -2252,8 +2255,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           behavior: 'smooth'
         });
       }
-    }, 300);
-  }, [activeTab]); 
+    }, 400); // 렌더링 안정성을 위해 0.4초로 살짝 여유를 줬습니다.
+
+    return () => clearTimeout(timer); // 클린업 함수 추가
+  }, [activeTab, familyEventsList.length]); // 👈 핵심! 데이터 길이가 변할 때(서버에서 도착했을 때) 다시 실행!
 
   useEffect(() => {
     if(isDutyBatchModalOpen) {
@@ -2504,7 +2509,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
         
         {/* 독립 스크롤 영역 */}
-        <div id="timeline-scroll-area" className="max-h-[380px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
+        <div id="timeline-scroll-area" className="max-h-[550px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
            <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent pb-10">
              
              {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
