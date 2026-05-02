@@ -2504,7 +2504,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          </div>
       )}
 
-      {/* 🚀 [V2.5] 일정 등록 모달 스와이프 물리엔진 바텀시트 적용 */}
+{/* 🚀 [V2.5] 일정 등록 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
@@ -2516,15 +2516,30 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
             <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className={`${theme.bg50} ${theme.text600} p-2.5 rounded-2xl border`}><X size={20}/></button></div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="flex gap-4 w-full">
-                <div className="flex-[1.2] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" /></div>
-                <div className="flex-1 shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label><select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border"><option value="가족일정">가족일정</option><option value="회식">회식</option><option value="기타">기타</option></select></div>
+              
+              {/* 💡 날짜 칸 사이즈를 확 줄이고, 분류 칸을 빵빵하게 늘려서 겹침 현상 해결! */}
+              <div className="flex gap-3 w-full">
+                <div className="w-[140px] shrink-0">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
+                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" />
+                </div>
+                <div className="flex-1 shrink-0">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
+                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border appearance-none">
+                      <option value="가족일정">가족일정</option>
+                      <option value="회식">회식</option>
+                      <option value="기타">기타</option>
+                   </select>
+                </div>
               </div>
+
               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
+              
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
                 <div><div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 등록</div><div className="text-[10px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 강조되어 표시됩니다.</div></div>
                 <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div></label>
               </div>
+              
               <button type="submit" disabled={!eventFormData.title.trim()} className={`w-full ${theme.bg500} mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border ${theme.border600}`}>{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
             </form>
           </div>
