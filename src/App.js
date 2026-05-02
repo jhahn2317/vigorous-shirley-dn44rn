@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid, Repeat
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -35,7 +35,7 @@ try {
 
 const appId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '_') : 'hyuna-asset-pro';
 
-// 🚀 [V3.0] 월별 감성 파스텔 테마 엔진 구축
+// 월별 테마 엔진
 const THEME_PALETTES = {
   pink: { bg500: 'bg-pink-500', bg600: 'bg-pink-600', bg50: 'bg-pink-50', bg100: 'bg-pink-100', text500: 'text-pink-500', text600: 'text-pink-600', text400: 'text-pink-400', border500: 'border-pink-500', border200: 'border-pink-200', border100: 'border-pink-100', border600: 'border-pink-600', border300: 'focus:border-pink-300', fill400: 'fill-pink-400', fromColor: 'from-pink-400', toColor: 'to-rose-400' },
   amber: { bg500: 'bg-amber-500', bg600: 'bg-amber-600', bg50: 'bg-amber-50', bg100: 'bg-amber-100', text500: 'text-amber-500', text600: 'text-amber-600', text400: 'text-amber-400', border500: 'border-amber-500', border200: 'border-amber-200', border100: 'border-amber-100', border600: 'border-amber-600', border300: 'focus:border-amber-300', fill400: 'fill-amber-400', fromColor: 'from-amber-400', toColor: 'to-yellow-400' },
@@ -46,18 +46,12 @@ const THEME_PALETTES = {
 };
 
 const MONTHLY_THEME_MAP = {
-  1: { ledger: 'pink', calendar: 'sky' },
-  2: { ledger: 'violet', calendar: 'pink' },
-  3: { ledger: 'amber', calendar: 'emerald' },
-  4: { ledger: 'pink', calendar: 'amber' },
-  5: { ledger: 'emerald', calendar: 'rose' },
-  6: { ledger: 'sky', calendar: 'emerald' },
-  7: { ledger: 'violet', calendar: 'sky' },
-  8: { ledger: 'rose', calendar: 'sky' },
-  9: { ledger: 'amber', calendar: 'violet' },
-  10: { ledger: 'rose', calendar: 'amber' },
-  11: { ledger: 'violet', calendar: 'pink' },
-  12: { ledger: 'pink', calendar: 'sky' }
+  1: { ledger: 'pink', calendar: 'sky' }, 2: { ledger: 'violet', calendar: 'pink' },
+  3: { ledger: 'amber', calendar: 'emerald' }, 4: { ledger: 'pink', calendar: 'amber' },
+  5: { ledger: 'emerald', calendar: 'rose' }, 6: { ledger: 'sky', calendar: 'emerald' },
+  7: { ledger: 'violet', calendar: 'sky' }, 8: { ledger: 'rose', calendar: 'sky' },
+  9: { ledger: 'amber', calendar: 'violet' }, 10: { ledger: 'rose', calendar: 'amber' },
+  11: { ledger: 'violet', calendar: 'pink' }, 12: { ledger: 'pink', calendar: 'sky' }
 };
 
 const DEFAULT_CATEGORIES = {
@@ -89,6 +83,20 @@ const getKSTTimestamp = () => {
   hh = hh % 12;
   hh = hh ? hh : 12; 
   return `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 ${ampm} ${hh}:${String(kst.getMinutes()).padStart(2, '0')}`;
+};
+
+// 🚀 [V4.0] 초강력 D-Day 계산기
+const getDDay = (targetDateStr) => {
+  if(!targetDateStr) return '';
+  const todayStr = getKSTDateStr();
+  const today = new Date(todayStr);
+  const target = new Date(targetDateStr);
+  if(isNaN(target.getTime())) return '';
+  const diffTime = target.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'D-Day';
+  if (diffDays > 0) return `D-${diffDays}`;
+  return `D+${Math.abs(diffDays)}`;
 };
 
 const formatTimeStr = (dateObj) => `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
@@ -217,15 +225,6 @@ const getCategoryIcon = (category, type) => {
   }
 };
 
-const getEventIcon = (type) => {
-  switch (type) {
-    case '듀티': return <Stethoscope size={16} className="text-pink-500" />;
-    case '가족일정': return <Heart size={16} className="text-rose-500" />;
-    case '회식': return <Coffee size={16} className="text-amber-500" />;
-    default: return <Star size={16} className="text-indigo-500" />;
-  }
-};
-
 const AutoScaleValue = ({ value, isNet = false }) => {
   let sign = '';
   let color = 'text-gray-800';
@@ -240,7 +239,7 @@ const AutoScaleValue = ({ value, isNet = false }) => {
   return <div className={`font-black truncate tracking-tighter ${color} ${sizeClass}`}>{sign}{str}</div>;
 };
 
-// 🚀 [V2.5] 쫀득 스와이프 물리엔진 공통 함수
+// 스와이프 물리엔진
 export const handleTouchStart = (e) => {
   e.currentTarget.dataset.startY = e.touches[0].clientY;
   e.currentTarget.style.transition = 'none'; 
@@ -255,7 +254,6 @@ export const handleTouchMove = (e) => {
   }
 };
 
-// 💡 [V2.5] 민감도 50% -> 35%로 조정 완료!
 export const handleTouchEnd = (e, closeFunction) => {
   const startY = parseFloat(e.currentTarget.dataset.startY || 0);
   const currentY = e.changedTouches[0].clientY;
@@ -265,15 +263,10 @@ export const handleTouchEnd = (e, closeFunction) => {
   e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
   if (swipeDistance > modalHeight * 0.35) {
     e.currentTarget.style.transform = 'translateY(100%)';
-    setTimeout(() => {
-      closeFunction();
-      e.currentTarget.style.transform = '';
-    }, 250);
+    setTimeout(() => { closeFunction(); e.currentTarget.style.transform = ''; }, 250);
   } else {
     e.currentTarget.style.transform = 'translateY(0)';
-    setTimeout(() => {
-      e.currentTarget.style.transform = '';
-    }, 300);
+    setTimeout(() => { e.currentTarget.style.transform = ''; }, 300);
   }
 };
 
@@ -287,12 +280,8 @@ function LockScreenView({ correctPin, onUnlock }) {
       const newPin = pin + num;
       setPin(newPin);
       if (newPin.length === 4) {
-        if (newPin === correctPin) {
-          onUnlock();
-        } else {
-          setError(true);
-          setTimeout(() => { setPin(''); setError(false); }, 500);
-        }
+        if (newPin === correctPin) onUnlock();
+        else { setError(true); setTimeout(() => { setPin(''); setError(false); }, 500); }
       }
     }
   };
@@ -302,38 +291,24 @@ function LockScreenView({ correctPin, onUnlock }) {
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-slate-800 z-[99999] flex flex-col items-center justify-center animate-in fade-in duration-300">
       <div className="mb-12 flex flex-col items-center">
-        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4 shadow-lg border border-white/20">
-          <Lock className="w-8 h-8 text-white" />
-        </div>
+        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4 shadow-lg border border-white/20"><Lock className="w-8 h-8 text-white" /></div>
         <h2 className="text-2xl font-black text-white tracking-tight">비밀번호를 입력하세요</h2>
         <p className="text-gray-400 text-sm mt-2 font-bold">Hope Fam 플래너 보호 중</p>
       </div>
-
       <div className={`flex gap-4 mb-16 ${error ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/20'}`} />
-        ))}
+        {[0, 1, 2, 3].map(i => <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/20'}`} />)}
       </div>
-
       <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-10 max-w-sm w-full">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-          <button key={num} onClick={() => handlePress(num.toString())} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">
-            {num}
-          </button>
-        ))}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => <button key={num} onClick={() => handlePress(num.toString())} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">{num}</button>)}
         <div />
-        <button onClick={() => handlePress('0')} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">
-          0
-        </button>
-        <button onClick={handleDelete} className="w-16 h-16 rounded-full text-white/70 flex items-center justify-center active:bg-white/10 active:scale-95 transition-all mx-auto">
-          <Delete className="w-8 h-8" />
-        </button>
+        <button onClick={() => handlePress('0')} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">0</button>
+        <button onClick={handleDelete} className="w-16 h-16 rounded-full text-white/70 flex items-center justify-center active:bg-white/10 active:scale-95 transition-all mx-auto"><Delete className="w-8 h-8" /></button>
       </div>
     </div>
   );
 }
 
-// 4. SETTINGS COMPONENT (🚀 [V3.0] 폰트 커스텀 설정 추가)
+// 4. SETTINGS COMPONENT
 function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages, appFont, setAppFont }) {
   const [isSystemSettingsOpen, setIsSystemSettingsOpen] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(() => localStorage.getItem('hyunaLockEnabled') === 'true');
@@ -448,7 +423,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
       {isSystemSettingsOpen && (
         <div className="space-y-4 animate-in slide-in-from-top-2 pt-2">
           
-          {/* 💡 [V3.0] 내 기기 글씨체 커스텀 세팅 영역 추가 */}
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Edit3 size={16} className="text-pink-500"/> 내 기기 글씨체 설정</h3>
             <select value={appFont} onChange={(e) => { setAppFont(e.target.value); localStorage.setItem('hyunaFont', e.target.value); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 h-[44px] font-bold text-sm outline-none text-slate-700 shadow-inner">
@@ -892,15 +866,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-bottom-2">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             {/* 💡 [V4.0] 요일 컬러 국룰 적용 */}
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-600'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
                  const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                  const dayData = dataByDate[dateStr] || { inc: 0, exp: 0 };
                  const hasData = dayData.inc > 0 || dayData.exp > 0;
+                 const isToday = dateStr === todayStr;
                  return (
-                    <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'}`}>
+                    // 💡 [V4.0] 오늘 날짜 핑크색 이중 테두리 적용
+                    <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 z-10' : ''}`}>
                      <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center truncate tracking-tighter">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
                      {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center truncate tracking-tighter">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
@@ -1567,15 +1544,18 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
         return (
           <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-blue-200 animate-in slide-in-from-bottom-2 mt-1">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-bold ${i===0?'text-red-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             {/* 💡 [V4.0] 요일 컬러 국룰 적용 */}
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-bold ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-600'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[60px] bg-white rounded-xl border border-gray-100"></div>;
                  const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                  const dayData = dataByDate[dateStr] || { amt: 0 };
+                 const isToday = dateStr === todayStr;
                  return (
-                   <div key={`day-${i}`} onClick={() => { if(dayData.amt > 0) setSelectedDailySummary(dateStr); }} className={`h-[60px] border rounded-xl p-1 flex flex-col items-center justify-center ${dayData.amt>0?'border-blue-200 bg-blue-50/40 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-gray-100 bg-white'}`}>
-                     <span className={`text-[11px] font-bold mb-1 ${(i%7)===0?'text-red-400':(i%7)===6?'text-blue-400':'text-gray-600'}`}>{d}</span>
+                   // 💡 [V4.0] 오늘 날짜 핑크색 이중 테두리 적용
+                   <div key={`day-${i}`} onClick={() => { if(dayData.amt > 0) setSelectedDailySummary(dateStr); }} className={`h-[60px] border rounded-xl p-1 flex flex-col items-center justify-center ${dayData.amt>0?'border-blue-200 bg-blue-50/40 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-gray-100 bg-white'} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 z-10 shadow-sm' : ''}`}>
+                     <span className={`text-[11px] font-bold mb-1 ${(i%7)===0?'text-red-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      {dayData.amt > 0 && <span className="text-[10px] font-black text-blue-600 w-full text-center truncate tracking-tighter">{formatCompactMoney(dayData.amt).replace('+','')}</span>}
                    </div>
                  )
@@ -1779,7 +1759,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
-      {/* 🚀 [V2.0] 배달 동시 기록 팝업 모달 */}
+      {/* 배달 동시 기록 팝업 모달 */}
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
@@ -1856,6 +1836,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     </div>
   );
 }
+
 // ==========================================
 // 7. ASSETS TAB COMPONENT
 // ==========================================
@@ -1891,6 +1872,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   const paidLoansThisMonth = sortedLoans.filter(l => l.paidMonths?.includes(currentMonthKey));
   const totalPaidThisMonth = paidLoansThisMonth.reduce((sum, l) => sum + getMonthlyPayment(l), 0);
   const totalUnpaidThisMonth = sortedLoans.filter(l => !l.paidMonths?.includes(currentMonthKey) && l.status !== '완납').reduce((sum, l) => sum + getMonthlyPayment(l), 0);
+  
   const updateAsset = async (id, field, value) => {
     if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id), { [field]: value });
   }
@@ -1911,6 +1893,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     const newPaidMonths = (loan.paidMonths || []).filter(m => m !== currentMonthKey);
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
   };
+
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
     if (!newAssetFormData.name.trim() || !user) return;
@@ -1928,6 +1911,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     setIsAddAssetModalOpen(false);
     setNewAssetFormData({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
   };
+
   const handlePrepaySubmit = async (e) => {
     e.preventDefault();
     if(!user) return;
@@ -1953,7 +1937,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 
   return (
     <div className="space-y-4 pb-28 pt-2 animate-in slide-in-from-right duration-500">
-      
       <div className="flex bg-white p-1.5 rounded-2xl mx-1 mb-2 shadow-sm border border-gray-200">
         <button onClick={() => setAssetTab('deposit')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${assetTab==='deposit'?'bg-indigo-500 text-white shadow-md':'text-gray-500 hover:bg-gray-50'}`}><PiggyBank size={16}/> 나의 자산(예적금)</button>
         <button onClick={() => setAssetTab('loan')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${assetTab==='loan'?'bg-indigo-500 text-white shadow-md':'text-gray-500 hover:bg-gray-50'}`}><Landmark size={16}/> 나의 부채(대출)</button>
@@ -2080,7 +2063,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </section>
       )}
 
-      {/* 🚀 [V2.5] 자산/대출 추가 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isAddAssetModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar p-0">
           <div 
@@ -2123,7 +2105,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </div>
       )}
 
-      {/* 🚀 [V2.5] 중도상환 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isPrepayModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
            <div 
@@ -2147,7 +2128,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </div>
       )}
 
-      {/* 🚀 [V2.5] 예적금 상세(히스토리) 모달 스와이프 물리엔진 바텀시트 적용 */}
       {selectedAssetDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden p-0">
             <div 
@@ -2194,17 +2174,14 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
-// 8. FAMILY CALENDAR COMPONENT
+// 8. FAMILY CALENDAR COMPONENT (🚀 [V4.0] 킬러 기능 4종 추가 탑재 & 요일 컬러 통일)
 // ==========================================
 function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab }) {
   const [calendarSubTab, setCalendarSubTab] = useState('timeline');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
-
-  // 💡 [V3.5] 달력 전용 로컬 상태 (네비게이션용)
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
 
-  // 글로벌 월 탭이 바뀌면 달력도 따라가게 동기화
   useEffect(() => {
     setCalYear(selectedYear);
     setCalMonth(selectedMonth);
@@ -2212,7 +2189,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
-  const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
+  
+  // 💡 [V4.0] 폼에 기간(endDate), 참석자(participant), 양/음력(calendarType), 매년반복(isYearly) 상태 추가
+  const [eventFormData, setEventFormData] = useState({ 
+    date: todayStr, endDate: '', title: '', type: '가족일정', isImportant: false, 
+    participant: '가족', isYearly: false, calendarType: 'solar' 
+  });
+  
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false);
   const [messageFormData, setMessageFormData] = useState({ text: '' });
   const [replyingTo, setReplyingTo] = useState(null);
@@ -2232,12 +2215,11 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const dutyTimelineRef = useRef(null); 
 
   const extendedDutyDays = useMemo(() => Array.from({length: 34}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 3)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
-  const topImportantEvents = useMemo(() => (events || []).filter(e => e.isImportant && e.date && e.date >= todayStr).sort((a,b) => (a.date||'').localeCompare(b.date||'')).slice(0, 3), [events, todayStr]);
+  const topImportantEvents = useMemo(() => (events || []).filter(e => e.isImportant && e.date && (e.endDate ? e.endDate >= todayStr : e.date >= todayStr)).sort((a,b) => (a.date||'').localeCompare(b.date||'')).slice(0, 3), [events, todayStr]);
   const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
-  // 스마트 단어 인식 아이콘 엔진
   const getSmartIcon = (title, type) => {
     const t = title || '';
     if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
@@ -2248,19 +2230,16 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     if (t.includes('학교') || t.includes('입학') || t.includes('졸업') || t.includes('학부모')) return '🏫';
     if (t.includes('캠핑') || t.includes('글램핑') || t.includes('차박')) return '⛺';
     if (t.includes('쇼핑') || t.includes('마트') || t.includes('백화점')) return '🛒';
-    
-    // 기본 아이콘
     if (type === '가족일정') return '💖';
     if (type === '회식') return '🍻';
     return '⭐'; 
   };
 
   const upcomingEventIndex = useMemo(() => {
-    const idx = familyEventsList.findIndex(e => e.date >= todayStr);
+    const idx = familyEventsList.findIndex(e => (e.endDate ? e.endDate >= todayStr : e.date >= todayStr));
     return idx !== -1 ? idx : familyEventsList.length - 1;
   }, [familyEventsList, todayStr]);
 
-  // 박스 독립 스마트 스크롤 엔진
   useEffect(() => {
     if (familyEventsList.length === 0 || calendarSubTab !== 'timeline') return;
 
@@ -2299,12 +2278,19 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     if (!eventFormData.title.trim() || !user) return;
+    
+    // 만약 종료일이 없다면 시작일과 동일하게 맞춰줍니다.
+    const finalData = { ...eventFormData };
+    if (!finalData.endDate || finalData.endDate < finalData.date) {
+      finalData.endDate = finalData.date;
+    }
+
     if (editingEventId) {
-      if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', editingEventId), eventFormData);
-      else setEvents(events.map(ev => ev.id === editingEventId ? {...eventFormData, id: editingEventId} : ev));
+      if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', editingEventId), finalData);
+      else setEvents(events.map(ev => ev.id === editingEventId ? {...finalData, id: editingEventId} : ev));
     } else {
-      if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), eventFormData);
-      else setEvents([{...eventFormData, id: Date.now().toString()}, ...(events||[])]);
+      if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), finalData);
+      else setEvents([{...finalData, id: Date.now().toString()}, ...(events||[])]);
     }
     setIsEventModalOpen(false); setEditingEventId(null);
   };
@@ -2428,7 +2414,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   };
 
   return (
-    // 💡 [수정됨] pb-28 ➔ pb-4 로 변경하여 하단 텅 빈 여백 해결!
     <div className="space-y-5 pb-4 pt-2 animate-in slide-in-from-right duration-500">
       
       {/* 한줄톡 */}
@@ -2490,8 +2475,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           <button onClick={openDutyBatchModal} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 한달스케쥴 확인/수정</button>
         </div>
         
-        {/* 현아 근무 스케줄 슬라이드 영역 (여백 조절 포인트) */}
-        <div className="relative pt-2">
+        <div className="relative pt-0">
           <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-2 scroll-smooth">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
@@ -2500,8 +2484,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               let dutyColor = duty === 'DAY' ? 'bg-blue-50 text-blue-600 border-blue-200' : duty === 'EVE' ? 'bg-orange-50 text-orange-600 border-orange-200' : duty === 'OFF' ? 'bg-pink-50 text-pink-600 border-pink-200' : 'bg-white text-gray-400 border-gray-200';
               
               return (
+                // 💡 [V4.0] 오늘 날짜 핑크색 2중 테두리 적용
                 <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} 
-                     className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative transition-all ${dutyColor} ${isToday ? 'ring-2 ring-gray-800 ring-offset-2 scale-105 z-10' : ''}`}>
+                     className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative transition-all ${dutyColor} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 scale-105 z-10 shadow-sm' : ''}`}>
                   {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-4 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
                   <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                   <div className="text-xs font-black">{['일','월','화','수','목','금','토'][new Date(d).getDay()]}</div>
@@ -2513,22 +2498,29 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       </div>
 
+      {/* 💡 [V4.0] 다가오는 중요 일정 (D-Day 뱃지 추가!) */}
       {topImportantEvents.length > 0 && (
         <div className="bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
           <Star className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
           <h3 className="text-[11px] font-bold opacity-90 mb-3 flex items-center gap-1.5"><Target size={14}/> 다가오는 중요 일정</h3>
           <div className="space-y-2 relative z-10">
             {topImportantEvents.map(e => (
-              <div key={e.id} className="bg-white/20 p-2.5 rounded-xl flex items-center gap-2">
-                <div className="bg-white text-pink-600 px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm"><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
-                <div className="font-bold text-base truncate">{e.title}</div>
+              <div key={e.id} className="bg-white/20 p-2.5 rounded-xl flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 truncate">
+                  <div className="bg-white text-pink-600 px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm"><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
+                  <div className="font-bold text-base truncate">{e.title}</div>
+                </div>
+                {/* D-Day 뱃지 */}
+                <div className="bg-amber-400 text-amber-900 px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 shadow-sm border border-amber-300">
+                  {getDDay(e.date)}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 💡 타임라인 / 달력 스위치 버튼 */}
+      {/* 타임라인 / 달력 스위치 버튼 */}
       <div className="flex bg-pink-100 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200">
         <button onClick={() => setCalendarSubTab('timeline')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='timeline'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><List size={14}/> 타임라인</button>
         <button onClick={() => setCalendarSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><CalendarDays size={14}/> 월간 달력</button>
@@ -2555,22 +2547,32 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        </div>
                      )}
                      
-                     <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${e.date < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
+                     <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${(e.endDate || e.date) < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
                        
-                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white'}`}>
+                       {/* 💡 [V4.0] 핑크색 테두리 반영 */}
+                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-2 ring-pink-400 ring-offset-1 shadow-sm' : 'bg-white'}`}>
                          {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : <span className="text-[18px]">{getSmartIcon(e.title, e.type)}</span>}
                        </div>
                        
                        <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-white border-gray-100'}`}>
                          <div className="flex justify-between items-start mb-1.5">
                            <div className="flex flex-col gap-0.5">
+                             {/* 💡 [V4.0] 기간(N박 M일) 표시 기능 */}
                              <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
-                               {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})
+                               {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} 
+                               {e.endDate && e.endDate !== e.date ? ` ~ ${parseInt(e.endDate.slice(5,7))}/${parseInt(e.endDate.slice(8,10))}` : ` (${['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})`}
                                {isTodayEvent && " ✨ 오늘"}
                              </span>
-                             <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
+                             <div className="flex items-center mt-0.5">
+                               {/* 💡 [V4.0] 참석자 뱃지 추가 */}
+                               <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max flex items-center gap-1">
+                                 {e.participant === '현아' ? '👩 현아' : e.participant === '정훈' ? '🧑 정훈' : '👨‍👩‍👦 가족'} {e.type}
+                               </span>
+                               {/* 💡 [V4.0] 반복 일정 표시 */}
+                               {e.isYearly && <span className="text-[8px] bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded font-bold shadow-sm ml-1 flex items-center gap-0.5"><Repeat size={8}/> {e.calendarType === 'lunar' ? '음력' : '양력'} 반복</span>}
+                             </div>
                            </div>
-                           <div className="flex gap-1">
+                           <div className="flex gap-1 shrink-0">
                              <button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button>
                              <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button>
                            </div>
@@ -2588,19 +2590,29 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 💡 [V3.5] 새로운 가족 일정 달력 뷰 (네비게이션 & 클릭 추가 탑재) */}
+      {/* 💡 [V4.0] 달력 뷰 (N박 M일 연동) */}
       {calendarSubTab === 'calendar' && (() => {
         const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
         const daysInMonth = new Date(calYear, calMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         
-        // 날짜별 일정 그룹핑
+        // 날짜별 일정 그룹핑 (N박 M일 기간 대응)
         const eventsByDate = {};
         familyEventsList.forEach(e => { 
-          if(e.date && e.date.startsWith(`${calYear}-${String(calMonth).padStart(2,'0')}`)) {
-             if(!eventsByDate[e.date]) eventsByDate[e.date] = [];
-             eventsByDate[e.date].push(e);
-          } 
+          let currentStr = e.date;
+          const endStr = e.endDate || e.date;
+          // 최대 31일 방어 코드
+          let count = 0;
+          while (currentStr <= endStr && count < 31) {
+              if (currentStr.startsWith(`${calYear}-${String(calMonth).padStart(2,'0')}`)) {
+                  if(!eventsByDate[currentStr]) eventsByDate[currentStr] = [];
+                  eventsByDate[currentStr].push(e);
+              }
+              const dObj = new Date(currentStr);
+              dObj.setDate(dObj.getDate() + 1);
+              currentStr = `${dObj.getFullYear()}-${String(dObj.getMonth()+1).padStart(2,'0')}-${String(dObj.getDate()).padStart(2,'0')}`;
+              count++;
+          }
         });
 
         return (
@@ -2611,7 +2623,8 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <button onClick={() => { if(calMonth===12){setCalMonth(1); setCalYear(calYear+1);} else setCalMonth(calMonth+1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl active:scale-95"><ChevronRight size={18}/></button>
              </div>
 
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             {/* 💡 [V4.0] 요일 컬러 국룰 적용 */}
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-600'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[65px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -2622,18 +2635,19 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  const hasEvent = dayEvents.length > 0;
                  
                  return (
+                   // 💡 [V4.0] 오늘 날짜 핑크색 2중 테두리 적용
                    <div key={`day-${i}`} 
                      onClick={() => { 
                          if(hasEvent) {
                              setSelectedCalendarDate(dateStr); 
                          } else {
-                             setEventFormData({ date: dateStr, title: '', type: '가족일정', isImportant: false });
+                             setEventFormData({ date: dateStr, endDate: dateStr, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' });
                              setEditingEventId(null);
                              setIsEventModalOpen(true);
                          }
                      }} 
-                     className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} cursor-pointer active:scale-95 transition-transform ${isToday ? 'ring-2 ring-gray-800' : ''}`}>
-                     <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
+                     className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} cursor-pointer active:scale-95 transition-transform ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 shadow-sm z-10' : ''}`}>
+                     <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-red-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      
                      {hasEvent && (
                        <div className="flex flex-col items-center justify-center w-full h-full pb-3 relative">
@@ -2652,9 +2666,14 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         );
       })()}
 
-      {/* 달력 날짜 클릭 시 나타나는 일정 상세 팝업 (바텀시트) */}
       {selectedCalendarDate && (() => {
-        const dayEvents = familyEventsList.filter(e => e.date === selectedCalendarDate);
+        // N박 M일 대응
+        const dayEvents = familyEventsList.filter(e => {
+           const start = e.date;
+           const end = e.endDate || e.date;
+           return selectedCalendarDate >= start && selectedCalendarDate <= end;
+        });
+
         return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
             <div 
@@ -2677,7 +2696,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
                         <div className="truncate">
-                          <div className="text-[10px] font-bold text-pink-500 mb-0.5">{e.type}</div>
+                          <div className="flex items-center gap-1 mb-0.5">
+                             <span className="text-[10px] font-bold text-pink-500">{e.type}</span>
+                             {e.participant && <span className="text-[8px] bg-white border text-gray-500 px-1 py-0.5 rounded shadow-sm">{e.participant === '현아' ? '👩' : e.participant === '정훈' ? '🧑' : '👨‍👩‍👦'}</span>}
+                          </div>
                           <div className="font-black text-base text-gray-800 flex items-center gap-1">{e.title} {e.isImportant && <Star size={12} className="text-amber-400 fill-amber-400"/>}</div>
                         </div>
                       </div>
@@ -2693,9 +2715,78 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         );
       })()}
 
-      <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
+      <button onClick={() => { setEventFormData({ date: todayStr, endDate: todayStr, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 과거 보관소 모달 */}
+      {/* 💡 [V4.0] 일정 등록 모달에 킬러 기능 (기간, 참석자, 반복) 추가 */}
+      {isEventModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsEventModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 border-pink-500"
+          >
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
+            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
+              
+              <div className="flex gap-3 w-full">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">시작 날짜</label>
+                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
+                </div>
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">종료 날짜 (선택)</label>
+                   <input type="date" value={eventFormData.endDate || ''} onChange={e=>setEventFormData({...eventFormData, endDate:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 w-full">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">참석자</label>
+                   <select value={eventFormData.participant || '가족'} onChange={e => setEventFormData({...eventFormData, participant: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none appearance-none">
+                      <option value="가족">👨‍👩‍👦 가족 전체</option>
+                      <option value="현아">👩 현아 약속</option>
+                      <option value="정훈">🧑 정훈 약속</option>
+                   </select>
+                </div>
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">분류</label>
+                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none appearance-none">
+                      <option value="가족일정">가족일정</option>
+                      <option value="회식">회식</option>
+                      <option value="기타">기타</option>
+                   </select>
+                </div>
+              </div>
+
+              <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
+              
+              <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 flex items-center justify-between">
+                <div><div className="text-sm font-black text-blue-700 flex items-center gap-1"><Repeat size={14}/> 매년 반복 등록</div></div>
+                <div className="flex items-center gap-2">
+                  {eventFormData.isYearly && (
+                    <select value={eventFormData.calendarType || 'solar'} onChange={e => setEventFormData({...eventFormData, calendarType: e.target.value})} className="text-[10px] font-bold bg-white text-blue-600 px-2 py-1 rounded border border-blue-200 outline-none">
+                      <option value="solar">양력</option>
+                      <option value="lunar">음력</option>
+                    </select>
+                  )}
+                  <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isYearly} onChange={e => setEventFormData({...eventFormData, isYearly: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
+                <div><div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 (D-Day)</div><div className="text-[9px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 남은 날짜가 자동 계산됩니다.</div></div>
+                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div></label>
+              </div>
+              
+              <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-pink-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border border-pink-600">{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 과거 보관소 모달 (이하 유지) */}
       {isMessageHistoryOpen && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
             <div 
@@ -2725,47 +2816,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                </div>
             </div>
          </div>
-      )}
-
-      {/* 일정 등록 모달 */}
-      {isEventModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
-          <div 
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={(e) => handleTouchEnd(e, () => setIsEventModalOpen(false))}
-            className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 border-pink-500"
-          >
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
-            <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
-              
-              <div className="flex gap-3 w-full">
-                <div className="flex-[1.1] shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">날짜</label>
-                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
-                </div>
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">분류</label>
-                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-base outline-none appearance-none">
-                      <option value="가족일정">가족일정</option>
-                      <option value="회식">회식</option>
-                      <option value="기타">기타</option>
-                   </select>
-                </div>
-              </div>
-
-              <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
-              
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
-                <div><div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 등록</div><div className="text-[10px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 강조되어 표시됩니다.</div></div>
-                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div></label>
-              </div>
-              
-              <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-pink-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border border-pink-600">{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
-            </form>
-          </div>
-        </div>
       )}
 
       {isDutyEditModalOpen && selectedDutyEditDate && (() => {
@@ -2815,8 +2865,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                      <button onClick={() => setDutyBatchMonth(m => m === 12 ? 1 : m + 1)} className="p-2 text-gray-800 active:scale-95"><ChevronRight size={20}/></button>
                   </div>
 
+                  {/* 💡 [V4.0] 요일 컬러 국룰 적용 */}
                   <div className="grid grid-cols-7 gap-2">
-                    {['일','월','화','수','목','금','토'].map((d, i) => <div key={d} className={`text-center text-[10px] font-bold pb-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-500'}`}>{d}</div>)}
+                    {['일','월','화','수','목','금','토'].map((d, i) => <div key={d} className={`text-center text-[10px] font-bold pb-2 ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-600'}`}>{d}</div>)}
                     {Array.from({length: new Date(dutyBatchYear, dutyBatchMonth - 1, 1).getDay()}).map((_,i) => <div key={`e-${i}`}/>)}
                     {Array.from({length: new Date(dutyBatchYear, dutyBatchMonth, 0).getDate()}).map((_, i) => {
                        const d = i + 1;
@@ -2824,8 +2875,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        const duty = batchDuties[dateStr];
                        let cellClass = duty === 'DAY' ? 'text-blue-600 border-blue-200 bg-blue-50' : duty === 'EVE' ? 'text-orange-600 border-orange-200 bg-orange-50' : duty === 'OFF' ? 'text-pink-600 border-pink-200 bg-pink-50' : 'text-gray-400 border-gray-100 bg-white';
                        
+                       const isToday = dateStr === todayStr;
                        const isCursor = dutyBatchMode === 'continuous' && isDutyBatchEditMode && dateStr === continuousCursorDateStr;
                        if (isCursor) cellClass += ` border-2 border-gray-800 ring-4 ring-gray-200 z-10 scale-110 shadow-md`;
+                       // 💡 [V4.0] 오늘 날짜 핑크색 테두리 적용
+                       if (isToday) cellClass += ` ring-2 ring-pink-400 ring-offset-1 shadow-sm`;
+
                        return (
                           <div key={d} onClick={() => { 
                               if(isDutyBatchEditMode) {
@@ -2874,17 +2929,15 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       )}
     </div>
   );
-} // End of FamilyCalendarView
+}
 
 // ==========================================
-// 9. MAIN APP CONTENT (🚀 [V3.0] 폰트 커스텀 CSS 엔진 적용)
+// 9. MAIN APP CONTENT
 // ==========================================
 function AppContent() {
   const [user, setUser] = useState(null);
   const todayStr = getKSTDateStr();
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaCurrentUser') || '현아');
-  
-  // 💡 [V3.0] 내 기기 폰트 설정 불러오기
   const [appFont, setAppFont] = useState(() => localStorage.getItem('hyunaFont') || 'Inter');
 
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
@@ -3078,12 +3131,11 @@ function AppContent() {
           </div>
         </div>
 
-        {/* 💡 [V3.0] 폰트 커스텀 상태를 설정 컴포넌트에 넘겨줍니다 */}
         {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} appFont={appFont} setAppFont={setAppFont} />}
 
         <main className="px-5 max-w-md mx-auto pt-2">
           {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleEndDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
           {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
           {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} activeTab={activeTab} />}
         </main>
@@ -3107,7 +3159,6 @@ function AppContent() {
            })}
         </nav>
 
-        {/* 💡 [V3.0] 7종 폰트 저장소 및 동적 적용 엔진 */}
         <style dangerouslySetInnerHTML={{__html: `
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
           @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
