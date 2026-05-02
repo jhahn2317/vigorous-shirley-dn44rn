@@ -3330,7 +3330,10 @@ function AppContent() {
   }, [activeTab]);
 
   // 💡 [V4.6] 새 데이터 감지 엔진 (상대방이 쓴 글 & 내가 마지막 본 시간 이후인지 체크)
+ // 💡 [V4.6.1] 타이머 리렌더링 시 깜빡임 방지 로직
   const hasNew = useMemo(() => {
+    if (timerActive) return { calendar: false, ledger: false, delivery: false, assets: false }; // 타이머 중엔 판독 잠시 중단
+
     const check = (arr, tab) => arr.some(item => 
       (item.updatedBy && item.updatedBy !== currentUser && item.updatedAt && new Date(item.updatedAt).getTime() > (lastVisited[tab] || 0)) ||
       (item.author && item.author !== currentUser && item.isoUpdate && new Date(item.isoUpdate).getTime() > (lastVisited[tab] || 0))
@@ -3342,7 +3345,7 @@ function AppContent() {
       delivery: activeTab !== 'delivery' && check(dailyDeliveries, 'delivery'),
       assets: activeTab !== 'assets' && (check(assets.deposits, 'assets') || check(assets.savings, 'assets') || check(assets.loans, 'assets'))
     };
-  }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser]);
+  }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser, timerActive]););
 
   useEffect(() => {
     const checkLockStatus = () => {
