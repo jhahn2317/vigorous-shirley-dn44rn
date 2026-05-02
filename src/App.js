@@ -1218,12 +1218,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   );
 }
 
-// ==========================================
-// 6. DELIVERY TAB COMPONENT
-// ==========================================
-function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode }) {
-
-
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
