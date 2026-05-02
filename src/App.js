@@ -1407,17 +1407,11 @@ setFormData({...formData, category:e.target.value, isFromSavings: false, linkedA
     <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
               </div>
 
-              <div className="flex gap-2 pt-1 relative z-10">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount ||
-!formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) ||
-(formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ?
-'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
+<div className="flex gap-2 pt-1 relative z-10 w-full overflow-hidden">
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
                     기록하고 계속
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount ||
-!formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) ||
-(formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ?
-'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
                     닫기 및 완료
                  </button>
               </div>
@@ -2123,7 +2117,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   </div>
                 </div>
               </div>
-              <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
+              <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full shrink-0 min-h-[56px] flex items-center justify-center whitespace-nowrap bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
                 {editingDeliveryShift ? '수정 완료 🚀' : '동시 저장 완료 🚀'}
               </button>
             </form>
@@ -2776,14 +2770,14 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
            })}
          </div>
 
-         <div className="flex gap-2 relative mt-2">
+        <div className="flex gap-2 relative mt-2 w-full">
             {messageFormData.text.length > 0 && (
               <div className="absolute -top-7 left-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
                 <span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span>
               </div>
             )}
-            <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder={activeMessages.length === 0 ? "새로운 메시지가 없습니다. 첫 톡을 남겨보세요! ✍️" : "여보 오늘 저녁은 뭐야? 🍗"} className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-base font-bold outline-none border border-pink-200 shadow-sm" />
-            <button onClick={handleSendMessage} disabled={!messageFormData.text.trim()} className="bg-pink-500 text-white px-4 rounded-2xl font-black shadow-md disabled:opacity-50 whitespace-nowrap shrink-0">전송</button>
+            <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder={activeMessages.length === 0 ? "새로운 메시지가 없습니다. 첫 톡을 남겨보세요! ✍️" : "여보 오늘 저녁은 뭐야? 🍗"} className="flex-1 min-w-0 bg-white rounded-2xl px-4 py-3.5 text-base font-bold outline-none border border-pink-200 shadow-sm" />
+            <button onClick={handleSendMessage} disabled={!messageFormData.text.trim()} className="shrink-0 whitespace-nowrap bg-pink-500 text-white px-4 rounded-2xl font-black shadow-md disabled:opacity-50">전송</button>
          </div>
       </div>
 
