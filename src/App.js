@@ -549,27 +549,30 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
 
+// 🚀 [V2.0 개선] 수입/지출 타입에 맞춰서 자주 쓰는 내역(해시태그) 분리
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
-      if (t.type === '지출' && t.note) {
+      if (t.type === formData.type && t.note) { // 💡 '지출' 고정 대신 formData.type으로 변경!
         const key = `${t.category}|${t.note}`;
         counts[key] = (counts[key] || 0) + 1;
       }
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
-  }, [ledger]);
+  }, [ledger, formData.type]); // 💡 의존성 배열에 formData.type 추가
 
+  // 🚀 [V2.0 개선] 수입/지출 타입에 맞춰서 추천 검색어(리스트) 완벽 분리
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
-    const matches = ledger.filter(t => t.note && t.note.includes(formData.note) && t.note !== formData.note);
+    // 💡 현재 선택된 타입(지출/수입)과 일치하는 내역만 검색하도록 조건 추가!
+    const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
     const uniqueMatches = [];
     const seen = new Set();
     matches.sort((a,b) => b.date.localeCompare(a.date)).forEach(t => {
        if(!seen.has(t.note)) { seen.add(t.note); uniqueMatches.push({ note: t.note, category: t.category, type: t.type }); }
     });
     return uniqueMatches.slice(0, 5);
-  }, [ledger, formData.note]);
+  }, [ledger, formData.note, formData.type]); // 💡 의존성 배열에 formData.type 추가
 
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
