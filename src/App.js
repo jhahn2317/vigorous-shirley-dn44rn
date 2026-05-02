@@ -463,6 +463,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
   );
 }
 
+
 // 5. LEDGER TAB COMPONENT
 function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
   const [ledgerSubTab, setLedgerSubTab] = useState('daily');
@@ -480,7 +481,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
   
-  // V2.0: Added isFromSavings and linkedAssetId for Asset sync
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
@@ -526,7 +526,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
   const monthUsedCategories = useMemo(() => Array.from(new Set(filteredLedger.map(t => t.category).filter(Boolean))).sort((a,b) => (a||'').localeCompare(b||'')), [filteredLedger]);
 
-  // V2.0: 투명인간 태그 (!t.isFromSavings) 가 적용된 생활비 계산
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
     expense: filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0), 
@@ -549,22 +548,21 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
 
-// 🚀 [V2.0 개선] 수입/지출 타입에 맞춰서 자주 쓰는 내역(해시태그) 분리
+  // 🚀 [V2.0 개선] 수입/지출 스마트 분리 (해시태그)
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
-      if (t.type === formData.type && t.note) { // 💡 '지출' 고정 대신 formData.type으로 변경!
+      if (t.type === formData.type && t.note) {
         const key = `${t.category}|${t.note}`;
         counts[key] = (counts[key] || 0) + 1;
       }
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
-  }, [ledger, formData.type]); // 💡 의존성 배열에 formData.type 추가
+  }, [ledger, formData.type]);
 
-  // 🚀 [V2.0 개선] 수입/지출 타입에 맞춰서 추천 검색어(리스트) 완벽 분리
+  // 🚀 [V2.0 개선] 수입/지출 스마트 분리 (검색 추천)
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
-    // 💡 현재 선택된 타입(지출/수입)과 일치하는 내역만 검색하도록 조건 추가!
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
     const uniqueMatches = [];
     const seen = new Set();
@@ -572,7 +570,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        if(!seen.has(t.note)) { seen.add(t.note); uniqueMatches.push({ note: t.note, category: t.category, type: t.type }); }
     });
     return uniqueMatches.slice(0, 5);
-  }, [ledger, formData.note, formData.type]); // 💡 의존성 배열에 formData.type 추가
+  }, [ledger, formData.note, formData.type]);
 
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
@@ -586,7 +584,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
 
-  // V2.0: 자산 연동 자동화 로직 포함된 저장 함수
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -608,7 +605,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        isFromSavings: formData.type === '지출' && formData.category !== '저축' ? formData.isFromSavings : false
     };
 
-    // 자산(예적금) 업데이트 로직
     let assetToUpdate = null;
     let assetUpdates = null;
     
@@ -987,42 +983,42 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          </div>
       )}
 
-      {/* 🚀 [V2.0] 가계부 입력/수정 메인 모달 (바텀시트 & 폼 분리) */}
+      {/* 🚀 [V2.0.1 개선] 가계부 입력/수정 메인 모달 (스크롤 없애기 & 폼 비중 조정) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
             onTouchStart={handleTouchStart}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsModalOpen(false))}
-            className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]"
+            className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-10 flex flex-col border-t-8 border-pink-400"
           >
-            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 shrink-0"></div>
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-3 shrink-0"></div>
             
-            <div className="flex justify-between items-center mb-4 shrink-0">
+            <div className="flex justify-between items-center mb-3 shrink-0">
                <h2 className="text-xl font-black text-gray-800">✨ {editingLedgerId ? '내역 수정' : '내역 기록'}</h2>
                <button onClick={() => setIsModalOpen(false)} className="bg-pink-50 text-pink-500 p-2 rounded-2xl border border-pink-100"><X size={20}/></button>
             </div>
 
-            <form className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
+            <form className="space-y-3 flex-1 pb-2">
               
               {!editingLedgerId && frequentItems.length > 0 && (
-                <div className="mb-2">
-                  <div className="text-[10px] font-black text-gray-400 ml-1 mb-2 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 내역 불러오기</div>
-                  <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2">
+                <div className="mb-1">
+                  <div className="text-[10px] font-black text-gray-400 ml-1 mb-1.5 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 {formData.type} 불러오기</div>
+                  <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1">
                     {frequentItems.map(([cat, note], idx) => (
                       <button key={idx} type="button" onClick={() => {
-                          setFormData({...formData, type: '지출', category: cat, note: note, isFromSavings: false});
+                          setFormData({...formData, category: cat, note: note, isFromSavings: false});
                           setIsSuggestionOpen(false); 
                       }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
-                         <span className="text-pink-500 mr-1">[{cat}]</span>{note}
+                         <span className={`${formData.type === '수입' ? 'text-blue-500' : 'text-pink-500'} mr-1`}>[{cat}]</span>{note}
                        </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner">
-                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
-                 <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
+              <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
+                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
+                 <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
               <div className="relative z-50" ref={suggestionRef}>
@@ -1033,78 +1029,54 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                        setIsSuggestionOpen(true);
                     }}
                     onFocus={() => setIsSuggestionOpen(true)}
-                    placeholder="예: 이마트, 관리비" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] font-bold text-base outline-none border focus:border-pink-300 transition-colors" />
+                    placeholder="내역을 적어주세요" className="w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border focus:border-pink-300 transition-colors shadow-inner" />
                  
                  {isSuggestionOpen && formData.note && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[200px] overflow-y-auto">
-                       <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-3 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[160px] overflow-y-auto">
+                       <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-2.5 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
                           ✨ '{formData.note}' 그대로 사용
                        </button>
                        {suggestedNotes.map(sn => (
                           <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
                                 setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
                                 setIsSuggestionOpen(false);
-                          }} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
-                             <span className="text-pink-400 mr-2 text-[10px] border border-pink-200 bg-white px-1.5 py-0.5 rounded shadow-sm">[{sn.category}]</span> 
+                          }} className="w-full text-left px-3 py-2 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
+                             <span className={`${formData.type === '수입' ? 'text-blue-400 border-blue-200' : 'text-pink-400 border-pink-200'} mr-2 text-[10px] border bg-white px-1.5 py-0.5 rounded shadow-sm`}>[{sn.category}]</span> 
                              {sn.note}
                           </button>
                        ))}
-                       {suggestedNotes.length === 0 && (
-                          <div className="px-3 py-2 text-xs text-gray-400 font-bold text-center">추천 내역이 없습니다.</div>
-                       )}
                     </div>
                  )}
               </div>
 
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative z-40">
-                 <div className="flex justify-between items-end mb-2">
-                    <label className="text-[10px] font-black text-gray-400 block">금액</label>
+              <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40">
+                 <div className="relative">
+                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
+                    <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
                  </div>
-                 <div className="relative mb-2">
-                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none bg-transparent transition-colors`} />
-                    <span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span>
-                 </div>
-                 {amountPlaceholder && (
-                    <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
-                       <Star size={12} className="fill-pink-400 text-pink-400"/> {amountPlaceholder}
-                    </div>
-                 )}
               </div>
 
-              {/* 🚀 [V2.0] 날짜 & 카테고리 시각적 분리 완벽 적용 (gap-4) */}
-              <div className="flex gap-4 w-full relative z-30">
-                <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-2xl p-3 border border-gray-200">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 flex items-center gap-1.5"><CalendarIcon size={12} className="text-pink-500"/> 날짜</label>
-                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[32px] font-bold text-sm outline-none transition-colors" />
+              <div className="flex gap-3 w-full relative z-30">
+                <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
+                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
+                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
                 </div>
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-3 border border-gray-200">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 flex items-center gap-1.5"><Grid size={12} className="text-pink-500"/> 카테고리</label>
-                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[32px] font-bold text-sm outline-none transition-colors">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
+                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className="text-pink-500"/> 카테고리</label>
+                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력">+ 직접입력 (신규)</option>
                    </select>
                 </div>
               </div>
 
-              {isCustomCategory && (
-                 <div className="animate-in slide-in-from-top-2">
-                    <input type="text" placeholder="새 카테고리명" value={customCategoryInput} onChange={e => setCustomCategoryInput(e.target.value)} className="w-full bg-white rounded-xl px-4 h-[48px] font-black text-base outline-none border shadow-sm focus:border-pink-300 transition-colors" />
-                    <label className="flex items-center gap-2 mt-2 ml-1 cursor-pointer">
-                       <input type="checkbox" checked={saveToCategoryList} onChange={e => setSaveToCategoryList(e.target.checked)} className="w-5 h-5 text-pink-500" />
-                       <span className="text-xs font-bold text-gray-500">목록에 추가</span>
-                    </label>
-                 </div>
-              )}
-
-              {/* V2.0: 저축/예금 연동 마법 UI */}
               {!editingLedgerId && formData.type === '지출' && formData.category === '저축' && depositAssets.length > 0 && (
-                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
-                   <div className="text-sm font-black text-indigo-700 mb-2 flex items-center gap-1.5"><PiggyBank size={16}/> 어느 금고로 모을까요?</div>
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 animate-in slide-in-from-top-2">
+                   <div className="text-xs font-black text-indigo-700 mb-2 flex items-center gap-1.5"><PiggyBank size={14}/> 어느 금고로 모을까요?</div>
                    <div className="grid grid-cols-2 gap-2">
                      {depositAssets.map(a => (
-                        <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-3 rounded-xl text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200'}`}>
-                           <div className="text-xs font-bold mb-1">{a.assetType === 'deposit' ? '예금' : '적금'}</div>
-                           <div className="font-black text-sm truncate">{a.name}</div>
+                        <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
+                           <div className="font-black text-xs truncate">{a.name}</div>
                         </button>
                      ))}
                    </div>
@@ -1112,23 +1084,16 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               )}
 
               {!editingLedgerId && formData.type === '지출' && formData.category !== '저축' && depositAssets.length > 0 && (
-                 <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 animate-in slide-in-from-top-2">
-                    <label className="flex items-start gap-3 cursor-pointer mb-3">
-                       <div className="pt-0.5">
-                          <input type="checkbox" checked={formData.isFromSavings} onChange={e => setFormData({...formData, isFromSavings: e.target.checked, linkedAssetId: e.target.checked ? (depositAssets[0]?.id || '') : ''})} className="w-5 h-5 text-indigo-500 rounded border-gray-300 focus:ring-indigo-500" />
-                       </div>
-                       <div>
-                          <div className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Building2 size={16} className="text-indigo-500"/> 모아둔 금고(예/적금)에서 쓰기</div>
-                          <p className="text-[10px] text-gray-500 font-bold mt-1">체크하시면 이번 달 생활비 합계에서 제외(투명인간)되며, 자산 잔고가 자동으로 차감됩니다.</p>
-                       </div>
+                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 animate-in slide-in-from-top-2">
+                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                       <input type="checkbox" checked={formData.isFromSavings} onChange={e => setFormData({...formData, isFromSavings: e.target.checked, linkedAssetId: e.target.checked ? (depositAssets[0]?.id || '') : ''})} className="w-4 h-4 text-indigo-500 rounded border-gray-300" />
+                       <div className="text-xs font-black text-gray-800 flex items-center gap-1"><Building2 size={14} className="text-indigo-500"/> 금고 돈 쓰기 (생활비 제외)</div>
                     </label>
-                    
                     {formData.isFromSavings && (
-                      <div className="grid grid-cols-2 gap-2 animate-in fade-in">
+                      <div className="grid grid-cols-2 gap-2">
                           {depositAssets.map(a => (
-                             <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-3 rounded-xl text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200'}`}>
-                                <div className="text-xs font-bold mb-1">{a.assetType === 'deposit' ? '예금' : '적금'}</div>
-                                <div className="font-black text-sm truncate">{a.name}</div>
+                             <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
+                                <div className="font-black text-xs truncate">{a.name}</div>
                              </button>
                           ))}
                       </div>
@@ -1137,15 +1102,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               )}
 
               <div className="relative z-20">
-                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">세부 내역 메모 (선택)</label>
-                 <textarea value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="어떤 물건을 샀는지 상세히 적어보세요." className="w-full bg-gray-50 rounded-xl px-4 py-3 h-[80px] font-bold text-sm outline-none border resize-none focus:border-pink-300 transition-colors" />
+                 <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
               </div>
 
-              <div className="flex gap-2 mt-4 pt-2 relative z-10">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50 disabled:border-gray-200 disabled:text-gray-400`}>
-                    기록하고 계속 입력
+              <div className="flex gap-2 pt-1 relative z-10">
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
+                    기록하고 계속
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3.5 rounded-[1.5rem] text-white font-black text-sm active:scale-95 shadow-xl transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50 disabled:bg-gray-300 disabled:border-gray-300`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
                     닫기 및 완료
                  </button>
               </div>
@@ -1219,6 +1183,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     </div>
   );
 } // End of LedgerView
+
+
+
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
