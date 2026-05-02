@@ -211,9 +211,22 @@ const AutoScaleValue = ({ value, isNet = false }) => {
   return <div className={`font-black truncate tracking-tighter ${color} ${sizeClass}`}>{sign}{str}</div>;
 };
 
-// 🚀 [V2.0] 스와이프 닫기 공통 함수 (화면 절반 기준)
+// 🚀 [V2.5] 쫀득 스와이프 물리엔진 공통 함수 (화면이 손가락 따라 움직임!)
 export const handleTouchStart = (e) => {
   e.currentTarget.dataset.startY = e.touches[0].clientY;
+  // 손가락 따라갈 땐 버벅임 방지용으로 애니메이션(지연) 끄기
+  e.currentTarget.style.transition = 'none'; 
+};
+
+export const handleTouchMove = (e) => {
+  const startY = parseFloat(e.currentTarget.dataset.startY || 0);
+  const currentY = e.touches[0].clientY;
+  const swipeDistance = currentY - startY;
+
+  // 아래로 쓸어내릴 때만 화면이 실시간으로 따라 내려가도록!
+  if (swipeDistance > 0) {
+    e.currentTarget.style.transform = `translateY(${swipeDistance}px)`;
+  }
 };
 
 export const handleTouchEnd = (e, closeFunction) => {
@@ -221,9 +234,23 @@ export const handleTouchEnd = (e, closeFunction) => {
   const currentY = e.changedTouches[0].clientY;
   const swipeDistance = currentY - startY;
   const modalHeight = e.currentTarget.clientHeight;
-  
+
+  // 손 뗄 때 다시 고무줄처럼 튕기거나 부드럽게 날아가도록 애니메이션 켜기
+  e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
+
   if (swipeDistance > modalHeight * 0.5) {
-    closeFunction();
+    // 50% 이상 내렸으면: 아래로 확! 날려버리고 창 닫기
+    e.currentTarget.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      closeFunction();
+      e.currentTarget.style.transform = ''; // 다음 번 열릴 때를 위해 원래 위치로 초기화
+    }, 250); // 창이 날아가는 0.25초 동안 대기
+  } else {
+    // 50% 안 넘었으면: 원래 자리로 고무줄처럼 튕겨 올라오기
+    e.currentTarget.style.transform = 'translateY(0)';
+    setTimeout(() => {
+      e.currentTarget.style.transform = ''; // 깔끔하게 스타일 초기화
+    }, 300);
   }
 };
 
@@ -987,7 +1014,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-10 flex flex-col border-t-8 border-pink-400"
           >
@@ -1592,7 +1619,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {selectedShiftDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] p-0 overflow-y-auto no-scrollbar">
             <div 
-              onTouchStart={handleTouchStart}
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedShiftDetail(null))}
               className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 relative border-t-8 border-blue-500"
             >
@@ -1655,7 +1682,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           return (
              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
                 <div 
-                  onTouchStart={handleTouchStart}
+                  onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
                   onTouchEnd={(e) => handleTouchEnd(e, () => { setSelectedWeeklySummary(null); setSelectedDailySummary(null); })}
                   className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden"
                 >
@@ -1702,7 +1729,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsDeliveryModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-7 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-500 flex flex-col max-h-[90vh]"
           >
@@ -2009,7 +2036,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
       {isAddAssetModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsAddAssetModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 border-t-8 border-indigo-500 flex flex-col max-h-[90vh]"
           >
@@ -2051,7 +2078,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
       {isPrepayModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsPrepayModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-orange-500 flex flex-col max-h-[90vh]"
           >
@@ -2074,7 +2101,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
       {selectedAssetDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden p-0">
             <div 
-              onTouchStart={handleTouchStart}
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedAssetDetail(null))}
               className={`bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom flex flex-col h-[85vh] border-t-8 ${selectedAssetDetail.assetType === 'deposit' ? 'border-blue-500' : 'border-emerald-500'}`}
             >
@@ -2416,7 +2443,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       {isMessageHistoryOpen && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
             <div 
-              onTouchStart={handleTouchStart}
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setIsMessageHistoryOpen(false))}
               className="bg-white w-full max-w-md rounded-t-[3rem] p-6 shadow-2xl flex flex-col h-[80vh] animate-in slide-in-from-bottom border-t-8 border-pink-500"
             >
@@ -2447,7 +2474,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart}
+            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsEventModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 border-emerald-500"
           >
@@ -2476,7 +2503,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
             <div 
-              onTouchStart={handleTouchStart}
+              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setIsDutyEditModalOpen(false))}
               className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom border-t-8 border-indigo-400"
             >
