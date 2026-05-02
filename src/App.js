@@ -2194,9 +2194,13 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
-// 8. FAMILY CALENDAR COMPONENT (🚀 [V3.0] 콤팩트 다이어트 및 스마트 스크롤 적용)
+// 8. FAMILY CALENDAR COMPONENT (🚀 [V3.5] 스위치 탭 & 캘린더 뷰 & 스마트 아이콘 적용)
 // ==========================================
 function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab }) {
+  // 💡 [V3.5] 타임라인 / 캘린더 스위치 상태
+  const [calendarSubTab, setCalendarSubTab] = useState('timeline');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // 달력 날짜 클릭 시 팝업용
+
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
@@ -2224,19 +2228,34 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
-  // 💡 [V3.0] 오늘 일정 찾기 로직
+  // 💡 [V3.5] 스마트 단어 인식 아이콘 엔진
+  const getSmartIcon = (title, type) => {
+    const t = title || '';
+    if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
+    if (t.includes('여행') || t.includes('휴가') || t.includes('비행기')) return '✈️';
+    if (t.includes('병원') || t.includes('검진') || t.includes('치과')) return '🏥';
+    if (t.includes('결혼') || t.includes('기념일') || t.includes('웨딩')) return '💍';
+    if (t.includes('식사') || t.includes('저녁') || t.includes('외식')) return '🍽️';
+    if (t.includes('학교') || t.includes('입학') || t.includes('졸업') || t.includes('학부모')) return '🏫';
+    if (t.includes('캠핑') || t.includes('글램핑') || t.includes('차박')) return '⛺';
+    if (t.includes('쇼핑') || t.includes('마트') || t.includes('백화점')) return '🛒';
+    
+    // 단어 인식이 안 될 경우 타입별 기본 아이콘
+    if (type === '가족일정') return '💖';
+    if (type === '회식') return '🍻';
+    return '⭐'; // 기타
+  };
+
   const upcomingEventIndex = useMemo(() => {
     const idx = familyEventsList.findIndex(e => e.date >= todayStr);
     return idx !== -1 ? idx : familyEventsList.length - 1;
   }, [familyEventsList, todayStr]);
 
-// 💡 [V3.0] 박스 독립 스마트 스크롤 엔진 (데이터 로딩 대기 기능 추가 완벽판!)
+  // 💡 박스 독립 스마트 스크롤 엔진
   useEffect(() => {
-    // 💡 데이터가 아직 안 왔으면(길이가 0이면) 헛발질하지 않고 기다립니다.
-    if (familyEventsList.length === 0) return;
+    if (familyEventsList.length === 0 || calendarSubTab !== 'timeline') return;
 
     const timer = setTimeout(() => {
-      // 1. 가로 듀티 스크롤
       const dutyContainer = dutyTimelineRef.current;
       const dutyTodayEl = document.getElementById('duty-today');
       if (dutyContainer && dutyTodayEl) {
@@ -2246,19 +2265,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         });
       }
 
-      // 2. 세로 타임라인 박스 스크롤
       const timelineContainer = document.getElementById('timeline-scroll-area');
       const timelineTodayEl = document.getElementById('timeline-today');
       if (timelineContainer && timelineTodayEl) {
         timelineContainer.scrollTo({
-          top: timelineTodayEl.offsetTop - 80, // 과거 일정 1개 보이게 조절
+          top: timelineTodayEl.offsetTop - 80,
           behavior: 'smooth'
         });
       }
-    }, 400); // 렌더링 안정성을 위해 0.4초로 살짝 여유를 줬습니다.
+    }, 400);
 
-    return () => clearTimeout(timer); // 클린업 함수 추가
-  }, [activeTab, familyEventsList.length]); // 👈 핵심! 데이터 길이가 변할 때(서버에서 도착했을 때) 다시 실행!
+    return () => clearTimeout(timer);
+  }, [activeTab, familyEventsList.length, calendarSubTab]);
 
   useEffect(() => {
     if(isDutyBatchModalOpen) {
@@ -2290,13 +2308,11 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
   const handleSendMessage = async () => {
     if(!messageFormData.text.trim() || !user) return;
-    
     const d = new Date();
     let hh = d.getHours();
     const ampm = hh >= 12 ? '오후' : '오전';
     hh = hh % 12 || 12;
     const timeStr = `${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
-
     const newMsg = { author: currentUser, text: messageFormData.text, createdAt: todayStr, time: timeStr, isChecked: false, replies: [] };
     if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
@@ -2356,7 +2372,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       const ampm = hh >= 12 ? '오후' : '오전';
       hh = hh % 12 || 12;
       const timeStr = `${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
-      
       const newMsg = { author: '시스템', title: `${currentUser}님의 듀티변경`, text: msgText, createdAt: todayStr, time: timeStr, isChecked: false, isSystemLog: true };
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
       else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
@@ -2381,7 +2396,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
        }
        return;
     }
-    
     setBatchDuties(prev => ({...prev, [continuousCursorDateStr]: duty === 'DELETE' ? null : duty}));
     const d = new Date(continuousCursorDateStr);
     d.setDate(d.getDate() + 1);
@@ -2407,7 +2421,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   return (
     <div className="space-y-5 pb-28 pt-2 animate-in slide-in-from-right duration-500">
       
-      {/* 💡 [V3.0] 한줄톡 다이어트 및 시스템 알림 압축 */}
+      {/* 현아&정훈 한줄톡 */}
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
          <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center"><span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span><button onClick={() => setIsMessageHistoryOpen(true)} className="text-gray-400 font-bold border-b border-gray-300 pb-0.5 active:text-pink-500">과거 보관소</button></h3>
          
@@ -2450,7 +2464,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          </div>
 
          <div className="flex gap-2 relative mt-2">
-            {/* 글자를 입력 중일 때만 뱃지가 뿅! 하고 나타납니다 */}
             {messageFormData.text.length > 0 && (
               <div className="absolute -top-7 left-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
                 <span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span>
@@ -2504,59 +2517,156 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 💡 [V3.0] 독립 스크롤 박스로 개조된 타임라인 */}
-      <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200">
-        <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
-        
-        {/* 독립 스크롤 영역 */}
-        <div id="timeline-scroll-area" className="max-h-[550px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
-           <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent pb-10">
-             
-             {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
-             
-             {familyEventsList.map((e, i, arr) => {
-               const isTodayEvent = i === upcomingEventIndex;
-               return (
-                 <div key={e.id} id={isTodayEvent ? 'timeline-today' : undefined}>
-                   {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
-                     <div className="relative flex items-center justify-center py-4">
-                       <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">
-                         {e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월
-                       </div>
-                     </div>
-                   )}
-                   
-                   <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${e.date < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
-                     
-                     <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white'}`}>
-                       {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : getEventIcon(e.type)}
-                     </div>
-                     
-                     <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-white border-gray-100'}`}>
-                       <div className="flex justify-between items-start mb-1.5">
-                         <div className="flex flex-col gap-0.5">
-                           <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
-                             {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})
-                             {isTodayEvent && " ✨ 오늘"}
-                           </span>
-                           <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
-                         </div>
-                         <div className="flex gap-1">
-                           <button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button>
-                           <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button>
+      {/* 💡 [V3.5] 타임라인 / 달력 스위치 버튼 (가계부와 동일한 UI) */}
+      <div className="flex bg-pink-100 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200">
+        <button onClick={() => setCalendarSubTab('timeline')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='timeline'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><List size={14}/> 타임라인</button>
+        <button onClick={() => setCalendarSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><CalendarDays size={14}/> 월간 달력</button>
+      </div>
+
+      {calendarSubTab === 'timeline' && (
+        <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200 animate-in slide-in-from-left duration-300 mt-1">
+          <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
+          
+          <div id="timeline-scroll-area" className="max-h-[550px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
+             <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent pb-10">
+               
+               {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
+               
+               {familyEventsList.map((e, i, arr) => {
+                 const isTodayEvent = i === upcomingEventIndex;
+                 return (
+                   <div key={e.id} id={isTodayEvent ? 'timeline-today' : undefined}>
+                     {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
+                       <div className="relative flex items-center justify-center py-4">
+                         <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">
+                           {e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월
                          </div>
                        </div>
-                       <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : 'text-gray-800'}`}>
-                         {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
+                     )}
+                     
+                     <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${e.date < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
+                       
+                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white'}`}>
+                         {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : <span className="text-[18px]">{getSmartIcon(e.title, e.type)}</span>}
+                       </div>
+                       
+                       <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-white border-gray-100'}`}>
+                         <div className="flex justify-between items-start mb-1.5">
+                           <div className="flex flex-col gap-0.5">
+                             <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
+                               {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})
+                               {isTodayEvent && " ✨ 오늘"}
+                             </span>
+                             <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
+                           </div>
+                           <div className="flex gap-1">
+                             <button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button>
+                             <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button>
+                           </div>
+                         </div>
+                         <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : 'text-gray-800'}`}>
+                           {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
+                         </div>
                        </div>
                      </div>
                    </div>
-                 </div>
-               );
-             })}
-           </div>
+                 );
+               })}
+             </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 💡 [V3.5] 새로운 가족 일정 달력 뷰 */}
+      {calendarSubTab === 'calendar' && (() => {
+        const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
+        const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+        const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
+        
+        // 날짜별 일정 그룹핑
+        const eventsByDate = {};
+        familyEventsList.forEach(e => { 
+          if(e.date && e.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}`)) {
+             if(!eventsByDate[e.date]) eventsByDate[e.date] = [];
+             eventsByDate[e.date].push(e);
+          } 
+        });
+
+        return (
+          <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-right mt-1">
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+             <div className="grid grid-cols-7 gap-1">
+               {days.map((d, i) => {
+                 if(!d) return <div key={`empty-${i}`} className="h-[65px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
+                 
+                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                 const dayEvents = eventsByDate[dateStr] || [];
+                 const isToday = dateStr === todayStr;
+                 const hasEvent = dayEvents.length > 0;
+                 
+                 return (
+                   <div key={`day-${i}`} onClick={() => { if(hasEvent) setSelectedCalendarDate(dateStr); }} className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-gray-100 bg-white hover:bg-gray-50'} ${isToday ? 'ring-2 ring-gray-800' : ''}`}>
+                     <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
+                     
+                     {hasEvent && (
+                       <div className="flex flex-col items-center justify-center w-full h-full pb-3 relative">
+                          <span className="text-[22px] leading-none mb-1">{getSmartIcon(dayEvents[0].title, dayEvents[0].type)}</span>
+                          {/* 💡 [V3.5] 일정 2개 이상일 때 +2 빨간 뱃지 표시 */}
+                          {dayEvents.length > 1 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-sm border-2 border-white">+{(dayEvents.length - 1)}</span>
+                          )}
+                          {/* 첫 번째 일정의 이름만 작게 보여줌 */}
+                          <div className="text-[8px] font-black text-gray-700 w-full text-center truncate px-0.5">{dayEvents[0].title}</div>
+                       </div>
+                     )}
+                   </div>
+                 )
+               })}
+             </div>
+          </div>
+        );
+      })()}
+
+      {/* 💡 [V3.5] 달력 날짜 클릭 시 나타나는 일정 상세 팝업 (바텀시트) */}
+      {selectedCalendarDate && (() => {
+        const dayEvents = familyEventsList.filter(e => e.date === selectedCalendarDate);
+        return (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
+              className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
+            >
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
+               <div className="flex justify-between items-center mb-6 shrink-0">
+                  <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
+                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '. ')} 일정
+                  </h2>
+                  <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+               </div>
+               
+               <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
+                  {dayEvents.map(e => (
+                    <div key={e.id} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
+                        <div className="truncate">
+                          <div className="text-[10px] font-bold text-pink-500 mb-0.5">{e.type}</div>
+                          <div className="font-black text-base text-gray-800 flex items-center gap-1">{e.title} {e.isImportant && <Star size={12} className="text-amber-400 fill-amber-400"/>}</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0 ml-2">
+                        <button onClick={() => { setSelectedCalendarDate(null); setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-2 rounded-xl border shadow-sm"><Edit3 size={14}/></button>
+                        <button onClick={() => { setSelectedCalendarDate(null); deleteEvent(e.id); }} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl border shadow-sm"><Trash2 size={14}/></button>
+                      </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+         </div>
+        );
+      })()}
 
       <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
@@ -2633,6 +2743,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
+      {/* 이하 모달들은 그대로 유지 */}
       {isDutyEditModalOpen && selectedDutyEditDate && (() => {
          const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
          const currentDuty = existingEvent ? existingEvent.title : 'OFF';
@@ -2740,7 +2851,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     </div>
   );
 } // End of FamilyCalendarView
-
 
 // ==========================================
 // 9. MAIN APP CONTENT (🚀 [V3.0] 폰트 커스텀 CSS 엔진 적용)
