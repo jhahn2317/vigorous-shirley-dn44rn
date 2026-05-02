@@ -20,6 +20,7 @@ const firebaseConfig = {
   messagingSenderId: "571320052451",
   appId: "1:571320052451:web:3ef33254a404675311f3d6"
 };
+
 let app, auth, db;
 let isFirebaseEnabled = true;
 
@@ -63,6 +64,7 @@ const DEFAULT_CATEGORIES = {
   지출: ['식비', '주거/통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
   수입: ['월급', '배달비', '월세', '용돈', '기타수입']
 };
+
 const tabConfig = {
   calendar: { id: 'calendar', label: '우리가족', icon: CalendarIcon },
   ledger: { id: 'ledger', label: '가계부', icon: Wallet },
@@ -88,6 +90,7 @@ const getKSTTimestamp = () => {
   hh = hh ? hh : 12; 
   return `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 ${ampm} ${hh}:${String(kst.getMinutes()).padStart(2, '0')}`;
 };
+
 const formatTimeStr = (dateObj) => `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
 
 const getPaydayStr = (dateString) => {
@@ -106,6 +109,7 @@ const formatMoney = (v) => {
   const num = typeof v === 'string' ? parseFloat(v.replace(/,/g, '')) : v;
   return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
 };
+
 const formatLargeMoney = (val) => formatMoney(val);
 
 const formatCompactMoney = (val) => {
@@ -236,7 +240,7 @@ const AutoScaleValue = ({ value, isNet = false }) => {
   return <div className={`font-black truncate tracking-tighter ${color} ${sizeClass}`}>{sign}{str}</div>;
 };
 
-// 🚀 [V2.5] 쫀득 스와이프 물리엔진 공통 함수 (화면이 손가락 따라 움직임!)
+// 🚀 [V2.5] 쫀득 스와이프 물리엔진 공통 함수
 export const handleTouchStart = (e) => {
   e.currentTarget.dataset.startY = e.touches[0].clientY;
   e.currentTarget.style.transition = 'none'; 
@@ -251,15 +255,15 @@ export const handleTouchMove = (e) => {
   }
 };
 
+// 💡 [V2.5] 민감도 50% -> 35%로 조정 완료!
 export const handleTouchEnd = (e, closeFunction) => {
   const startY = parseFloat(e.currentTarget.dataset.startY || 0);
   const currentY = e.changedTouches[0].clientY;
   const swipeDistance = currentY - startY;
   const modalHeight = e.currentTarget.clientHeight;
 
-  e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
-
-  if (swipeDistance > modalHeight * 0.28) {
+  e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+  if (swipeDistance > modalHeight * 0.35) {
     e.currentTarget.style.transform = 'translateY(100%)';
     setTimeout(() => {
       closeFunction();
@@ -292,6 +296,7 @@ function LockScreenView({ correctPin, onUnlock }) {
       }
     }
   };
+
   const handleDelete = () => setPin(prev => prev.slice(0, -1));
 
   return (
@@ -328,8 +333,8 @@ function LockScreenView({ correctPin, onUnlock }) {
   );
 }
 
-// 4. SETTINGS COMPONENT
-function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages }) {
+// 4. SETTINGS COMPONENT (🚀 [V3.0] 폰트 커스텀 설정 추가)
+function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages, appFont, setAppFont }) {
   const [isSystemSettingsOpen, setIsSystemSettingsOpen] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(() => localStorage.getItem('hyunaLockEnabled') === 'true');
   const [lockPin, setLockPin] = useState(() => localStorage.getItem('hyunaLockPin') || '0000');
@@ -344,26 +349,32 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
   };
 
   const handleSetCurrentUser = (name) => { setCurrentUser(name); localStorage.setItem('hyunaCurrentUser', name); };
+  
   const updateSettings = async (field, value) => {
     const newSettings = { ...userSettings, [field]: value };
     if(isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), newSettings);
     else setUserSettings(newSettings);
   };
+
   const toggleLock = (e) => {
     const isChecked = e.target.checked;
     setLockEnabled(isChecked);
     localStorage.setItem('hyunaLockEnabled', isChecked ? 'true' : 'false');
   };
+
   const changeLockPin = (e) => {
     const val = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
     setLockPin(val);
     if(val.length === 4) localStorage.setItem('hyunaLockPin', val);
   };
+
   const changeLockTimeout = (e) => {
     setLockTimeout(e.target.value);
     localStorage.setItem('hyunaLockTimeout', e.target.value);
   };
+
   const getSortedCategories = (type) => [...(categories[type] || [])].sort((a, b) => (a||'').localeCompare(b||''));
+
   const handleAddCategory = async (type) => {
     const newCat = prompt(`추가할 ${type} 카테고리명을 입력하세요:`);
     if(newCat && newCat.trim() !== '') {
@@ -372,6 +383,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
+
   const handleDeleteCategory = async (type, cat) => {
     if(window.confirm(`'${cat}' 카테고리를 정말 삭제하시겠습니까?`)) {
        const newCats = {...categories, [type]: (categories[type]||[]).filter(c => c !== cat)};
@@ -379,6 +391,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
+
   return (
     <div className="px-5 my-4 animate-in fade-in space-y-4">
       <div className="mb-2 pl-1">
@@ -406,6 +419,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
           </div>
         </div>
       )}
+
       {activeTab === 'delivery' && (
         <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-right-2">
           <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
@@ -415,6 +429,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
           </div>
         </div>
       )}
+
       {(activeTab === 'assets' || activeTab === 'calendar') && (
         <div className={`bg-white p-5 rounded-2xl border ${activeTab==='assets'?'border-indigo-200':'border-emerald-200'} shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500`}>
           {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
@@ -432,6 +447,22 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
       {isSystemSettingsOpen && (
         <div className="space-y-4 animate-in slide-in-from-top-2 pt-2">
+          
+          {/* 💡 [V3.0] 내 기기 글씨체 커스텀 세팅 영역 추가 */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Edit3 size={16} className="text-pink-500"/> 내 기기 글씨체 설정</h3>
+            <select value={appFont} onChange={(e) => { setAppFont(e.target.value); localStorage.setItem('hyunaFont', e.target.value); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 h-[44px] font-bold text-sm outline-none text-slate-700 shadow-inner">
+              <option value="Inter">Inter (기본 깔끔 고딕체)</option>
+              <option value="Pretendard">프리텐다드 (애플 순정 감성)</option>
+              <option value="'KOTRA_HOPE'">코트라 희망체 (따뜻한 손글씨)</option>
+              <option value="'Cafe24SsurroundAir'">카페24 써라운드 (둥글둥글 귀여움)</option>
+              <option value="'CookieRun'">쿠키런체 (통통 튀는 매력)</option>
+              <option value="'Bareun_hipi'">바른히피체 (꾸안꾸 다이어리 감성)</option>
+              <option value="'Ownglyph_uiyeon'">온글잎 의연체 (인스타 감성 펜글씨)</option>
+            </select>
+            <p className="text-[9px] text-gray-400 font-bold mt-2 leading-relaxed">이 설정은 현재 기기에만 저장되어 부부가 서로 다른 폰트를 사용할 수 있습니다.</p>
+          </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
             <div className="flex gap-2">
@@ -478,6 +509,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
               <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-gray-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold shadow-sm active:scale-95`}>현재 탭으로 고정</button>
             </div>
           </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 하단 메뉴 순서 변경</h3>
             <div className="space-y-2">
@@ -492,6 +524,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
               ))}
             </div>
           </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
                <Trash2 size={16} className="text-red-500"/> 데이터 관리
@@ -503,6 +536,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
                </button>
              </div>
           </div>
+
         </div>
       )}
     </div>
@@ -650,7 +684,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
     let assetToUpdate = null;
     let assetUpdates = null;
-    
     if (!editingLedgerId && formData.linkedAssetId) { 
         if (formData.type === '지출' && formData.category === '저축') {
             assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
@@ -790,7 +823,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   };
 
   const isSearchActive = searchQuery || filterType !== 'all' || filterCategory !== 'all' || ledgerDateRange.start || ledgerDateRange.end;
-  
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
       <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center">
@@ -1034,7 +1066,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          </div>
       )}
 
-      {/* 가계부 입력/수정 메인 모달 (오리지널 핑크/블루로 복구) */}
+      {/* 가계부 입력/수정 메인 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
@@ -1328,7 +1360,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   }, [dailyDeliveries]);
 
   const pastPaydays = Object.keys(paydayGroups).sort((a,b) => b.localeCompare(a)).filter(p => p && p < todayStr);
-
   const globalPending = (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date && getPaydayStr(d.date) >= todayStr);
 
   const pendingByPayday = useMemo(() => {
@@ -1417,6 +1448,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const deleteShift = async (shift) => {
     if(!window.confirm('이 시간대의 기록을 통째로 모두 삭제하시겠습니까?')) return;
+
     if (isFirebaseEnabled && user) {
         for(const item of shift.items) {
            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
@@ -1599,6 +1631,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                  <div className="space-y-2">
                   {shiftList.map(shift => {
                     const pDay = getPaydayStr(shift.date);
+
                     return (
                       <div key={shift.id} onClick={() => setSelectedShiftDetail(shift)} className="flex justify-between items-center bg-slate-50/50 p-3.5 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50 cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
@@ -1718,7 +1751,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                        <div className="relative z-10">
                            <div className="text-blue-200 text-xs font-bold mb-1">총 정산 금액</div>
                            <div className="text-4xl font-black tracking-tighter mb-6">{formatLargeMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
-                    
+                           
                            <div className="grid grid-cols-2 gap-4 gap-y-6 border-t border-white/10 pt-5">
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
@@ -1746,7 +1779,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
-      {/* 🚀 [V2.0] 배달 동시 기록 팝업 모달 (바텀시트 적용) */}
+      {/* 🚀 [V2.0] 배달 동시 기록 팝업 모달 */}
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
@@ -1823,7 +1856,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     </div>
   );
 }
-
 // ==========================================
 // 7. ASSETS TAB COMPONENT
 // ==========================================
@@ -1859,7 +1891,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   const paidLoansThisMonth = sortedLoans.filter(l => l.paidMonths?.includes(currentMonthKey));
   const totalPaidThisMonth = paidLoansThisMonth.reduce((sum, l) => sum + getMonthlyPayment(l), 0);
   const totalUnpaidThisMonth = sortedLoans.filter(l => !l.paidMonths?.includes(currentMonthKey) && l.status !== '완납').reduce((sum, l) => sum + getMonthlyPayment(l), 0);
-
   const updateAsset = async (id, field, value) => {
     if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id), { [field]: value });
   }
@@ -1880,7 +1911,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     const newPaidMonths = (loan.paidMonths || []).filter(m => m !== currentMonthKey);
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
   };
-
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
     if (!newAssetFormData.name.trim() || !user) return;
@@ -1898,7 +1928,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     setIsAddAssetModalOpen(false);
     setNewAssetFormData({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
   };
-
   const handlePrepaySubmit = async (e) => {
     e.preventDefault();
     if(!user) return;
@@ -2097,7 +2126,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
       {/* 🚀 [V2.5] 중도상환 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isPrepayModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
-          <div 
+           <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsPrepayModalOpen(false))}
@@ -2165,8 +2194,9 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
-// 8. FAMILY CALENDAR COMPONENT
-function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode }) {
+// 8. FAMILY CALENDAR COMPONENT (🚀 [V3.0] 콤팩트 다이어트 및 스마트 스크롤 적용)
+// ==========================================
+function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab }) {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
@@ -2194,24 +2224,36 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
- // 💡 듀티 캘린더 & 가족 일정 타임라인 동시 자동 스크롤 엔진
-  useEffect(() => {
-    setTimeout(() => {
-      // 1. 현아 근무 스케줄(가로) 오늘 날짜로 휙!
-      const dutyTodayEl = document.getElementById('duty-today');
-      if (dutyTodayEl) dutyTodayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-
-      // 2. 가족 일정 타임라인(세로) 다가오는 일정으로 휙!
-      const timelineTodayEl = document.getElementById('timeline-today');
-      if (timelineTodayEl) timelineTodayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
-  }, []);
-
-  // 💡 오늘 또는 오늘 이후의 가장 가까운 일정의 위치(Index)를 찾는 로직 (없으면 맨 마지막 과거 일정으로)
+  // 💡 [V3.0] 오늘 일정 찾기 로직
   const upcomingEventIndex = useMemo(() => {
     const idx = familyEventsList.findIndex(e => e.date >= todayStr);
     return idx !== -1 ? idx : familyEventsList.length - 1;
   }, [familyEventsList, todayStr]);
+
+  // 💡 [V3.0] 박스 독립 스마트 스크롤 엔진
+  useEffect(() => {
+    setTimeout(() => {
+      // 가로 듀티 스크롤
+      const dutyContainer = dutyTimelineRef.current;
+      const dutyTodayEl = document.getElementById('duty-today');
+      if (dutyContainer && dutyTodayEl) {
+        dutyContainer.scrollTo({
+          left: dutyTodayEl.offsetLeft - dutyContainer.clientWidth / 2 + dutyTodayEl.clientWidth / 2,
+          behavior: 'smooth'
+        });
+      }
+
+      // 세로 타임라인 박스 스크롤
+      const timelineContainer = document.getElementById('timeline-scroll-area');
+      const timelineTodayEl = document.getElementById('timeline-today');
+      if (timelineContainer && timelineTodayEl) {
+        timelineContainer.scrollTo({
+          top: timelineTodayEl.offsetTop - 80, // 과거 일정 1개 보이게 조절
+          behavior: 'smooth'
+        });
+      }
+    }, 300);
+  }, [activeTab]); 
 
   useEffect(() => {
     if(isDutyBatchModalOpen) {
@@ -2350,34 +2392,33 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     const oldDuties = events.filter(e => e.type === '듀티' && e.date.startsWith(monthPrefix));
     if (isFirebaseEnabled) {
       for (const e of oldDuties) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
-      for (const [date, title] of Object.entries(batchDuties)) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title, date, isImportant: false });
-    } else {
-      const kept = events.filter(e => !(e.type === '듀티' && e.date && e.date.startsWith(monthPrefix)));
-      const added = Object.entries(batchDuties).map(([date, title], i) => ({ id: `batch_${Date.now()}_${i}`, type: '듀티', title, date, isImportant: false }));
-      setEvents([...added, ...kept]);
+      for (const [date, title] of Object.entries(batchDuties)) {
+        if(title) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title, date, isImportant: false });
+      }
     }
-    setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴이 일괄 저장되었습니다!`);
+    setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
   };
 
   return (
     <div className="space-y-5 pb-28 pt-2 animate-in slide-in-from-right duration-500">
       
+      {/* 💡 [V3.0] 한줄톡 다이어트 및 시스템 알림 압축 */}
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
          <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center"><span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span><button onClick={() => setIsMessageHistoryOpen(true)} className="text-gray-400 font-bold border-b border-gray-300 pb-0.5 active:text-pink-500">과거 보관소</button></h3>
+         
          <div className="space-y-3 mb-4">
-            {activeMessages.length === 0 && <div className="text-center text-gray-400 font-bold text-[10px] py-6 bg-white/50 rounded-2xl border border-pink-100/50">새로운 메시지가 없습니다.</div>}
             {activeMessages.map(m => {
               if (m.isSystemLog || m.author === '시스템') {
                 return (
-                  <div key={m.id} className="bg-emerald-50 p-3.5 rounded-2xl shadow-sm border border-emerald-100/50">
-                    <div className="flex justify-between items-start mb-2">
-                       <div className="flex flex-col gap-1"><span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black w-max">시스템 알림</span><span className="text-[11px] font-black text-emerald-900">{m.title || '알림'}</span></div>
-                       <span className="text-[10px] font-bold text-emerald-600/70 bg-emerald-100/50 px-2 py-1 rounded-lg border">
-                          {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
-                       </span>
+                  <div key={m.id} className="bg-emerald-50 p-3 rounded-2xl shadow-sm border border-emerald-100/50 flex flex-col gap-1.5">
+                    <div className="flex justify-between items-start">
+                       <div className="flex items-center gap-2">
+                          <span className="bg-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black shrink-0">시스템 알림</span>
+                          <span className="text-[10px] font-bold text-emerald-600/70">{typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}</span>
+                       </div>
+                       <button onClick={() => handleCheckMessage(m.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-lg text-[9px] font-black active:scale-95 flex items-center gap-1 shrink-0"><CheckCircle2 size={10}/> 확인</button>
                     </div>
                     <div className="text-xs font-bold text-emerald-800 leading-relaxed whitespace-pre-wrap pl-1 border-l-2 border-emerald-200 ml-1">{m.text}</div>
-                    <div className="mt-2 text-right"><button onClick={() => handleCheckMessage(m.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border px-3 py-1.5 rounded-xl text-[10px] font-black active:scale-95 flex items-center gap-1 ml-auto"><CheckCircle2 size={12}/> 확인</button></div>
                   </div>
                 )
               }
@@ -2402,9 +2443,15 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               )
            })}
          </div>
+
          <div className="flex gap-2 relative mt-2">
-            <div className="absolute -top-7 left-1"><span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span></div>
-            <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder="여보 오늘 저녁은 뭐야? 🍗" className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-base font-bold outline-none border border-pink-200 shadow-sm" />
+            {/* 글자를 입력 중일 때만 뱃지가 뿅! 하고 나타납니다 */}
+            {messageFormData.text.length > 0 && (
+              <div className="absolute -top-7 left-1 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                <span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span>
+              </div>
+            )}
+            <input value={messageFormData.text} onChange={e => setMessageFormData({...messageFormData, text: e.target.value})} placeholder={activeMessages.length === 0 ? "새로운 메시지가 없습니다. 첫 톡을 남겨보세요! ✍️" : "여보 오늘 저녁은 뭐야? 🍗"} className="flex-1 bg-white rounded-2xl px-4 py-3.5 text-base font-bold outline-none border border-pink-200 shadow-sm" />
             <button onClick={handleSendMessage} disabled={!messageFormData.text.trim()} className="bg-pink-500 text-white px-4 rounded-2xl font-black shadow-md disabled:opacity-50 whitespace-nowrap">전송</button>
          </div>
       </div>
@@ -2452,33 +2499,63 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
+      {/* 💡 [V3.0] 독립 스크롤 박스로 개조된 타임라인 */}
       <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200">
         <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
-        <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
-          {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
-         {familyEventsList.map((e, i, arr) => (
-            // 💡 1단계에서 찾은 다가오는 일정에 'timeline-today'라는 GPS 태그를 달아줍니다!
-            <div key={e.id} id={i === upcomingEventIndex ? 'timeline-today' : undefined}>
-              {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
-                <div className="relative flex items-center justify-center py-4"><div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">{e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월</div></div>
-              )}
-              <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 ${e.date < todayStr ? 'opacity-60 grayscale-[50%]' : ''}`}>
-                <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-gray-50 shadow shrink-0 z-10">{getEventIcon(e.type)}</div>
-                <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl bg-gray-50 border shadow-sm ml-3">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div className="flex flex-col gap-0.5"><span className="text-[10px] font-black text-pink-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span><span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span></div>
-                    <div className="flex gap-1"><button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button><button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button></div>
-                  </div>
-                  <div className="font-bold text-gray-800 text-base flex items-center gap-1.5 mt-1.5">{e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+        
+        {/* 독립 스크롤 영역 */}
+        <div id="timeline-scroll-area" className="max-h-[380px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
+           <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent pb-10">
+             
+             {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
+             
+             {familyEventsList.map((e, i, arr) => {
+               const isTodayEvent = i === upcomingEventIndex;
+               return (
+                 <div key={e.id} id={isTodayEvent ? 'timeline-today' : undefined}>
+                   {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
+                     <div className="relative flex items-center justify-center py-4">
+                       <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">
+                         {e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월
+                       </div>
+                     </div>
+                   )}
+                   
+                   <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''} ${e.date < todayStr && !isTodayEvent ? 'opacity-60 grayscale-[50%]' : ''}`}>
+                     
+                     <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-4 ring-pink-100' : 'bg-white'}`}>
+                       {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : getEventIcon(e.type)}
+                     </div>
+                     
+                     <div className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-white border-gray-100'}`}>
+                       <div className="flex justify-between items-start mb-1.5">
+                         <div className="flex flex-col gap-0.5">
+                           <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
+                             {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})
+                             {isTodayEvent && " ✨ 오늘"}
+                           </span>
+                           <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span>
+                         </div>
+                         <div className="flex gap-1">
+                           <button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button>
+                           <button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button>
+                         </div>
+                       </div>
+                       <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : 'text-gray-800'}`}>
+                         {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               );
+             })}
+           </div>
         </div>
       </div>
 
       <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
+      {/* 과거 보관소 모달 */}
       {isMessageHistoryOpen && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
             <div 
@@ -2510,6 +2587,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          </div>
       )}
 
+      {/* 일정 등록 모달 */}
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
@@ -2658,11 +2736,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   );
 } // End of FamilyCalendarView
 
-// 9. MAIN APP CONTENT
+
+// ==========================================
+// 9. MAIN APP CONTENT (🚀 [V3.0] 폰트 커스텀 CSS 엔진 적용)
+// ==========================================
 function AppContent() {
   const [user, setUser] = useState(null);
   const todayStr = getKSTDateStr();
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaCurrentUser') || '현아');
+  
+  // 💡 [V3.0] 내 기기 폰트 설정 불러오기
+  const [appFont, setAppFont] = useState(() => localStorage.getItem('hyunaFont') || 'Inter');
+
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
   const [tabOrder, setTabOrder] = useState(() => { const saved = localStorage.getItem('hyunaTabOrder'); return saved ? JSON.parse(saved) : defaultTabOrder; });
@@ -2792,12 +2877,11 @@ function AppContent() {
     }
   };
 
-  // 🚀 [V3.0] 앱 전체 배경색 및 폰트 컬러 동적 적용
   let appBgColor = 'bg-gray-50/80';
   let headerColor = 'text-indigo-500';
   const currentLedgerTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.ledger || 'pink'];
   const currentCalendarTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.calendar || 'sky'];
-
+  
   if (activeTab === 'ledger') {
      appBgColor = `${currentLedgerTheme.bg50}/30`;
      headerColor = currentLedgerTheme.text500;
@@ -2852,13 +2936,14 @@ function AppContent() {
           </div>
         </div>
 
-        {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} />}
+        {/* 💡 [V3.0] 폰트 커스텀 상태를 설정 컴포넌트에 넘겨줍니다 */}
+        {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} appFont={appFont} setAppFont={setAppFont} />}
 
         <main className="px-5 max-w-md mx-auto pt-2">
           {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleEndDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
           {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} activeTab={activeTab} />}
         </main>
 
         <nav className="fixed bottom-6 left-4 right-4 h-[72px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-200/50 flex justify-around items-center z-50 px-2">
@@ -2866,8 +2951,6 @@ function AppContent() {
             const config = tabConfig[tabId];
             const Icon = config.icon;
             const isActive = activeTab === tabId;
-            
-            // 🚀 [V3.0] 하단 네비게이션 액티브 컬러 동적 적용
             let activeColor = 'text-indigo-500';
             if (tabId === 'ledger') activeColor = currentLedgerTheme.text500;
             if (tabId === 'calendar') activeColor = currentCalendarTheme.text500;
@@ -2882,9 +2965,18 @@ function AppContent() {
            })}
         </nav>
 
+        {/* 💡 [V3.0] 7종 폰트 저장소 및 동적 적용 엔진 */}
         <style dangerouslySetInnerHTML={{__html: `
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-          body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+          @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+          @font-face { font-family: 'KOTRA_HOPE'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_20-10-21@1.0/KOTRA_HOPE.woff') format('woff'); font-weight: normal; font-style: normal; }
+          @font-face { font-family: 'Cafe24SsurroundAir'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24SsurroundAir.woff') format('woff'); font-weight: normal; font-style: normal; }
+          @font-face { font-family: 'CookieRun'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/CookieRun-Regular.woff') format('woff'); font-weight: normal; font-style: normal; }
+          @font-face { font-family: 'Bareun_hipi'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2207-01@1.0/Bareun_hipi.woff2') format('woff2'); font-weight: normal; font-style: normal; }
+          @font-face { font-family: 'Ownglyph_uiyeon'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2402_1@1.0/Ownglyph_uiyeon.woff2') format('woff2'); font-weight: normal; font-style: normal; }
+
+          body { font-family: ${appFont}, sans-serif !important; background-color: #f9fafb; }
+          
           .no-scrollbar::-webkit-scrollbar { display: none; }
           .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           #csb-edit-btn, a[href*="codesandbox.io"] { display: none !important; }
@@ -2907,11 +2999,11 @@ function AppContent() {
 // 10. ERROR BOUNDARY
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+  this.state = { hasError: false, error: null, errorInfo: null };
   }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(error, errorInfo) { console.error(error, errorInfo);
-    this.setState({ errorInfo }); }
+  this.setState({ errorInfo }); }
   render() {
     if (this.state.hasError) {
       return (
