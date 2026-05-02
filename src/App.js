@@ -33,16 +33,19 @@ try {
   isFirebaseEnabled = false;
 }
 
-const appId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '_') : 'hyuna-asset-pro';
+const appId = typeof __app_id !== 'undefined' ?
+String(__app_id).replace(/\//g, '_') : 'hyuna-asset-pro';
 
 // 월별 테마 엔진
 const THEME_PALETTES = {
   pink: { bg500: 'bg-pink-500', bg600: 'bg-pink-600', bg50: 'bg-pink-50', bg100: 'bg-pink-100', text500: 'text-pink-500', text600: 'text-pink-600', text400: 'text-pink-400', border500: 'border-pink-500', border200: 'border-pink-200', border100: 'border-pink-100', border600: 'border-pink-600', border300: 'focus:border-pink-300', fill400: 'fill-pink-400', fromColor: 'from-pink-400', toColor: 'to-rose-400' },
   amber: { bg500: 'bg-amber-500', bg600: 'bg-amber-600', bg50: 'bg-amber-50', bg100: 'bg-amber-100', text500: 'text-amber-500', text600: 'text-amber-600', text400: 'text-amber-400', border500: 'border-amber-500', border200: 'border-amber-200', border100: 'border-amber-100', border600: 'border-amber-600', border300: 'focus:border-amber-300', fill400: 'fill-amber-400', fromColor: 'from-amber-400', toColor: 'to-yellow-400' },
-  emerald: { bg500: 'bg-emerald-500', bg600: 'bg-emerald-600', bg50: 'bg-emerald-50', bg100: 'bg-emerald-100', text500: 'text-emerald-500', text600: 'text-emerald-600', text400: 'text-emerald-400', border500: 'border-emerald-500', border200: 'border-emerald-200', border100: 'border-emerald-100', border600: 'border-emerald-600', border300: 'focus:border-emerald-300', fill400: 'fill-emerald-400', fromColor: 'from-emerald-400', toColor: 'to-teal-400' },
+  emerald: { bg500: 'bg-emerald-500', bg600: 'bg-emerald-600', bg50: 'bg-emerald-50', bg100: 'bg-emerald-100', text500: 'text-emerald-500', text600: 'text-emerald-600', text400: 'text-emerald-400', border500: 'border-emerald-500', border200: 'border-emerald-200', 
+border100: 'border-emerald-100', border600: 'border-emerald-600', border300: 'focus:border-emerald-300', fill400: 'fill-emerald-400', fromColor: 'from-emerald-400', toColor: 'to-teal-400' },
   violet: { bg500: 'bg-violet-500', bg600: 'bg-violet-600', bg50: 'bg-violet-50', bg100: 'bg-violet-100', text500: 'text-violet-500', text600: 'text-violet-600', text400: 'text-violet-400', border500: 'border-violet-500', border200: 'border-violet-200', border100: 'border-violet-100', border600: 'border-violet-600', border300: 'focus:border-violet-300', fill400: 'fill-violet-400', fromColor: 'from-violet-400', toColor: 'to-purple-400' },
   sky: { bg500: 'bg-sky-500', bg600: 'bg-sky-600', bg50: 'bg-sky-50', bg100: 'bg-sky-100', text500: 'text-sky-500', text600: 'text-sky-600', text400: 'text-sky-400', border500: 'border-sky-500', border200: 'border-sky-200', border100: 'border-sky-100', border600: 'border-sky-600', border300: 'focus:border-sky-300', fill400: 'fill-sky-400', fromColor: 'from-sky-400', toColor: 'to-blue-400' },
-  rose: { bg500: 'bg-rose-500', bg600: 'bg-rose-600', bg50: 'bg-rose-50', bg100: 'bg-rose-100', text500: 'text-rose-500', text600: 'text-rose-600', text400: 'text-rose-400', border500: 'border-rose-500', border200: 'border-rose-200', border100: 'border-rose-100', border600: 'border-rose-600', border300: 'focus:border-rose-300', fill400: 'fill-rose-400', fromColor: 'from-rose-400', toColor: 'to-orange-400' },
+  rose: { bg500: 'bg-rose-500', bg600: 'bg-rose-600', bg50: 'bg-rose-50', bg100: 'bg-rose-100', text500: 'text-rose-500', text600: 'text-rose-600', text400: 'text-rose-400', border500: 'border-rose-500', 
+border200: 'border-rose-200', border100: 'border-rose-100', border600: 'border-rose-600', border300: 'focus:border-rose-300', fill400: 'fill-rose-400', fromColor: 'from-rose-400', toColor: 'to-orange-400' },
 };
 
 const MONTHLY_THEME_MAP = {
@@ -70,6 +73,7 @@ const tabConfig = {
 const KR_HOLIDAYS_FIXED = {
   '01-01': '신정', '03-01': '삼일절', '05-05': '어린이날', '06-06': '현충일', '08-15': '광복절', '10-03': '개천절', '10-09': '한글날', '12-25': '성탄절'
 };
+
 const KR_HOLIDAYS_VAR = {
   '2024-02-09':'설연휴','2024-02-10':'설날','2024-02-11':'설연휴','2024-02-12':'대체공휴일','2024-04-10':'국회의원선거','2024-05-06':'대체공휴일','2024-05-15':'부처님오신날','2024-09-16':'추석연휴','2024-09-17':'추석','2024-09-18':'추석연휴',
   '2025-01-28':'설연휴','2025-01-29':'설날','2025-01-30':'설연휴','2025-05-05':'부처님오신날','2025-05-06':'대체공휴일','2025-10-05':'추석연휴','2025-10-06':'추석','2025-10-07':'추석연휴','2025-10-08':'대체공휴일',
@@ -128,7 +132,7 @@ const getPaydayStr = (dateString) => {
   const parts = dateString.split('-');
   if (parts.length !== 3) return '';
   const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10)-1, parseInt(parts[2], 10));
-  if (isNaN(d.getTime())) return ''; 
+  if (isNaN(d.getTime())) return '';
   const daysToAdd = [5, 4, 3, 9, 8, 7, 6][d.getDay()];
   d.setDate(d.getDate() + daysToAdd);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -194,7 +198,8 @@ const calcDailyMetrics = (deliveries) => {
       if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
         let start = sh * 60 + sm;
         let end = eh * 60 + em;
-        if (end <= start) end += 1440; 
+        if (end <= start) end 
++= 1440; 
         intervals.push({start, end});
       }
     }
@@ -215,8 +220,10 @@ const calcDailyMetrics = (deliveries) => {
   
   let hours = Math.floor(totalMins / 60);
   let mins = totalMins % 60;
-  let durationStr = totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '';
-  let hourlyRate = totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0;
+  let durationStr = totalMins > 0 ? `${hours > 0 ?
+hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '';
+  let hourlyRate = totalMins > 0 ?
+Math.round(totalAmt / (totalMins / 60)) : 0;
   let perDelivery = totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0;
   return { durationStr, hourlyRate, perDelivery, totalCnt, totalAmt };
 };
@@ -243,7 +250,8 @@ const getCategoryIcon = (category, type) => {
     case '월급': return <Briefcase size={18} />;
     case '배달비': return <Bike size={18} />;
     case '용돈': case '기타수입': return <Coins size={18} />;
-    default: return type === '수입' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />;
+    default: return type === '수입' ?
+<ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />;
   }
 };
 
@@ -251,9 +259,12 @@ const AutoScaleValue = ({ value, isNet = false }) => {
   let sign = '';
   let color = 'text-gray-800';
   if (isNet) {
-      if (value < 0) { sign = '- '; color = 'text-rose-500'; }
-      else if (value > 0) { sign = '+ '; color = 'text-blue-500'; }
-      else { color = 'text-gray-600'; }
+      if (value < 0) { sign = '- ';
+color = 'text-rose-500'; }
+      else if (value > 0) { sign = '+ ';
+color = 'text-blue-500'; }
+      else { color = 'text-gray-600';
+}
   }
   const str = new Intl.NumberFormat('ko-KR').format(Math.abs(value));
   const len = str.length + sign.length;
@@ -317,11 +328,13 @@ function LockScreenView({ correctPin, onUnlock }) {
         <h2 className="text-2xl font-black text-white tracking-tight">비밀번호를 입력하세요</h2>
         <p className="text-gray-400 text-sm mt-2 font-bold">Hope Fam 플래너 보호 중</p>
       </div>
+     
       <div className={`flex gap-4 mb-16 ${error ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
         {[0, 1, 2, 3].map(i => <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/20'}`} />)}
       </div>
       <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-10 max-w-sm w-full">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => <button key={num} onClick={() => handlePress(num.toString())} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">{num}</button>)}
+     
         <div />
         <button onClick={() => handlePress('0')} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">0</button>
         <button onClick={handleDelete} className="w-16 h-16 rounded-full text-white/70 flex items-center justify-center active:bg-white/10 active:scale-95 transition-all mx-auto"><Delete className="w-8 h-8" /></button>
@@ -346,13 +359,11 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
   };
 
   const handleSetCurrentUser = (name) => { setCurrentUser(name); localStorage.setItem('hyunaCurrentUser', name); };
-  
   const updateSettings = async (field, value) => {
     const newSettings = { ...userSettings, [field]: value };
     if(isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), newSettings);
     else setUserSettings(newSettings);
   };
-
   const toggleLock = (e) => {
     const isChecked = e.target.checked;
     setLockEnabled(isChecked);
@@ -369,9 +380,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
     setLockTimeout(e.target.value);
     localStorage.setItem('hyunaLockTimeout', e.target.value);
   };
-
   const getSortedCategories = (type) => [...(categories[type] || [])].sort((a, b) => (a||'').localeCompare(b||''));
-
   const handleAddCategory = async (type) => {
     const newCat = prompt(`추가할 ${type} 카테고리명을 입력하세요:`);
     if(newCat && newCat.trim() !== '') {
@@ -380,7 +389,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
-
   const handleDeleteCategory = async (type, cat) => {
     if(window.confirm(`'${cat}' 카테고리를 정말 삭제하시겠습니까?`)) {
        const newCats = {...categories, [type]: (categories[type]||[]).filter(c => c !== cat)};
@@ -388,7 +396,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
-
   return (
     <div className="px-5 my-4 animate-in fade-in space-y-4">
       <div className="mb-2 pl-1">
@@ -398,30 +405,35 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
       {activeTab === 'ledger' && (
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-right-2">
-          <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
+          <h3 className="text-sm font-black 
+text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
           <div className="space-y-4">
             {['지출', '수입'].map(type => (
               <div key={type}>
                 <div className="flex justify-between items-center mb-2">
                   <span className={`text-xs font-bold ${type==='지출'?'text-gray-500':'text-blue-500'}`}>{type} 카테고리</span>
-                  <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-gray-50 text-gray-600 border-gray-200':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
+         
+                 <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-gray-50 text-gray-600 border-gray-200':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {getSortedCategories(type).map(c => (
-                    <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory(type, c)} className={`text-gray-400 hover:text-gray-800`}><X size={12}/></button></span>
+                    <span 
+key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory(type, c)} className={`text-gray-400 hover:text-gray-800`}><X size={12}/></button></span>
                   ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
+  
+    )}
 
       {activeTab === 'delivery' && (
         <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-right-2">
           <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
           <div className="flex items-center gap-2">
-            <input type="text" inputMode="numeric" pattern="[0-9,]*" value={userSettings.deliveryGoals?.[currentMonthKey] || ''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value.replace(/[^0-9]/g, ''))||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 h-[48px] text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
+            <input type="text" inputMode="numeric" pattern="[0-9,]*" value={userSettings.deliveryGoals?.[currentMonthKey] ||
+''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value.replace(/[^0-9]/g, ''))||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 h-[48px] text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
             <span className="text-gray-500 font-bold text-sm">원</span>
           </div>
         </div>
@@ -429,15 +441,18 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
       {(activeTab === 'assets' || activeTab === 'calendar') && (
         <div className={`bg-white p-5 rounded-2xl border ${activeTab==='assets'?'border-indigo-200':'border-emerald-200'} shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500`}>
-          {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
+  
+        {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
         </div>
       )}
 
       <div className="mt-8 border-t border-gray-200 pt-6">
         <button onClick={() => setIsSystemSettingsOpen(!isSystemSettingsOpen)} className="w-full flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm active:scale-95 transition-all">
           <span className="font-black text-gray-700 flex items-center gap-2"><Settings size={18}/> 시스템 및 보안 설정</span>
+       
           <div className="bg-gray-100 p-1.5 rounded-full">
-            {isSystemSettingsOpen ? <ChevronUp size={18} className="text-gray-500"/> : <ChevronDown size={18} className="text-gray-500"/>}
+            {isSystemSettingsOpen ?
+<ChevronUp size={18} className="text-gray-500"/> : <ChevronDown size={18} className="text-gray-500"/>}
           </div>
         </button>
       </div>
@@ -446,78 +461,100 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
         <div className="space-y-4 animate-in slide-in-from-top-2 pt-2">
           
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Edit3 size={16} className="text-pink-500"/> 내 기기 글씨체 설정</h3>
+            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Edit3 size={16} className="text-pink-500"/> 내 기기 
+글씨체 설정</h3>
             <select value={appFont} onChange={(e) => { setAppFont(e.target.value); localStorage.setItem('hyunaFont', e.target.value); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 h-[44px] font-bold text-sm outline-none text-slate-700 shadow-inner">
               <option value="Inter">Inter (기본 깔끔 고딕체)</option>
               <option value="Pretendard">프리텐다드 (애플 순정 감성)</option>
               <option value="'KOTRA_HOPE'">코트라 희망체 (따뜻한 손글씨)</option>
-              <option value="'Cafe24SsurroundAir'">카페24 써라운드 (둥글둥글 귀여움)</option>
+             
+ <option value="'Cafe24SsurroundAir'">카페24 써라운드 (둥글둥글 귀여움)</option>
               <option value="'CookieRun'">쿠키런체 (통통 튀는 매력)</option>
               <option value="'Bareun_hipi'">바른히피체 (꾸안꾸 다이어리 감성)</option>
               <option value="'Ownglyph_uiyeon'">온글잎 의연체 (인스타 감성 펜글씨)</option>
             </select>
-            <p className="text-[9px] text-gray-400 font-bold mt-2 leading-relaxed">이 설정은 현재 기기에만 저장되어 부부가 서로 다른 폰트를 사용할 수 있습니다.</p>
+            <p className="text-[9px] text-gray-400 font-bold mt-2 leading-relaxed">이 설정은 현재 기기에만 저장되어 부부가 서로 다른 폰트를 사용할 수 
+있습니다.</p>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
             <div className="flex gap-2">
-              <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ? 'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
-              <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
+              <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ?
+'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
+              <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ?
+'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <div className="flex justify-between items-center mb-3">
                <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Shield size={16} className="text-slate-600"/> 보안 / 앱 잠금</h3>
+         
                <label className="relative inline-flex items-center cursor-pointer">
                  <input type="checkbox" className="sr-only peer" checked={lockEnabled} onChange={toggleLock} />
                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-700"></div>
                </label>
             </div>
-            
+   
+         
             {lockEnabled && (
               <div className="space-y-3 mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2">
                  <div>
                     <label className="text-[10px] font-black text-gray-400 block mb-1">앱 비밀번호 (4자리 숫자)</label>
-                    <input type="password" inputMode="numeric" pattern="[0-9,]*" value={lockPin} onChange={changeLockPin} placeholder="0000" className="w-full bg-gray-50 border rounded-xl px-4 py-2 font-black text-lg outline-none focus:border-slate-400 tracking-widest text-slate-700" />
+           
+                 <input type="password" inputMode="numeric" pattern="[0-9,]*" value={lockPin} onChange={changeLockPin} placeholder="0000" className="w-full bg-gray-50 border rounded-xl px-4 py-2 font-black text-lg outline-none focus:border-slate-400 tracking-widest text-slate-700" />
                  </div>
                  <div>
                     <label className="text-[10px] font-black text-gray-400 block mb-1">자동 잠금 유예시간 (세션 유지)</label>
-                    <select value={lockTimeout} onChange={changeLockTimeout} className="w-full bg-gray-50 border rounded-xl px-3 h-[44px] font-bold text-sm outline-none text-slate-700">
+         
+            <select value={lockTimeout} onChange={changeLockTimeout} className="w-full bg-gray-50 border rounded-xl px-3 h-[44px] font-bold text-sm outline-none text-slate-700">
                        <option value="0">즉시 잠금 (앱을 벗어날 때마다)</option>
                        <option value="5">5분 후 잠금</option>
-                       <option value="10">10분 후 잠금</option>
+                       
+<option value="10">10분 후 잠금</option>
                        <option value="60">1시간 후 잠금</option>
                        <option value="360">6시간 후 잠금</option>
                        <option value="1440">24시간 후 잠금</option>
-                    </select>
-                    <p className="text-[9px] text-gray-400 font-bold mt-1.5 leading-relaxed">기기에만 저장됩니다. 유예시간 내에 돌아오면 비밀번호를 묻지 않습니다.</p>
+                   
+ </select>
+                    <p className="text-[9px] text-gray-400 font-bold mt-1.5 leading-relaxed">기기에만 저장됩니다.
+유예시간 내에 돌아오면 비밀번호를 묻지 않습니다.</p>
                  </div>
               </div>
             )}
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-gray-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
-            <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-gray-50/50 border-gray-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
-              <div><span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-gray-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{tabConfig[activeTab].label}</span></div>
-              <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-gray-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold shadow-sm active:scale-95`}>현재 탭으로 고정</button>
+            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ?
+'text-gray-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
+            <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ?
+'bg-gray-50/50 border-gray-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ?
+'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
+              <div><span className={`text-sm font-black ${activeTab === 'ledger' ?
+'text-gray-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ?
+'text-emerald-600' : 'text-indigo-700'}`}>{tabConfig[activeTab].label}</span></div>
+              <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab);
+alert('초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-gray-500' : activeTab === 'delivery' ?
+'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold shadow-sm active:scale-95`}>현재 탭으로 고정</button>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 하단 메뉴 순서 변경</h3>
             <div className="space-y-2">
-              {tabOrder.map((tabId, index) => (
+            
+  {tabOrder.map((tabId, index) => (
                 <div key={tabId} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                   <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><span className="w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-sm text-xs">{index + 1}</span>{tabConfig[tabId].label}</span>
                   <div className="flex gap-1">
-                    <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-2 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={16}/></button>
+               
+     <button onClick={() => moveTab(index, 'up')} disabled={index === 0} className="p-2 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronUp size={16}/></button>
                     <button onClick={() => moveTab(index, 'down')} disabled={index === tabOrder.length - 1} className="p-2 bg-white rounded-lg shadow-sm disabled:opacity-30 border border-gray-100"><ChevronDown size={16}/></button>
                   </div>
                 </div>
-              ))}
+         
+     ))}
             </div>
           </div>
 
@@ -525,11 +562,13 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
              <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
                <Trash2 size={16} className="text-red-500"/> 데이터 관리
              </h3>
-             <div className="p-4 bg-red-50/50 rounded-xl border border-red-100 text-center">
+     
+        <div className="p-4 bg-red-50/50 rounded-xl border border-red-100 text-center">
                <p className="text-xs font-bold text-red-600 mb-4 leading-relaxed">모든 한줄톡 채팅 내역과 시스템 알림 로그를<br/>데이터베이스에서 영구적으로 삭제합니다.</p>
                <button onClick={handleClearAllMessages} className="w-full bg-red-500 text-white py-3 rounded-xl text-sm font-black active:scale-95 shadow-sm border border-red-600">
                  채팅 / 로그 전체 초기화
-               </button>
+          
+      </button>
              </div>
           </div>
 
@@ -542,7 +581,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 // ==========================================
 // 5. LEDGER TAB COMPONENT
 // ==========================================
-function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
+function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode, currentUser }) {
   const [ledgerSubTab, setLedgerSubTab] = useState('daily');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); 
@@ -559,11 +598,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
   
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
-  
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
   const [memoText, setMemoText] = useState('');
-  const [memoDate, setMemoDate] = useState(todayStr); // 💡 [V4.5] 메모 날짜 상태 추가
+  const [memoDate, setMemoDate] = useState(todayStr);
 
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState('');
@@ -571,7 +609,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const suggestionRef = useRef(null);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
 
-  // 💡 [V4.5] 달력 전용 로컬 상태 (네비게이션용)
+  // 💡 [V4.6] 달력 전용 로컬 상태 (네비게이션용)
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
 
@@ -579,10 +617,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     setCalYear(selectedYear);
     setCalMonth(selectedMonth);
   }, [selectedYear, selectedMonth]);
-
-  // 💡 [V4.5] 누적 수입 아코디언 상태
+  
+  // 💡 [V4.6] 누적 수입 아코디언 상태
   const [isYearlyIncomeOpen, setIsYearlyIncomeOpen] = useState(false);
-
+  
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target)) setIsSuggestionOpen(false);
@@ -590,33 +628,34 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
+  
   const getSortedCategories = (type) => {
-    let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
+    let cats = type === 'all' ?
+[...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
   };
-
+  
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
-
+  
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && typeof t?.date === 'string' && t.date.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
-
+  
   const filteredLedger = useMemo(() => {
     let data = ledger || [];
     if (ledgerDateRange.start || ledgerDateRange.end) {
       if (ledgerDateRange.start) data = data.filter(t => typeof t?.date === 'string' && t.date >= ledgerDateRange.start);
       if (ledgerDateRange.end) data = data.filter(t => typeof t?.date === 'string' && t.date <= ledgerDateRange.end);
     } else {
-      data = data.filter(t => typeof t?.date === 'string' && t.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`));
+      data = data.filter(t => typeof t?.date === 'string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     }
     if (filterType !== 'all') data = data.filter(t => t.type === filterType);
     if (filterCategory !== 'all') data = data.filter(t => t.category === filterCategory);
     if (searchQuery.trim()) data = data.filter(t => (t.note||'').toLowerCase().includes(searchQuery.toLowerCase()) || (t.category||'').toLowerCase().includes(searchQuery.toLowerCase()));
     return data;
-  }, [ledger, selectedYear, selectedMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
-
-  // 💡 [V4.5] 해시태그를 금액(합계) 순으로 정렬
+  }, [ledger, calYear, calMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
+  
+  // 💡 [V4.6] 해시태그를 금액(합계) 순으로 정렬
   const monthUsedCategories = useMemo(() => {
     const categoryTotals = {};
     filteredLedger.forEach(t => {
@@ -627,29 +666,29 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
-
+  
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
     expense: filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0), 
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
-
+  
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(t => t.type === '지출').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
   }), [filteredLedger]);
-
+  
   const financialSummary = useMemo(() => {
-    const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`));
+    const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     const rawExpense = monthRawLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a,b)=>a+(b.amount||0),0);
     const sumPrincipal = monthRawLedger.filter(t => (t.category||'').includes('대출상환') || (t.category||'').includes('대출원금') || (t.category||'').includes('원금상환')).reduce((a,b)=>a+(b.amount||0),0);
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
-  }, [ledger, selectedYear, selectedMonth]);
-
+  }, [ledger, calYear, calMonth]);
+  
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
-
+  
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
@@ -660,7 +699,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger, formData.type]);
-
+  
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -671,7 +710,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note, formData.type]);
-
+  
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
     const lastTx = [...ledger].filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date).sort((a,b) => b.date.localeCompare(a.date))[0];
@@ -681,28 +720,35 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       const verb = formData.type === '수입' ? '기록한' : '지출한';
       return `최근 ${m}월 ${d}일에 ${verb} 금액은 ${new Intl.NumberFormat('ko-KR').format(lastTx.amount)}원이었어요 😊`;
     }
+  
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
-
+  
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
     if (isCustomCategory) {
-      if (!customCategoryInput.trim()) { alert("카테고리를 입력해주세요."); return false; }
+      if (!customCategoryInput.trim()) { alert("카테고리를 입력해주세요."); return false;
+}
       finalCategory = customCategoryInput.trim();
       if (saveToCategoryList) {
         const newCats = {...categories, [formData.type]: [...(categories[formData.type]||[]), finalCategory]};
         if (isFirebaseEnabled) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'categories'), newCats);
         else setCategories(newCats);
-      }
+}
     }
 
     const finalAmount = parseInt(String(formData.amount).replace(/,/g, ''), 10);
+    // 💡 [V4.6] 알림 엔진을 위한 작성자/시간 도장 쾅!
+    const timestamp = new Date().toISOString();
     const newTx = { 
        ...formData, 
        category: finalCategory, 
        amount: finalAmount,
-       isFromSavings: formData.type === '지출' && formData.category !== '저축' ? formData.isFromSavings : false
+       isFromSavings: formData.type === '지출' && formData.category !== '저축' ?
+formData.isFromSavings : false,
+       updatedAt: timestamp,
+       updatedBy: currentUser
     };
 
     let assetToUpdate = null;
@@ -711,29 +757,31 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         if (formData.type === '지출' && formData.category === '저축') {
             assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
             if (assetToUpdate) assetUpdates = { type: 'deposit', amount: finalAmount };
-        }
+}
         else if (formData.type === '지출' && formData.isFromSavings) {
             assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
             if (assetToUpdate) assetUpdates = { type: 'withdraw', amount: finalAmount };
-        }
+}
     }
 
     if (editingLedgerId) {
       if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ledger', editingLedgerId), newTx);
       else setLedger(ledger.map(t => t.id === editingLedgerId ? {...newTx, id: editingLedgerId} : t));
-    } else {
+} else {
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), newTx);
       else setLedger([{...newTx, id: Date.now().toString()}, ...ledger]);
 
       if (assetToUpdate && assetUpdates && isFirebaseEnabled) {
-          const newBalance = assetUpdates.type === 'deposit' ? assetToUpdate.balance + assetUpdates.amount : Math.max(0, assetToUpdate.balance - assetUpdates.amount);
-          const historyItem = { id: Date.now().toString(), date: formData.date, type: assetUpdates.type, amount: assetUpdates.amount, note: formData.note || finalCategory, category: finalCategory };
-          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', assetToUpdate.id), { balance: newBalance, history: [historyItem, ...(assetToUpdate.history || [])] });
-      }
+          const newBalance = assetUpdates.type === 'deposit' ?
+assetToUpdate.balance + assetUpdates.amount : Math.max(0, assetToUpdate.balance - assetUpdates.amount);
+          const historyItem = { id: Date.now().toString(), date: formData.date, type: assetUpdates.type, amount: assetUpdates.amount, note: formData.note ||
+finalCategory, category: finalCategory };
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', assetToUpdate.id), { balance: newBalance, history: [historyItem, ...(assetToUpdate.history || [])], updatedAt: timestamp, updatedBy: currentUser });
+}
     }
     return true;
   };
-
+  
   const handleTransactionSubmit = async (e, isContinuous = false) => {
     e.preventDefault();
     const success = await saveTransaction();
@@ -742,7 +790,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        else { setIsModalOpen(false); setEditingLedgerId(null); }
     }
   };
-
+  
   const handleEditClick = (t) => {
     setSelectedLedgerDetail(null);
     setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
@@ -763,17 +811,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     else setLedger((ledger||[]).filter(t => t.id !== id));
     setSelectedLedgerDetail(null);
   };
-
+  
   const saveMemo = async () => {
     if(!user || !window.confirm("메모를 저장하시겠습니까?")) return;
     const stamp = getKSTTimestamp();
-    // 💡 [V4.5] 메모 수정 시 지정한 날짜(memoDate)로 저장
+    const isoStamp = new Date().toISOString(); 
     if(currentMemoId) {
-        if(isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memos', currentMemoId), { text: memoText, updatedAt: stamp, date: memoDate });
-        else setMemos(memos.map(m => m.id === currentMemoId ? {...m, text: memoText, updatedAt: stamp, date: memoDate} : m));
-    } else {
-        if(!memoText.trim()) { setIsMemoEditorOpen(false); return; } 
-        const newMemo = { text: memoText, createdAt: stamp, updatedAt: stamp, date: memoDate };
+        if(isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memos', currentMemoId), { text: memoText, updatedAt: stamp, isoUpdate: isoStamp, updatedBy: currentUser, date: memoDate });
+        else setMemos(memos.map(m => m.id === currentMemoId ? {...m, text: memoText, updatedAt: stamp, isoUpdate: isoStamp, updatedBy: currentUser, date: memoDate} : m));
+} else {
+        if(!memoText.trim()) { setIsMemoEditorOpen(false); return;
+} 
+        const newMemo = { text: memoText, createdAt: stamp, updatedAt: stamp, isoUpdate: isoStamp, updatedBy: currentUser, date: memoDate };
         if(isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'memos'), newMemo);
         else setMemos([{...newMemo, id: Date.now().toString()}, ...memos]);
     }
@@ -829,7 +878,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
             // eslint-disable-next-line no-new-func
             total = new Function('return ' + sanitized)();
             hasMath = true;
-            if(total > 0) { setCalcConfirm({ show: true, count: 1, total }); return; }
+            if(total > 0) { setCalcConfirm({ show: true, count: 1, total }); return;
+}
         }
     } catch(e) {}
     if (!hasMath) {
@@ -847,7 +897,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   };
 
   const isSearchActive = searchQuery || filterType !== 'all' || filterCategory !== 'all' || ledgerDateRange.start || ledgerDateRange.end;
-  
   return (
     <div className="space-y-3 pb-4 pt-2 animate-in fade-in duration-500">
       
@@ -856,12 +905,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         {isYearlyIncomeOpen ? (
           <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center cursor-pointer animate-in fade-in" onClick={() => setIsYearlyIncomeOpen(false)}>
              <div className="relative z-10">
+        
                <div className="text-[10px] font-bold opacity-90 mb-0 tracking-wider flex items-center gap-1"><ChevronUp size={12}/> {selectedYear}년 누적 총 수입</div>
                <div className="text-3xl font-black tracking-tight leading-none mt-1">{formatMoney(yearlyIncome)}<span className="text-lg ml-1 font-bold opacity-80">원</span></div>
              </div>
              <Heart className="w-16 h-16 opacity-20 absolute -right-3 -bottom-3 rotate-12" fill="white" />
           </div>
         ) : (
+ 
           <div className="bg-white border border-pink-200/60 rounded-[1rem] p-3 shadow-sm flex justify-between items-center cursor-pointer text-pink-500 hover:bg-pink-50 transition-colors" onClick={() => setIsYearlyIncomeOpen(true)}>
              <span className="text-xs font-black flex items-center gap-1.5">🌸 {selectedYear}년 누적 총 수입 확인하기</span>
              <ChevronDownSquare size={16} />
@@ -870,25 +921,33 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       </div>
 
       <div>
+       
         <div className="flex items-center gap-2 mb-2">
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showFilters ? 'bg-pink-500 text-white' : 'bg-white text-pink-500 border border-pink-200'}`}><Search size={16} /></button>
+          <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showFilters ?
+'bg-pink-500 text-white' : 'bg-white text-pink-500 border border-pink-200'}`}><Search size={16} /></button>
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 py-1 flex-1">
-            <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-100'}`}>전체</button>
+            <button onClick={() => { setFilterType('all');
+setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === 'all' && filterType === 'all' ?
+'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-100'}`}>전체</button>
             {monthUsedCategories.map(c => (
               <button key={c} onClick={() => { setFilterType('all'); setFilterCategory(c === filterCategory ? 'all' : c); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === c ? 'bg-pink-500 text-white' : 'bg-white text-gray-500 border border-pink-100'}`}>#{c}</button>
             ))}
           </div>
         </div>
 
+     
         {showFilters && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 animate-in slide-in-from-top-2 space-y-3 mb-3">
             <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50 rounded-xl py-2 pl-9 pr-3 h-[44px] text-sm font-bold outline-none border border-pink-100" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
+              <div><select value={filterType} onChange={(e) => { setFilterType(e.target.value);
+setFilterCategory('all'); }} className="w-full bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
               <div><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none truncate"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
             </div>
-            <div><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /><span className="text-gray-300 font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /></div></div>
-            <button onClick={() => {setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({start:'',end:''});}} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm flex justify-center items-center gap-1.5 hover:text-pink-600"><RefreshCw size={14}/> 초기화</button>
+            <div><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /><span className="text-gray-300 font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) 
+=> setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /></div></div>
+            <button onClick={() => {setSearchQuery('');
+setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({start:'',end:''});}} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm flex justify-center items-center gap-1.5 hover:text-pink-600"><RefreshCw size={14}/> 초기화</button>
           </div>
         )}
       </div>
@@ -896,18 +955,21 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200 relative overflow-hidden">
          <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
            <PieChart size={16} className="text-pink-500"/> 
-           {isSearchActive ? '검색된 내역 요약 🔍' : `${selectedMonth}월 가계부 요약 🌷`}
+           {isSearchActive ?
+'검색된 내역 요약 🔍' : `${calMonth}월 가계부 요약 🌷`}
          </h3>
          <div className="grid grid-cols-3 gap-2 mb-3">
            <div className="bg-blue-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold text-blue-500 mb-1">수입 합계 💰</div><AutoScaleValue value={ledgerSummary.income} /></div>
            <div className="bg-rose-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold text-rose-500 mb-1">지출 합계 💸</div><AutoScaleValue value={ledgerSummary.expense} /></div>
-           <div className="bg-purple-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold text-purple-500 mb-1">남은 돈 ✨</div><AutoScaleValue value={ledgerSummary.net} isNet={true} /></div>
+           <div className="bg-purple-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold 
+text-purple-500 mb-1">남은 돈 ✨</div><AutoScaleValue value={ledgerSummary.net} isNet={true} /></div>
          </div>
          
          {!isSearchActive && (
            <div className="flex justify-between text-center gap-2">
              <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border"><div className="text-[9px] font-bold text-gray-500 mb-1">순수 생활비 🍱</div><AutoScaleValue value={financialSummary.sumLiving} /></div>
-             <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border"><div className="text-[9px] font-bold text-gray-500 mb-1">대출 원금 🏦</div><AutoScaleValue value={financialSummary.sumPrincipal} /></div>
+             <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border"><div className="text-[9px] font-bold text-gray-500 mb-1">대출 원금 
+🏦</div><AutoScaleValue value={financialSummary.sumPrincipal} /></div>
              <div className="flex-1 bg-gray-50/80 p-2 rounded-xl border"><div className="text-[9px] font-bold text-gray-500 mb-1">대출 이자 📉</div><AutoScaleValue value={financialSummary.sumInterest} /></div>
            </div>
          )}
@@ -915,29 +977,35 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
       <div className="flex bg-pink-100 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200">
         <button onClick={() => setLedgerSubTab('daily')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='daily'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><List size={14}/> 상세내역</button>
+  
         <button onClick={() => setLedgerSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><CalendarDays size={14}/> 달력</button>
         <button onClick={() => setLedgerSubTab('review')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='review'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><PieChart size={14}/> 리포트</button>
         <button onClick={() => setLedgerSubTab('memo')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='memo'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><NotebookPen size={14}/> 메모장</button>
       </div>
 
-      {ledgerSubTab === 'calendar' && (() => {
+      {ledgerSubTab === 'calendar' && (() => 
+{
         const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
         const daysInMonth = new Date(calYear, calMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
-        (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
         
+        // 💡 [V4.6] 가계부 달력 이력 증발 픽스: filteredLedger 대신 원본 ledger 사용
+        const calLedger = (ledger || []).filter(t => typeof t?.date === 'string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
+        calLedger.forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-bottom-2 mt-1">
              
              {/* 💡 [V4.5] 달력 네비게이션 추가 */}
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
-                <button onClick={() => { if(calMonth===1){setCalMonth(12); setCalYear(calYear-1);} else setCalMonth(calMonth-1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl active:scale-95"><ChevronLeft size={18}/></button>
+                <button onClick={() => { if(calMonth===1){setCalMonth(12); setCalYear(calYear-1);} else setCalMonth(calMonth-1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl 
+active:scale-95"><ChevronLeft size={18}/></button>
                 <span className="font-black text-gray-800 text-base">{calYear}년 {calMonth}월</span>
                 <button onClick={() => { if(calMonth===12){setCalMonth(1); setCalYear(calYear+1);} else setCalMonth(calMonth+1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl active:scale-95"><ChevronRight size={18}/></button>
              </div>
 
              <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-600'}`}>{d}</div>)}</div>
+            
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -945,26 +1013,26 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  const dayData = dataByDate[dateStr] || { inc: 0, exp: 0 };
                  const hasData = dayData.inc > 0 || dayData.exp > 0;
                  const isToday = dateStr === todayStr;
-                 
                  // 💡 [V4.5] 공휴일 로직 추가
                  const holidayName = getHolidayName(dateStr);
                  const dayIndex = (i % 7);
                  const isRed = dayIndex === 0 || holidayName;
                  const isBlue = dayIndex === 6 && !holidayName;
                  const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-gray-600';
-
                  return (
                     <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 z-10' : ''}`}>
                      <span className={`text-[10px] font-bold mb-0.5 ${dayColor}`}>{d}</span>
-                     {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center truncate tracking-tighter">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
+                     {dayData.inc > 0 && <span 
+className="text-[9px] font-black text-blue-500 w-full text-center truncate tracking-tighter">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
                      {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center truncate tracking-tighter">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
                    </div>
                  )
                })}
-             </div>
+           
+              </div>
           </div>
         );
-      })()}
+})()}
 
       {ledgerSubTab === 'review' && (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 mt-1">
@@ -972,10 +1040,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
             <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-100">
               <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 TOP 5</span></h3>
               <div className="space-y-3">
-                {reviewData.expense.map(([cat, amt], idx) => (
+       
+                 {reviewData.expense.map(([cat, amt], idx) => (
                   <div key={cat}>
                     <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div 
+className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
                   </div>
                 ))}
               </div>
@@ -983,15 +1053,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
           )}
 
           {/* 💡 [V4.5] 수입 TOP 5 부활 */}
-          {reviewData.income.length > 0 && (
+   
+        {reviewData.income.length > 0 && (
             <div className="bg-white rounded-3xl p-5 shadow-md border border-blue-100">
               <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💰 수입 TOP 5</span></h3>
               <div className="space-y-3">
                 {reviewData.income.map(([cat, amt], idx) => (
-                  <div key={cat}>
+             
+      <div key={cat}>
                     <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black text-blue-600">{formatMoney(amt)}원</div></div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.income) * 100}%` }}></div></div>
-                  </div>
+               
+   </div>
                 ))}
               </div>
             </div>
@@ -1001,18 +1074,22 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
       {ledgerSubTab === 'memo' && (
         <div className="space-y-3 animate-in slide-in-from-right duration-300 mt-1">
+        
            <div className="flex justify-between items-center px-1 mb-2">
               <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><NotebookPen size={16} className="text-pink-500"/> 자유 메모</h3>
-              <button onClick={() => { setCurrentMemoId(null); setMemoText(''); setMemoDate(todayStr); setIsMemoEditorOpen(true); }} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 새 메모</button>
+              <button onClick={() => { setCurrentMemoId(null);
+setMemoText(''); setMemoDate(todayStr); setIsMemoEditorOpen(true); }} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 새 메모</button>
            </div>
            {/* 💡 [V4.5] 메모 정렬을 지정한 날짜(memoDate) 기준으로 정렬 */}
            {memos.sort((a,b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt)).map(memo => (
-              <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setMemoDate(memo.date || todayStr); setIsMemoEditorOpen(true); }} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer relative hover:bg-gray-50 transition-colors">
+              <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setMemoDate(memo.date || todayStr); setIsMemoEditorOpen(true); }} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer 
+relative hover:bg-gray-50 transition-colors">
                  <div className="text-[10px] font-bold text-pink-500 mb-2 bg-pink-50 px-2 py-1 rounded inline-block">{(memo.date || memo.createdAt).replace(/-/g, '.')}</div>
                  <div className="text-base font-bold text-gray-800 line-clamp-2 whitespace-pre-wrap">{memo.text || '내용 없음'}</div>
                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
               </div>
-           ))}
+     
+       ))}
         </div>
       )}
 
@@ -1020,120 +1097,155 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         <div className="space-y-3 animate-in slide-in-from-left duration-300 mt-1">
           {ledgerDates.map(date => {
              const dObj = new Date(date);
-             const dIndex = dObj.getDay();
+const dIndex = dObj.getDay();
              const dName = ['일','월','화','수','목','금','토'][dIndex];
              // 💡 [V4.5] 공휴일 로직 추가
              const holidayName = getHolidayName(date);
-             const dColor = (dIndex === 0 || holidayName) ? 'text-red-500' : dIndex === 6 ? 'text-blue-500' : 'text-gray-800';
-             return (
+const dColor = (dIndex === 0 || holidayName) ? 'text-red-500' : dIndex === 6 ? 'text-blue-500' : 'text-gray-800';
+return (
               <div key={date} className="bg-white rounded-3xl p-4 shadow-sm border border-gray-200/80">
                  <div className={`text-sm font-black flex items-center gap-1.5 mb-2.5 ml-1 whitespace-nowrap ${dColor}`}>
                     <CalendarCheck size={14} />{date} ({dName}) {holidayName && <span className="text-[10px] bg-red-50 px-1.5 py-0.5 rounded border border-red-100 ml-1">{holidayName}</span>}
                  </div>
+ 
                  <div className="space-y-2.5">
                   {(groupedLedger[date]||[]).map(t => (
                     <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:bg-pink-50 transition-colors">
                       <div className="flex justify-between items-center p-3">
-                        <div className="flex items-center gap-3 overflow-hidden flex-1">
-                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+     
+                   <div className="flex items-center gap-3 overflow-hidden flex-1">
+                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ?
+'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                           <div className="truncate pr-2">
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
-                            <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
+                            <div className="font-bold text-sm text-gray-800 truncate 
+flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+     
+                     <span className={`font-black text-base ${t.type === '수입' ?
+'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       </div>
                     </div>
                   ))}
-                 </div>
+        
+         </div>
               </div>
              );
-          })}
+})}
         </div>
       )}
 
       {/* 가계부 플로팅 버튼 */}
-      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
+      <button onClick={() => { setEditingLedgerId(null);
+setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true);
+}} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
-      {selectedCalendarDate && (
+      {selectedCalendarDate && (() => {
+        // 💡 [V4.6] 모달 뷰에서도 원본 ledger에서 데이터 추출
+        const dayEvents = (ledger || []).filter(t => t.date === selectedCalendarDate);
+        return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
             <div 
               onTouchStart={handleTouchStart}
-              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
+             
+  onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
               className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
             >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
-                  <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
+            
+      <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
                      <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '. ')}
                   </h2>
                   <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
                </div>
                
                <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
-                  {groupedLedger[selectedCalendarDate]?.length > 0 ? (
-                      groupedLedger[selectedCalendarDate].map(t => (
+     
+             {dayEvents.length > 0 ?
+(
+                      dayEvents.map(t => (
                         <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-pink-50 transition-colors active:scale-95">
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+     
+                       <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                             <div className="truncate">
                               <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
-                              <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
+ 
+                             <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
                             </div>
-                          </div>
-                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                      
+    </div>
+                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ?
+'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       ))
                   ) : (
-                      <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">이 날짜에는 등록된 내역이 없어요! 🍃</div>
+                      <div className="text-center py-12 text-gray-400 
+font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">이 날짜에는 등록된 내역이 없어요! 🍃</div>
                   )}
                </div>
             </div>
          </div>
-      )}
+        );
+      })()}
 
       {/* 💡 [V4.5] 영수증 형태의 상세 뷰 모달 (인라인 버튼 삭제됨) */}
       {selectedLedgerDetail && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
+     
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
             <div 
               onTouchStart={handleTouchStart}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedLedgerDetail(null))}
               className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border border-gray-100"
             >
-               <div className={`absolute top-0 left-0 right-0 h-2 ${selectedLedgerDetail.type === '수입' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
+   
+            <div className={`absolute top-0 left-0 right-0 h-2 ${selectedLedgerDetail.type === '수입' ?
+'bg-blue-400' : 'bg-pink-400'}`}></div>
                <div className="flex justify-between items-start mb-6 mt-2">
-                  <div className={`p-3 rounded-2xl shadow-sm ${selectedLedgerDetail.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                  <div className={`p-3 rounded-2xl shadow-sm ${selectedLedgerDetail.type === '수입' ?
+'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
                      {getCategoryIcon(selectedLedgerDetail.category, selectedLedgerDetail.type)}
                   </div>
                   <button onClick={() => setSelectedLedgerDetail(null)} className="text-gray-400 p-2 bg-gray-50 rounded-full active:scale-95 border border-gray-200"><X size={20}/></button>
                </div>
-               <div className="mb-6">
+            
+   <div className="mb-6">
                   <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarIcon size={12}/> {selectedLedgerDetail.date}</div>
-                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">{selectedLedgerDetail.note || selectedLedgerDetail.category} {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 예금사용</span>}</div>
+                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">{selectedLedgerDetail.note ||
+selectedLedgerDetail.category} {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 예금사용</span>}</div>
                   <div className="text-[11px] font-bold text-gray-500 mb-5 px-2.5 py-1 bg-gray-100 inline-block rounded-lg shadow-inner">{selectedLedgerDetail.category}</div>
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">{selectedLedgerDetail.type} 금액</div>
-                    <div className={`text-4xl font-black tracking-tighter ${selectedLedgerDetail.type === '수입' ? 'text-blue-500' : 'text-rose-500'}`}>
-                       {selectedLedgerDetail.type === '수입' ? '+' : '-'}{formatLargeMoney(selectedLedgerDetail.amount)}<span className="text-lg text-gray-800 font-bold ml-1">원</span>
+          
+          <div className={`text-4xl font-black tracking-tighter ${selectedLedgerDetail.type === '수입' ?
+'text-blue-500' : 'text-rose-500'}`}>
+                       {selectedLedgerDetail.type === '수입' ?
+'+' : '-'}{formatLargeMoney(selectedLedgerDetail.amount)}<span className="text-lg text-gray-800 font-bold ml-1">원</span>
                     </div>
                   </div>
                </div>
                {selectedLedgerDetail.subNote && (
                   <div className="mb-6 border-t border-dashed border-gray-200 pt-4">
-                     <span className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest flex items-center gap-1"><FileText size={12}/> 세부 메모</span>
+ 
+                    <span className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest flex items-center gap-1"><FileText size={12}/> 세부 메모</span>
                      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner">
                         {selectedLedgerDetail.subNote}
-                     </div>
+           
+          </div>
                   </div>
                )}
                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
-                  <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 내역 복사</button>
+                  <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center 
+gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 내역 복사</button>
                   <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 내용 수정</button>
                   <button onClick={() => handleDeleteClick(selectedLedgerDetail.id)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 내역 삭제</button>
-               </div>
+          
+     </div>
             </div>
          </div>
       )}
@@ -1143,135 +1255,173 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
             onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
+         
+   onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-10 flex flex-col border-t-8 border-pink-500"
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-3 shrink-0"></div>
             
-            <div className="flex justify-between items-center mb-3 shrink-0">
-               <h2 className="text-xl font-black text-gray-800">✨ {editingLedgerId ? '내역 수정' : '내역 기록'}</h2>
+            <div 
+className="flex justify-between items-center mb-3 shrink-0">
+               <h2 className="text-xl font-black text-gray-800">✨ {editingLedgerId ?
+'내역 수정' : '내역 기록'}</h2>
                <button onClick={() => setIsModalOpen(false)} className="bg-gray-50 text-gray-500 p-2 rounded-2xl border border-gray-100 hover:bg-pink-50 hover:text-pink-500"><X size={20}/></button>
             </div>
 
             <form className="space-y-3 flex-1 pb-2">
               
               {!editingLedgerId && frequentItems.length > 0 && (
-                <div className="mb-1">
+        
+        <div className="mb-1">
                   <div className="text-[10px] font-black text-gray-400 ml-1 mb-1.5 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 {formData.type} 불러오기</div>
                   <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1">
                     {frequentItems.map(([cat, note], idx) => (
-                      <button key={idx} type="button" onClick={() => {
+           
+           <button key={idx} type="button" onClick={() => {
                           setFormData({...formData, category: cat, note: note, isFromSavings: false});
                           setIsSuggestionOpen(false); 
-                      }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
-                         <span className={`${formData.type === '수입' ? 'text-blue-500' : 'text-pink-500'} mr-1`}>[{cat}]</span>{note}
+                      }} className="flex-none bg-gray-50 
+border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
+                         <span className={`${formData.type === '수입' ?
+'text-blue-500' : 'text-pink-500'} mr-1`}>[{cat}]</span>{note}
                        </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
+      
+        <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
                  <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
                  <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
-              </div>
+           
+   </div>
 
               <div className="relative z-50" ref={suggestionRef}>
                  <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block">상세 내용 (어디서 쓰셨나요?)</label>
                  <input type="text" value={formData.note} 
                     onChange={e => {
-                       setFormData({...formData, note: e.target.value});
+            
+           setFormData({...formData, note: e.target.value});
                        setIsSuggestionOpen(true);
-                    }}
+}}
                     onFocus={() => setIsSuggestionOpen(true)}
                     placeholder="내역을 적어주세요" className="w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border focus:border-pink-300 transition-colors shadow-inner" />
                  
                  {isSuggestionOpen && formData.note && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[160px] overflow-y-auto">
+      
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[160px] overflow-y-auto">
                        <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-2.5 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
                           ✨ '{formData.note}' 그대로 사용
+  
                        </button>
                        {suggestedNotes.map(sn => (
                           <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
-                                setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
+                       
+         setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
                                 setIsSuggestionOpen(false);
-                          }} className="w-full text-left px-3 py-2 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
-                             <span className={`${formData.type === '수입' ? 'text-blue-400 border-blue-200' : 'text-pink-400 border-pink-200'} mr-2 text-[10px] border bg-white px-1.5 py-0.5 rounded shadow-sm`}>[{sn.category}]</span> 
+}} className="w-full text-left px-3 py-2 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
+                             <span className={`${formData.type === '수입' ?
+'text-blue-400 border-blue-200' : 'text-pink-400 border-pink-200'} mr-2 text-[10px] border bg-white px-1.5 py-0.5 rounded shadow-sm`}>[{sn.category}]</span> 
                              {sn.note}
                           </button>
                        ))}
-                    </div>
+         
+            </div>
                  )}
               </div>
 
               <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40">
                  <div className="relative">
-                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
+                  
+  <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ?
+'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
                     <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
                  </div>
                  
                  {amountPlaceholder && (
-                    <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
+            
+        <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
                        <Star size={12} className="fill-pink-400 text-pink-400 shrink-0"/> {amountPlaceholder}
                     </div>
                  )}
-              </div>
+            
+  </div>
 
               <div className="flex gap-3 w-full relative z-30">
                 <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
-                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
+                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent 
+px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
                 </div>
                 <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className="text-pink-500"/> 카테고리</label>
-                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
+                   <select value={isCustomCategory ?
+'직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false);
+setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력">+ 직접입력 (신규)</option>
                    </select>
-                </div>
+               
+ </div>
               </div>
 
               {!editingLedgerId && formData.type === '지출' && formData.category === '저축' && depositAssets.length > 0 && (
                 <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 animate-in slide-in-from-top-2">
                    <div className="text-xs font-black text-indigo-700 mb-2 flex items-center gap-1.5"><PiggyBank size={14}/> 어느 금고로 모을까요?</div>
-                   <div className="grid grid-cols-2 gap-2">
+    
+               <div className="grid grid-cols-2 gap-2">
                      {depositAssets.map(a => (
-                        <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
+                        <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ?
+'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
                            <div className="font-black text-xs truncate">{a.name}</div>
                         </button>
                      ))}
-                   </div>
+                  
+  </div>
                 </div>
               )}
 
               {!editingLedgerId && formData.type === '지출' && formData.category !== '저축' && depositAssets.length > 0 && (
                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 animate-in slide-in-from-top-2">
-                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                 
+    <label className="flex items-center gap-2 cursor-pointer mb-2">
                        <input type="checkbox" checked={formData.isFromSavings} onChange={e => setFormData({...formData, isFromSavings: e.target.checked, linkedAssetId: e.target.checked ? (depositAssets[0]?.id || '') : ''})} className="w-4 h-4 text-indigo-500 rounded border-gray-300" />
                        <div className="text-xs font-black text-gray-800 flex items-center gap-1"><Building2 size={14} className="text-indigo-500"/> 금고 돈 쓰기 (생활비 제외)</div>
-                    </label>
+            
+        </label>
                     {formData.isFromSavings && (
                       <div className="grid grid-cols-2 gap-2">
                           {depositAssets.map(a => (
-                             <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
+                 
+             <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-2.5 rounded-lg text-left border transition-all ${formData.linkedAssetId === a.id ?
+'bg-indigo-500 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-700 border-gray-200'}`}>
                                 <div className="font-black text-xs truncate">{a.name}</div>
                              </button>
                           ))}
-                      </div>
+   
+                   </div>
                     )}
                  </div>
               )}
 
               <div className="relative z-20">
-                 <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
+              
+    <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
               </div>
 
               <div className="flex gap-2 pt-1 relative z-10">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount ||
+!formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) ||
+(formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ?
+'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
                     기록하고 계속
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount ||
+!formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) ||
+(formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ?
+'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
                     닫기 및 완료
                  </button>
               </div>
@@ -1280,68 +1430,85 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         </div>
       )}
 
+    
       {/* 💡 [V4.5] 메모 에디터 모달 (날짜 피커 추가) */}
       {isMemoEditorOpen && (
         <div className="fixed inset-0 bg-white z-[80] flex flex-col h-[100dvh] animate-in slide-in-from-bottom duration-300">
            <div className="flex justify-between items-center p-4 pt-12 border-b bg-white shadow-sm shrink-0">
               <div className="flex items-center gap-3">
-                 <button onClick={() => {setIsMemoEditorOpen(false); setIsCalcOpen(false);}} className="text-gray-500 p-2 bg-gray-50 rounded-full"><ChevronLeftCircle size={24}/></button>
+                 <button onClick={() => {setIsMemoEditorOpen(false); setIsCalcOpen(false);}} className="text-gray-500 p-2 bg-gray-50 rounded-full"><ChevronLeftCircle 
+size={24}/></button>
                  <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`p-2.5 rounded-full shadow-sm transition-colors ${isCalcOpen ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600'}`}><Calculator size={22}/></button>
               </div>
               
               {/* 💡 [V4.5] 작성 날짜 변경 영역 */}
-              <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-1 bg-gray-50 
+px-2 py-1 rounded-lg border border-gray-200">
                  <CalendarIcon size={12} className="text-pink-500"/>
                  <input type="date" value={memoDate} onChange={(e) => setMemoDate(e.target.value)} className="bg-transparent outline-none text-xs font-black text-gray-700" />
               </div>
 
               <div className="flex items-center gap-3">
-                 {currentMemoId && <button onClick={deleteMemo} className="text-red-500 p-2 rounded-full hover:bg-red-50"><Trash2 size={20}/></button>}
+                 {currentMemoId 
+&& <button onClick={deleteMemo} className="text-red-500 p-2 rounded-full hover:bg-red-50"><Trash2 size={20}/></button>}
                  <button onClick={saveMemo} className="bg-pink-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-md">저장</button>
               </div>
            </div>
 
            <div className="flex-1 p-5 relative overflow-y-auto no-scrollbar flex flex-col bg-amber-50/20">
               <textarea 
-                 value={memoText} 
+        
+         value={memoText} 
                  onChange={(e) => setMemoText(e.target.value)} 
                  className="w-full flex-1 bg-transparent resize-none outline-none text-lg font-bold text-gray-800 whitespace-pre-wrap no-scrollbar min-h-[50vh]" 
                  placeholder="내용과 금액을 자유롭게 입력하세요..." 
                  autoFocus 
-              />
+   
+           />
            </div>
               
            {isCalcOpen && (
               <div className="absolute top-[88px] left-4 right-4 bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/50 p-4 z-[90] animate-in slide-in-from-top-2">
-                 {calcConfirm.show ? (
+                 {calcConfirm.show ?
+(
                      <div className="bg-gray-800/90 rounded-2xl p-5 mb-4 text-center text-white border border-gray-600 shadow-xl animate-in zoom-in-95">
                         <div className="text-sm font-bold text-blue-300 mb-2">총 {calcConfirm.count}건, {formatLargeMoney(calcConfirm.total)}원을 더한 결과입니다.</div>
                         <div className="text-base font-black mb-5">자동입력 하시겠습니까?</div>
-                        <div className="flex gap-2">
+        
+                <div className="flex gap-2">
                            <button onClick={() => { 
                                setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatLargeMoney(calcConfirm.total)}원`); 
-                               setCalcConfirm({show:false, count:0, total:0}); 
+            
+                   setCalcConfirm({show:false, count:0, total:0}); 
                                setIsCalcOpen(false); 
                            }} className="flex-1 bg-blue-500 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform shadow-md">✅ 예</button>
-                           <button onClick={() => setCalcConfirm({show:false, count:0, total:0})} className="flex-1 bg-gray-600 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform shadow-sm">❌ 아니오</button>
+         
+                  <button onClick={() => setCalcConfirm({show:false, count:0, total:0})} className="flex-1 bg-gray-600 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform shadow-sm">❌ 아니오</button>
                         </div>
                      </div>
                  ) : (
-                     <>
+   
+                  <>
                          <button onClick={() => setIsCalcOpen(false)} className="w-full bg-gray-700/80 text-white py-2 rounded-xl font-bold text-xs mb-3 active:scale-95 shadow-sm border border-gray-600">
                             🔽 계산기 내리기
-                         </button>
+            
+             </button>
                          <button onClick={handleAutoCalc} className="w-full bg-pink-500 text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2 transition-transform">
                             AI 자동합계 계산 🤖
-                         </button>
+               
+          </button>
                          
-                         <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20"><div className="font-black text-white text-3xl">{formatEquation(calcInput || '0')}</div></div>
+                         <div className="bg-gray-800 rounded-2xl p-4 mb-4 text-right overflow-hidden flex items-center justify-end h-20"><div className="font-black text-white text-3xl">{formatEquation(calcInput ||
+'0')}</div></div>
                          <div className="grid grid-cols-4 gap-2.5 mb-4">
                             {['AC','+/-','%','÷', '7','8','9','×', '4','5','6','-', '1','2','3','+', '⌫','0','.','='].map(btn => (
-                               <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 rounded-full font-black text-xl active:scale-90 transition-transform ${['÷','×','-','+','='].includes(btn) ? 'bg-orange-500 text-white' : ['AC','+/-','%','⌫'].includes(btn) ? 'bg-gray-400 text-gray-900' : 'bg-gray-700 text-white'}`}>{btn}</button>
+                               <button key={btn} onClick={() => handleCalcBtn(btn)} className={`h-14 
+rounded-full font-black text-xl active:scale-90 transition-transform ${['÷','×','-','+','='].includes(btn) ? 'bg-orange-500 text-white' : ['AC','+/-','%','⌫'].includes(btn) ? 'bg-gray-400 text-gray-900' : 'bg-gray-700 text-white'}`}>{btn}</button>
                             ))}
                          </div>
-                         <button onClick={() => { if(calcInput && calcInput !== 'Error') { setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatLargeMoney(calcInput)}원`); setIsCalcOpen(false); } }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95 transition-transform">금액 메모에 넣기 ✍️</button>
+                         <button onClick={() => { if(calcInput && 
+calcInput !== 'Error') { setMemoText(prev => prev + `\n\nAI 계산합계 : ${formatLargeMoney(calcInput)}원`); setIsCalcOpen(false);
+} }} className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-sm active:scale-95 transition-transform">금액 메모에 넣기 ✍️</button>
                      </>
                  )}
               </div>
@@ -1355,7 +1522,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
-function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode }) {
+function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode, currentUser }) {
   const [deliverySubTab, setDeliverySubTab] = useState('daily');
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
@@ -1386,9 +1553,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     if (deliveryDateRange.start || deliveryDateRange.end) {
       if (deliveryDateRange.start) data = data.filter(d => typeof d?.date === 'string' && d.date >= deliveryDateRange.start);
       if (deliveryDateRange.end) data = data.filter(d => typeof d?.date === 'string' && d.date <= deliveryDateRange.end);
-    } else data = data.filter(d => typeof d?.date === 'string' && d.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`));
+    } else data = data.filter(d => typeof d?.date === 'string' && d.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     return data;
-  }, [dailyDeliveries, selectedYear, selectedMonth, deliveryDateRange]);
+  }, [dailyDeliveries, calYear, calMonth, deliveryDateRange]);
 
   const deliveryFilteredTotal = filteredDailyDeliveries.reduce((a,b) => a + (b.amount||0), 0);
   const deliveryFilteredCount = filteredDailyDeliveries.reduce((a,b) => a + (b.count||0), 0);
@@ -1469,10 +1636,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     e.preventDefault();
     if (!user) return;
 
+    // 💡 [V4.6] 알림 뱃지를 위한 작성 시간/작성자 추가
+    const timestamp = new Date().toISOString();
     const adds = [];
     const createAdd = (amountStr, countStr, earner, platform) => {
       const amt = parseInt(String(amountStr||0).replace(/,/g, ''), 10);
-      if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime });
+      if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime, updatedAt: timestamp, updatedBy: currentUser });
     };
 
     createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
@@ -1607,7 +1776,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
         <div className="flex justify-between items-end mb-3 relative z-10">
           <div>
-            <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${selectedMonth}월 배달 수익`}</div>
+            <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${calMonth}월 배달 수익`}</div>
             <div className="text-4xl font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
           </div>
           <div className="text-right">
@@ -1650,18 +1819,23 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         const daysInMonth = new Date(calYear, calMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
-        filteredDailyDeliveries.forEach(d => { if(d.date) { if(!dataByDate[d.date]) dataByDate[d.date] = { amt: 0 }; dataByDate[d.date].amt += (d.amount||0); } });
+        
+        // 💡 [V4.6] 배달 달력 이력 증발 버그 완벽 픽스 (원본 배열 사용)
+        (dailyDeliveries || []).forEach(d => { 
+           if(d.date && d.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`)) { 
+               if(!dataByDate[d.date]) dataByDate[d.date] = { amt: 0 }; 
+               dataByDate[d.date].amt += (d.amount||0); 
+           } 
+        });
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-blue-200 animate-in slide-in-from-bottom-2 mt-1">
-             {/* 💡 [V4.5] 달력 네비게이션 추가 */}
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
                 <button onClick={() => { if(calMonth===1){setCalMonth(12); setCalYear(calYear-1);} else setCalMonth(calMonth-1); }} className="p-1.5 bg-blue-50 text-blue-500 rounded-xl active:scale-95"><ChevronLeft size={18}/></button>
                 <span className="font-black text-gray-800 text-base">{calYear}년 {calMonth}월</span>
                 <button onClick={() => { if(calMonth===12){setCalMonth(1); setCalYear(calYear+1);} else setCalMonth(calMonth+1); }} className="p-1.5 bg-blue-50 text-blue-500 rounded-xl active:scale-95"><ChevronRight size={18}/></button>
              </div>
 
-             {/* 💡 [V4.5] 요일 컬러 국룰 적용 */}
              <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-bold ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-600'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
@@ -1670,7 +1844,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                  const dayData = dataByDate[dateStr] || { amt: 0 };
                  const isToday = dateStr === todayStr;
                  
-                 // 💡 [V4.5] 공휴일 로직 추가
                  const holidayName = getHolidayName(dateStr);
                  const dayIndex = (i % 7);
                  const isRed = dayIndex === 0 || holidayName;
@@ -1711,7 +1884,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             const dayIndex = dateObj.getDay();
             const dayName = ['일','월','화','수','목','금','토'][dayIndex];
             
-            // 💡 [V4.5] 공휴일 로직 추가
             const holidayName = getHolidayName(date);
             const dateColorClass = (dayIndex === 0 || holidayName) ? 'text-red-500' : dayIndex === 6 ? 'text-blue-500' : 'text-gray-800';
 
@@ -1776,7 +1948,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         </div>
       )}
 
-      {/* 💡 [V4.5] 배달 상세 모달 (인라인 버튼 제거됨) */}
       {selectedShiftDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] p-0 overflow-y-auto no-scrollbar">
             <div 
@@ -1835,8 +2006,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       { (selectedWeeklySummary || selectedDailySummary) && (() => {
           const isWeekly = !!selectedWeeklySummary;
           const pd = selectedWeeklySummary || selectedDailySummary;
+          // 💡 [V4.6] 배달 일일/주차 상세 뷰에서도 원본 배열로 완벽 조회
           const items = isWeekly ? (pendingByPayday[pd]?.items || paydayGroups[pd]?.items || []) 
-                                 : (dailyShifts[pd] ? dailyShifts[pd].flatMap(s => s.items) : []);
+                                 : (dailyDeliveries || []).filter(d => d.date === pd);
         
           const title = isWeekly ? `${pd.slice(5).replace('-','/')} 입금 ${pd >= todayStr ? '예정' : '완료'}` : `${pd.slice(5).replace('-','/')} 일일 정산`;
           const metrics = calcDailyMetrics(items);
@@ -1969,7 +2141,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 // ==========================================
 // 7. ASSETS TAB COMPONENT
 // ==========================================
-function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode }) {
+function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode, currentUser }) {
   const [assetTab, setAssetTab] = useState('deposit');
   const [loanSortBy, setLoanSortBy] = useState(() => localStorage.getItem('hyunaLoanSortBy') || 'date'); 
   
@@ -2007,8 +2179,9 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   const totalPaidThisMonth = paidLoansThisMonth.reduce((sum, l) => sum + getMonthlyPayment(l), 0);
   const totalUnpaidThisMonth = sortedLoans.filter(l => !l.paidMonths?.includes(currentMonthKey) && l.status !== '완납').reduce((sum, l) => sum + getMonthlyPayment(l), 0);
   
+  // 💡 [V4.6] 알림 뱃지를 위한 updatedAt, updatedBy 추가
   const updateAsset = async (id, field, value) => {
-    if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id), { [field]: value });
+    if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id), { [field]: value, updatedAt: new Date().toISOString(), updatedBy: currentUser });
   }
 
   const deleteAsset = async (id) => {
@@ -2019,19 +2192,19 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   const handlePayLoanThisMonth = async (loan) => {
     if(!user || !window.confirm(`'${loan.name}' 납부를 완료하시겠습니까?`)) return;
     const newPaidMonths = [...(loan.paidMonths || []), currentMonthKey];
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths, updatedAt: new Date().toISOString(), updatedBy: currentUser });
   };
 
   const handleCancelPayLoanThisMonth = async (loan) => {
     if(!user || !window.confirm(`'${loan.name}' 납부를 취소하시겠습니까?`)) return;
     const newPaidMonths = (loan.paidMonths || []).filter(m => m !== currentMonthKey);
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths, updatedAt: new Date().toISOString(), updatedBy: currentUser });
   };
 
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
     if (!newAssetFormData.name.trim() || !user) return;
-    let newAsset = { assetType: newAssetFormData.assetType, name: newAssetFormData.name };
+    let newAsset = { assetType: newAssetFormData.assetType, name: newAssetFormData.name, updatedAt: new Date().toISOString(), updatedBy: currentUser };
     if (newAssetFormData.assetType === 'loan') {
        if (!newAssetFormData.principal) return;
        newAsset = { ...newAsset, principal: parseInt(String(newAssetFormData.principal).replace(/[^0-9]/g, '')) || 0, rate: newAssetFormData.rate, paymentMethod: newAssetFormData.paymentMethod, paymentDate: newAssetFormData.paymentDate, duration: 0, customMonthly: 0, status: '상환중', prepaymentHistory: [], paidMonths: [] };
@@ -2056,7 +2229,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     if (!loan) return;
     const newPrincipal = Math.max(0, loan.principal - pAmount);
     const newHistoryItem = { id: Date.now().toString(), date: prepayFormData.date, principalAmount: pAmount, interestAmount: iAmount };
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: newPrincipal, status: newPrincipal === 0 ? '완납' : loan.status, prepaymentHistory: [newHistoryItem, ...(loan.prepaymentHistory || [])] });
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: newPrincipal, status: newPrincipal === 0 ? '완납' : loan.status, prepaymentHistory: [newHistoryItem, ...(loan.prepaymentHistory || [])], updatedAt: new Date().toISOString(), updatedBy: currentUser });
     setIsPrepayModalOpen(false);
   };
 
@@ -2066,7 +2239,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     const historyItem = (loan?.prepaymentHistory||[]).find(h => h.id === historyId);
     if (!loan || !historyItem) return;
     const restoredPrincipal = loan.principal + historyItem.principalAmount;
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (loan.prepaymentHistory||[]).filter(h => h.id !== historyId) });
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (loan.prepaymentHistory||[]).filter(h => h.id !== historyId), updatedAt: new Date().toISOString(), updatedBy: currentUser });
   };
 
   // 💡 [V4.5] 잔고 수동 조정 및 히스토리 자동 생성 로직
@@ -2080,7 +2253,8 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     const historyItem = { id: Date.now().toString(), date: todayStr, type: diff > 0 ? 'deposit' : 'withdraw', amount: Math.abs(diff), note: '잔액 수동 조정', category: '기타' };
     const newHistory = [historyItem, ...(selectedAssetDetail.history || [])];
     
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', selectedAssetDetail.id), { balance: newBal, history: newHistory });
+    // 💡 [V4.6] 알림 뱃지를 위한 updatedAt 추가
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', selectedAssetDetail.id), { balance: newBal, history: newHistory, updatedAt: new Date().toISOString(), updatedBy: currentUser });
     setSelectedAssetDetail({...selectedAssetDetail, balance: newBal, history: newHistory});
     setIsManualBalanceEdit(false);
   };
@@ -2378,9 +2552,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [batchDuties, setBatchDuties] = useState({}); 
   const [selectedStamp, setSelectedStamp] = useState('DAY');
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
-                                               
-  const dutyTimelineRef = useRef(null); // 👈 🚑 긴급 투입!! 이 한 줄을 추가해 주세요!                                              
-                                               
+  
+  const dutyTimelineRef = useRef(null); 
+
   // 💡 [V4.5] 과거 2일 전 ~ 미래 30일 생성 로직
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   
@@ -2421,7 +2595,8 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     e.preventDefault();
     if (!eventFormData.title.trim() || !user) return;
     
-    const finalData = { ...eventFormData };
+    // 💡 [V4.6] 알림 뱃지를 위한 updatedAt, updatedBy 추가
+    const finalData = { ...eventFormData, updatedAt: new Date().toISOString(), updatedBy: currentUser };
     if (!finalData.endDate || finalData.endDate < finalData.date) {
       finalData.endDate = finalData.date;
     }
@@ -2450,7 +2625,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     const ampm = hh >= 12 ? '오후' : '오전';
     hh = hh % 12 || 12;
     const timeStr = `${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
-    const newMsg = { author: currentUser, text: messageFormData.text, createdAt: todayStr, time: timeStr, isChecked: false, replies: [] };
+    
+    // 💡 [V4.6] 톡 작성 시 isoUpdate 로 시간 정확히 기록
+    const newMsg = { author: currentUser, text: messageFormData.text, createdAt: todayStr, time: timeStr, isChecked: false, replies: [], isoUpdate: new Date().toISOString() };
     if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), newMsg);
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData({ text: '' });
@@ -2461,8 +2638,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     const msg = messages.find(m => m.id === msgId);
     const newReply = { id: Date.now().toString(), author: currentUser, text: replyText, createdAt: todayStr };
     const updatedReplies = [...(msg.replies || []), newReply];
-    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', msgId), { replies: updatedReplies });
-    else setMessages(messages.map(m => m.id === msgId ? { ...m, replies: updatedReplies } : m));
+    
+    // 💡 [V4.6] 답글 달 때도 isoUpdate 갱신하여 뱃지 띄우기
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'messages', msgId), { replies: updatedReplies, isoUpdate: new Date().toISOString() });
+    else setMessages(messages.map(m => m.id === msgId ? { ...m, replies: updatedReplies, isoUpdate: new Date().toISOString() } : m));
     setReplyText(''); setReplyingTo(null);
   };
 
@@ -2491,12 +2670,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     } else {
       if (existingEvent) {
          if (existingEvent.title !== newDuty) {
-           if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', existingEvent.id), { title: newDuty });
+           if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', existingEvent.id), { title: newDuty, updatedAt: new Date().toISOString(), updatedBy: currentUser });
            else setEvents(events.map(e => e.id === existingEvent.id ? { ...e, title: newDuty } : e));
            changed = true;
          }
       } else {
-         const newEvent = { type: '듀티', title: newDuty, date: dateStr, isImportant: false };
+         const newEvent = { type: '듀티', title: newDuty, date: dateStr, isImportant: false, updatedAt: new Date().toISOString(), updatedBy: currentUser };
          if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), newEvent);
          else setEvents([{...newEvent, id: Date.now().toString()}, ...events]);
          changed = true;
@@ -2549,7 +2728,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     if (isFirebaseEnabled) {
       for (const e of oldDuties) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
       for (const [date, title] of Object.entries(batchDuties)) {
-        if(title) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title, date, isImportant: false });
+        if(title) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title, date, isImportant: false, updatedAt: new Date().toISOString(), updatedBy: currentUser });
       }
     }
     setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
@@ -2941,7 +3120,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                       <option value="회식">회식</option>
                       <option value="기타">기타</option>
                    </select>
-                </div>
+                 </div>
               </div>
 
               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
@@ -3114,7 +3293,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 }
 
 // ==========================================
-// 9. MAIN APP CONTENT
+// 9. MAIN APP CONTENT (💡 [V4.6] 알림 뱃지 엔진 탑재)
 // ==========================================
 function AppContent() {
   const [user, setUser] = useState(null);
@@ -3123,7 +3302,7 @@ function AppContent() {
   const [appFont, setAppFont] = useState(() => localStorage.getItem('hyunaFont') || 'Inter');
 
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar');
   const [tabOrder, setTabOrder] = useState(() => { const saved = localStorage.getItem('hyunaTabOrder'); return saved ? JSON.parse(saved) : defaultTabOrder; });
   const [isManageMode, setIsManageMode] = useState(false); 
   
@@ -3144,6 +3323,36 @@ function AppContent() {
   const [trackingStartTime, setTrackingStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isAppLocked, setIsAppLocked] = useState(false);
+
+  // 💡 [V4.6] 알림 뱃지를 위한 '마지막 탭 접속 시간' 로컬 저장소
+  const [lastVisited, setLastVisited] = useState(() => {
+    const saved = localStorage.getItem('hyunaLastVisited');
+    return saved ? JSON.parse(saved) : { calendar: 0, ledger: 0, delivery: 0, assets: 0 };
+  });
+
+  // 탭이 바뀔 때마다 해당 탭의 접속 시간을 현재 시간으로 갱신
+  useEffect(() => {
+    setLastVisited(prev => {
+      const next = { ...prev, [activeTab]: Date.now() };
+      localStorage.setItem('hyunaLastVisited', JSON.stringify(next));
+      return next;
+    });
+  }, [activeTab]);
+
+  // 💡 [V4.6] 새 데이터 감지 엔진 (상대방이 쓴 글 & 내가 마지막 본 시간 이후인지 체크)
+  const hasNew = useMemo(() => {
+    const check = (arr, tab) => arr.some(item => 
+      (item.updatedBy && item.updatedBy !== currentUser && item.updatedAt && new Date(item.updatedAt).getTime() > (lastVisited[tab] || 0)) ||
+      (item.author && item.author !== currentUser && item.isoUpdate && new Date(item.isoUpdate).getTime() > (lastVisited[tab] || 0))
+    );
+    
+    return {
+      calendar: activeTab !== 'calendar' && (check(events, 'calendar') || check(messages, 'calendar')),
+      ledger: activeTab !== 'ledger' && (check(ledger, 'ledger') || check(memos, 'ledger')),
+      delivery: activeTab !== 'delivery' && check(dailyDeliveries, 'delivery'),
+      assets: activeTab !== 'assets' && (check(assets.deposits, 'assets') || check(assets.savings, 'assets') || check(assets.loans, 'assets'))
+    };
+  }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser]);
 
   useEffect(() => {
     const checkLockStatus = () => {
@@ -3316,9 +3525,9 @@ function AppContent() {
         {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} appFont={appFont} setAppFont={setAppFont} />}
 
         <main className="px-5 max-w-md mx-auto pt-2">
-          {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} currentUser={currentUser} />}
+          {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} currentUser={currentUser} />}
+          {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} currentUser={currentUser} />}
           {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} activeTab={activeTab} />}
         </main>
 
@@ -3328,13 +3537,25 @@ function AppContent() {
             const Icon = config.icon;
             const isActive = activeTab === tabId;
             let activeColor = 'text-indigo-500';
-            if (tabId === 'ledger') activeColor = currentLedgerTheme.text500;
-            if (tabId === 'calendar') activeColor = currentCalendarTheme.text500;
-            if (tabId === 'delivery') activeColor = 'text-blue-500';
+            let badgeColor = 'bg-indigo-500';
+            
+            if (tabId === 'ledger') { activeColor = currentLedgerTheme.text500; badgeColor = currentLedgerTheme.bg500; }
+            if (tabId === 'calendar') { activeColor = currentCalendarTheme.text500; badgeColor = currentCalendarTheme.bg500; }
+            if (tabId === 'delivery') { activeColor = 'text-blue-500'; badgeColor = 'bg-blue-500'; }
 
             return (
               <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${activeColor} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
-                <Icon size={22}/>
+                <div className="relative">
+                  <Icon size={22}/>
+                  
+                  {/* 💡 [V4.6] 스마트 알림 뱃지 (Dot) 탑재 */}
+                  {hasNew[tabId] && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${badgeColor}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 border border-white ${badgeColor}`}></span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-black mt-1.5">{config.label}</span>
               </button>
             )
@@ -3398,3 +3619,4 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }
+
