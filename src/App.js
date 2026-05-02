@@ -3330,14 +3330,21 @@ function AppContent() {
   }, [activeTab]);
 
   // 💡 [V4.6] 새 데이터 감지 엔진 (상대방이 쓴 글 & 내가 마지막 본 시간 이후인지 체크)
- // 💡 [V4.6.1] 타이머 리렌더링 시 깜빡임 방지 로직
+// 💡 [V4.6.1] 타이머 리렌더링 시 화면 깜빡임 완벽 방지
   const hasNew = useMemo(() => {
-    if (timerActive) return { calendar: false, ledger: false, delivery: false, assets: false }; // 타이머 중엔 판독 잠시 중단
+    // 1. 타이머가 돌아가는 중에는 계산을 멈춰서 깜빡임을 원천 차단합니다.
+    if (timerActive) return { calendar: false, ledger: false, delivery: false, assets: false };
 
-    const check = (arr, tab) => arr.some(item => 
-      (item.updatedBy && item.updatedBy !== currentUser && item.updatedAt && new Date(item.updatedAt).getTime() > (lastVisited[tab] || 0)) ||
-      (item.author && item.author !== currentUser && item.isoUpdate && new Date(item.isoUpdate).getTime() > (lastVisited[tab] || 0))
-    );
+    const check = (arr, tab) => {
+      if (!arr || !Array.isArray(arr)) return false;
+      return arr.some(item => {
+        const updateTime = item.updatedAt ? new Date(item.updatedAt).getTime() : (item.isoUpdate ? new Date(item.isoUpdate).getTime() : 0);
+        const lastSeen = lastVisited[tab] || 0;
+        const author = item.updatedBy || item.author;
+        // 상대방이 쓴 글이고, 내가 마지막으로 본 시간보다 이후인 경우만 알림 표시
+        return author && author !== currentUser && updateTime > lastSeen;
+      });
+    };
     
     return {
       calendar: activeTab !== 'calendar' && (check(events, 'calendar') || check(messages, 'calendar')),
@@ -3345,8 +3352,7 @@ function AppContent() {
       delivery: activeTab !== 'delivery' && check(dailyDeliveries, 'delivery'),
       assets: activeTab !== 'assets' && (check(assets.deposits, 'assets') || check(assets.savings, 'assets') || check(assets.loans, 'assets'))
     };
-  }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser, timerActive]););
-
+  }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser, timerActive]);
   useEffect(() => {
     const checkLockStatus = () => {
       const lockEnabled = localStorage.getItem('hyunaLockEnabled') === 'true';
