@@ -2378,7 +2378,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [batchDuties, setBatchDuties] = useState({}); 
   const [selectedStamp, setSelectedStamp] = useState('DAY');
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
-
+                                               
+  const dutyTimelineRef = useRef(null); // 👈 🚑 긴급 투입!! 이 한 줄을 추가해 주세요!                                              
+                                               
   // 💡 [V4.5] 과거 2일 전 ~ 미래 30일 생성 로직
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   
