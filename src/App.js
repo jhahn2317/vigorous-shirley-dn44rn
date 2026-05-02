@@ -2194,12 +2194,21 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
-// 8. FAMILY CALENDAR COMPONENT (🚀 [V3.5] 스위치 탭 & 캘린더 뷰 & 스마트 아이콘 적용)
+// 8. FAMILY CALENDAR COMPONENT
 // ==========================================
 function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab }) {
-  // 💡 [V3.5] 타임라인 / 캘린더 스위치 상태
   const [calendarSubTab, setCalendarSubTab] = useState('timeline');
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // 달력 날짜 클릭 시 팝업용
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+
+  // 💡 [V3.5] 달력 전용 로컬 상태 (네비게이션용)
+  const [calYear, setCalYear] = useState(selectedYear);
+  const [calMonth, setCalMonth] = useState(selectedMonth);
+
+  // 글로벌 월 탭이 바뀌면 달력도 따라가게 동기화
+  useEffect(() => {
+    setCalYear(selectedYear);
+    setCalMonth(selectedMonth);
+  }, [selectedYear, selectedMonth]);
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
@@ -2228,22 +2237,22 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
-  // 💡 [V3.5] 스마트 단어 인식 아이콘 엔진
+  // 스마트 단어 인식 아이콘 엔진
   const getSmartIcon = (title, type) => {
     const t = title || '';
     if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
     if (t.includes('여행') || t.includes('휴가') || t.includes('비행기')) return '✈️';
     if (t.includes('병원') || t.includes('검진') || t.includes('치과')) return '🏥';
     if (t.includes('결혼') || t.includes('기념일') || t.includes('웨딩')) return '💍';
-    if (t.includes('식사') || t.includes('저녁') || t.includes('외식')) return '🍽️';
+    if (t.includes('식사') || t.includes('저녁') || t.includes('외식') || t.includes('파티')) return '🍽️';
     if (t.includes('학교') || t.includes('입학') || t.includes('졸업') || t.includes('학부모')) return '🏫';
     if (t.includes('캠핑') || t.includes('글램핑') || t.includes('차박')) return '⛺';
     if (t.includes('쇼핑') || t.includes('마트') || t.includes('백화점')) return '🛒';
     
-    // 단어 인식이 안 될 경우 타입별 기본 아이콘
+    // 기본 아이콘
     if (type === '가족일정') return '💖';
     if (type === '회식') return '🍻';
-    return '⭐'; // 기타
+    return '⭐'; 
   };
 
   const upcomingEventIndex = useMemo(() => {
@@ -2251,7 +2260,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     return idx !== -1 ? idx : familyEventsList.length - 1;
   }, [familyEventsList, todayStr]);
 
-  // 💡 박스 독립 스마트 스크롤 엔진
+  // 박스 독립 스마트 스크롤 엔진
   useEffect(() => {
     if (familyEventsList.length === 0 || calendarSubTab !== 'timeline') return;
 
@@ -2419,9 +2428,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   };
 
   return (
-    <div className="space-y-5 pb-28 pt-2 animate-in slide-in-from-right duration-500">
+    // 💡 [수정됨] pb-28 ➔ pb-4 로 변경하여 하단 텅 빈 여백 해결!
+    <div className="space-y-5 pb-4 pt-2 animate-in slide-in-from-right duration-500">
       
-      {/* 현아&정훈 한줄톡 */}
+      {/* 한줄톡 */}
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
          <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center"><span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span><button onClick={() => setIsMessageHistoryOpen(true)} className="text-gray-400 font-bold border-b border-gray-300 pb-0.5 active:text-pink-500">과거 보관소</button></h3>
          
@@ -2475,13 +2485,14 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       </div>
 
       <div>
-        <div className="flex justify-between items-center px-2 mb-3">
+        <div className="flex justify-between items-center px-2 mb-1">
           <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Stethoscope size={16} className="text-pink-500"/> 현아 근무 스케줄</h3>
           <button onClick={openDutyBatchModal} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 한달스케쥴 확인/수정</button>
         </div>
         
-        <div className="relative pt-4">
-          <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-5 scroll-smooth">
+        {/* 현아 근무 스케줄 슬라이드 영역 (여백 조절 포인트) */}
+        <div className="relative pt-2">
+          <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-2 scroll-smooth">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
               const duty = dutyEvent ? dutyEvent.title : 'OFF';
@@ -2517,7 +2528,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 💡 [V3.5] 타임라인 / 달력 스위치 버튼 (가계부와 동일한 UI) */}
+      {/* 💡 타임라인 / 달력 스위치 버튼 */}
       <div className="flex bg-pink-100 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200">
         <button onClick={() => setCalendarSubTab('timeline')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='timeline'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><List size={14}/> 타임라인</button>
         <button onClick={() => setCalendarSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${calendarSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500'}`}><CalendarDays size={14}/> 월간 달력</button>
@@ -2577,16 +2588,16 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 💡 [V3.5] 새로운 가족 일정 달력 뷰 */}
+      {/* 💡 [V3.5] 새로운 가족 일정 달력 뷰 (네비게이션 & 클릭 추가 탑재) */}
       {calendarSubTab === 'calendar' && (() => {
-        const firstDay = new Date(selectedYear, selectedMonth - 1, 1).getDay();
-        const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+        const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         
         // 날짜별 일정 그룹핑
         const eventsByDate = {};
         familyEventsList.forEach(e => { 
-          if(e.date && e.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}`)) {
+          if(e.date && e.date.startsWith(`${calYear}-${String(calMonth).padStart(2,'0')}`)) {
              if(!eventsByDate[e.date]) eventsByDate[e.date] = [];
              eventsByDate[e.date].push(e);
           } 
@@ -2594,28 +2605,42 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-right mt-1">
+             <div className="flex justify-between items-center px-3 mb-4 mt-1">
+                <button onClick={() => { if(calMonth===1){setCalMonth(12); setCalYear(calYear-1);} else setCalMonth(calMonth-1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl active:scale-95"><ChevronLeft size={18}/></button>
+                <span className="font-black text-gray-800 text-base">{calYear}년 {calMonth}월</span>
+                <button onClick={() => { if(calMonth===12){setCalMonth(1); setCalYear(calYear+1);} else setCalMonth(calMonth+1); }} className="p-1.5 bg-pink-50 text-pink-500 rounded-xl active:scale-95"><ChevronRight size={18}/></button>
+             </div>
+
              <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[65px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
                  
-                 const dateStr = `${selectedYear}-${String(selectedMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                 const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                  const dayEvents = eventsByDate[dateStr] || [];
                  const isToday = dateStr === todayStr;
                  const hasEvent = dayEvents.length > 0;
                  
                  return (
-                   <div key={`day-${i}`} onClick={() => { if(hasEvent) setSelectedCalendarDate(dateStr); }} className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-gray-100 bg-white hover:bg-gray-50'} ${isToday ? 'ring-2 ring-gray-800' : ''}`}>
+                   <div key={`day-${i}`} 
+                     onClick={() => { 
+                         if(hasEvent) {
+                             setSelectedCalendarDate(dateStr); 
+                         } else {
+                             setEventFormData({ date: dateStr, title: '', type: '가족일정', isImportant: false });
+                             setEditingEventId(null);
+                             setIsEventModalOpen(true);
+                         }
+                     }} 
+                     className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} cursor-pointer active:scale-95 transition-transform ${isToday ? 'ring-2 ring-gray-800' : ''}`}>
                      <span className={`text-[10px] font-bold mb-1 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      
                      {hasEvent && (
                        <div className="flex flex-col items-center justify-center w-full h-full pb-3 relative">
                           <span className="text-[22px] leading-none mb-1">{getSmartIcon(dayEvents[0].title, dayEvents[0].type)}</span>
-                          {/* 💡 [V3.5] 일정 2개 이상일 때 +2 빨간 뱃지 표시 */}
                           {dayEvents.length > 1 && (
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-sm border-2 border-white">+{(dayEvents.length - 1)}</span>
                           )}
-                          {/* 첫 번째 일정의 이름만 작게 보여줌 */}
                           <div className="text-[8px] font-black text-gray-700 w-full text-center truncate px-0.5">{dayEvents[0].title}</div>
                        </div>
                      )}
@@ -2627,7 +2652,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         );
       })()}
 
-      {/* 💡 [V3.5] 달력 날짜 클릭 시 나타나는 일정 상세 팝업 (바텀시트) */}
+      {/* 달력 날짜 클릭 시 나타나는 일정 상세 팝업 (바텀시트) */}
       {selectedCalendarDate && (() => {
         const dayEvents = familyEventsList.filter(e => e.date === selectedCalendarDate);
         return (
@@ -2743,7 +2768,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 이하 모달들은 그대로 유지 */}
       {isDutyEditModalOpen && selectedDutyEditDate && (() => {
          const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
          const currentDuty = existingEvent ? existingEvent.title : 'OFF';
