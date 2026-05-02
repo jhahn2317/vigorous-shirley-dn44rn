@@ -2637,10 +2637,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  </div>
                )}
 
-            </div>
-         </div>
-      )}
-
+    </div>
+          </div>
+       )}
+    </div>
+  );
+} // End of FamilyCalendarView
 
 // 9. MAIN APP CONTENT
 function AppContent() {
