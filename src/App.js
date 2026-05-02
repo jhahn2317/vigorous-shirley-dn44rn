@@ -34,15 +34,40 @@ try {
 
 const appId = typeof __app_id !== 'undefined' ? String(__app_id).replace(/\//g, '_') : 'hyuna-asset-pro';
 
+// 🚀 [V3.0] 월별 감성 파스텔 테마 엔진 구축
+const THEME_PALETTES = {
+  pink: { bg500: 'bg-pink-500', bg600: 'bg-pink-600', bg50: 'bg-pink-50', bg100: 'bg-pink-100', text500: 'text-pink-500', text600: 'text-pink-600', text400: 'text-pink-400', border500: 'border-pink-500', border200: 'border-pink-200', border100: 'border-pink-100', border600: 'border-pink-600', border300: 'focus:border-pink-300', fill400: 'fill-pink-400', fromColor: 'from-pink-400', toColor: 'to-rose-400' },
+  amber: { bg500: 'bg-amber-500', bg600: 'bg-amber-600', bg50: 'bg-amber-50', bg100: 'bg-amber-100', text500: 'text-amber-500', text600: 'text-amber-600', text400: 'text-amber-400', border500: 'border-amber-500', border200: 'border-amber-200', border100: 'border-amber-100', border600: 'border-amber-600', border300: 'focus:border-amber-300', fill400: 'fill-amber-400', fromColor: 'from-amber-400', toColor: 'to-yellow-400' },
+  emerald: { bg500: 'bg-emerald-500', bg600: 'bg-emerald-600', bg50: 'bg-emerald-50', bg100: 'bg-emerald-100', text500: 'text-emerald-500', text600: 'text-emerald-600', text400: 'text-emerald-400', border500: 'border-emerald-500', border200: 'border-emerald-200', border100: 'border-emerald-100', border600: 'border-emerald-600', border300: 'focus:border-emerald-300', fill400: 'fill-emerald-400', fromColor: 'from-emerald-400', toColor: 'to-teal-400' },
+  violet: { bg500: 'bg-violet-500', bg600: 'bg-violet-600', bg50: 'bg-violet-50', bg100: 'bg-violet-100', text500: 'text-violet-500', text600: 'text-violet-600', text400: 'text-violet-400', border500: 'border-violet-500', border200: 'border-violet-200', border100: 'border-violet-100', border600: 'border-violet-600', border300: 'focus:border-violet-300', fill400: 'fill-violet-400', fromColor: 'from-violet-400', toColor: 'to-purple-400' },
+  sky: { bg500: 'bg-sky-500', bg600: 'bg-sky-600', bg50: 'bg-sky-50', bg100: 'bg-sky-100', text500: 'text-sky-500', text600: 'text-sky-600', text400: 'text-sky-400', border500: 'border-sky-500', border200: 'border-sky-200', border100: 'border-sky-100', border600: 'border-sky-600', border300: 'focus:border-sky-300', fill400: 'fill-sky-400', fromColor: 'from-sky-400', toColor: 'to-blue-400' },
+  rose: { bg500: 'bg-rose-500', bg600: 'bg-rose-600', bg50: 'bg-rose-50', bg100: 'bg-rose-100', text500: 'text-rose-500', text600: 'text-rose-600', text400: 'text-rose-400', border500: 'border-rose-500', border200: 'border-rose-200', border100: 'border-rose-100', border600: 'border-rose-600', border300: 'focus:border-rose-300', fill400: 'fill-rose-400', fromColor: 'from-rose-400', toColor: 'to-orange-400' },
+};
+
+const MONTHLY_THEME_MAP = {
+  1: { ledger: 'pink', calendar: 'sky' },
+  2: { ledger: 'violet', calendar: 'pink' },
+  3: { ledger: 'amber', calendar: 'emerald' },
+  4: { ledger: 'pink', calendar: 'amber' },
+  5: { ledger: 'emerald', calendar: 'rose' },
+  6: { ledger: 'sky', calendar: 'emerald' },
+  7: { ledger: 'violet', calendar: 'sky' },
+  8: { ledger: 'rose', calendar: 'sky' },
+  9: { ledger: 'amber', calendar: 'violet' },
+  10: { ledger: 'rose', calendar: 'amber' },
+  11: { ledger: 'violet', calendar: 'pink' },
+  12: { ledger: 'pink', calendar: 'sky' }
+};
+
 const DEFAULT_CATEGORIES = {
   지출: ['식비', '주거/통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
   수입: ['월급', '배달비', '월세', '용돈', '기타수입']
 };
 const tabConfig = {
-  calendar: { id: 'calendar', label: '우리가족', icon: CalendarIcon, colorClass: 'text-emerald-500' },
-  ledger: { id: 'ledger', label: '가계부', icon: Wallet, colorClass: 'text-pink-500' },
-  delivery: { id: 'delivery', label: '배달수익', icon: Bike, colorClass: 'text-blue-500' },
-  assets: { id: 'assets', label: '자산관리', icon: Landmark, colorClass: 'text-indigo-600' },
+  calendar: { id: 'calendar', label: '우리가족', icon: CalendarIcon },
+  ledger: { id: 'ledger', label: '가계부', icon: Wallet },
+  delivery: { id: 'delivery', label: '배달수익', icon: Bike },
+  assets: { id: 'assets', label: '자산관리', icon: Landmark },
 };
 
 // 2. HELPER FUNCTIONS
@@ -214,7 +239,6 @@ const AutoScaleValue = ({ value, isNet = false }) => {
 // 🚀 [V2.5] 쫀득 스와이프 물리엔진 공통 함수 (화면이 손가락 따라 움직임!)
 export const handleTouchStart = (e) => {
   e.currentTarget.dataset.startY = e.touches[0].clientY;
-  // 손가락 따라갈 땐 버벅임 방지용으로 애니메이션(지연) 끄기
   e.currentTarget.style.transition = 'none'; 
 };
 
@@ -222,8 +246,6 @@ export const handleTouchMove = (e) => {
   const startY = parseFloat(e.currentTarget.dataset.startY || 0);
   const currentY = e.touches[0].clientY;
   const swipeDistance = currentY - startY;
-
-  // 아래로 쓸어내릴 때만 화면이 실시간으로 따라 내려가도록!
   if (swipeDistance > 0) {
     e.currentTarget.style.transform = `translateY(${swipeDistance}px)`;
   }
@@ -235,21 +257,18 @@ export const handleTouchEnd = (e, closeFunction) => {
   const swipeDistance = currentY - startY;
   const modalHeight = e.currentTarget.clientHeight;
 
-  // 손 뗄 때 다시 고무줄처럼 튕기거나 부드럽게 날아가도록 애니메이션 켜기
   e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
 
   if (swipeDistance > modalHeight * 0.5) {
-    // 50% 이상 내렸으면: 아래로 확! 날려버리고 창 닫기
     e.currentTarget.style.transform = 'translateY(100%)';
     setTimeout(() => {
       closeFunction();
-      e.currentTarget.style.transform = ''; // 다음 번 열릴 때를 위해 원래 위치로 초기화
-    }, 250); // 창이 날아가는 0.25초 동안 대기
+      e.currentTarget.style.transform = '';
+    }, 250);
   } else {
-    // 50% 안 넘었으면: 원래 자리로 고무줄처럼 튕겨 올라오기
     e.currentTarget.style.transform = 'translateY(0)';
     setTimeout(() => {
-      e.currentTarget.style.transform = ''; // 깔끔하게 스타일 초기화
+      e.currentTarget.style.transform = '';
     }, 300);
   }
 };
@@ -368,18 +387,18 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
       </div>
 
       {activeTab === 'ledger' && (
-        <div className="bg-white p-5 rounded-2xl border border-pink-200 shadow-md animate-in slide-in-from-right-2">
+        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-md animate-in slide-in-from-right-2">
           <h3 className="text-sm font-black text-gray-800 mb-4 flex items-center gap-1.5"><Settings size={16}/> 카테고리 관리 💖</h3>
           <div className="space-y-4">
             {['지출', '수입'].map(type => (
               <div key={type}>
                 <div className="flex justify-between items-center mb-2">
-                  <span className={`text-xs font-bold ${type==='지출'?'text-pink-500':'text-blue-500'}`}>{type} 카테고리</span>
-                  <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-pink-50 text-pink-600 border-pink-100':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
+                  <span className={`text-xs font-bold ${type==='지출'?'text-gray-500':'text-blue-500'}`}>{type} 카테고리</span>
+                  <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-gray-50 text-gray-600 border-gray-200':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {getSortedCategories(type).map(c => (
-                    <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory(type, c)} className={`text-gray-400 hover:${type==='지출'?'text-pink-500':'text-blue-500'}`}><X size={12}/></button></span>
+                    <span key={c} className="bg-gray-50 border border-gray-200 text-gray-600 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 font-bold">{c} <button onClick={() => handleDeleteCategory(type, c)} className={`text-gray-400 hover:text-gray-800`}><X size={12}/></button></span>
                   ))}
                 </div>
               </div>
@@ -453,10 +472,10 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
-            <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-pink-50/50 border-pink-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
-              <div><span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-pink-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{tabConfig[activeTab].label}</span></div>
-              <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold shadow-sm active:scale-95`}>현재 탭으로 고정</button>
+            <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Smartphone size={16} className={activeTab === 'ledger' ? 'text-gray-500' : activeTab === 'delivery' ? 'text-blue-500' : 'text-indigo-500'}/> 앱 시작 시 기본 화면</h3>
+            <div className={`flex justify-between items-center p-3 rounded-xl border ${activeTab === 'ledger' ? 'bg-gray-50/50 border-gray-200/50' : activeTab === 'delivery' ? 'bg-blue-50/50 border-blue-200/50' : activeTab === 'calendar' ? 'bg-emerald-50/50 border-emerald-200/50' : 'bg-indigo-50/50 border-indigo-200/50'}`}>
+              <div><span className={`text-sm font-black ${activeTab === 'ledger' ? 'text-gray-600' : activeTab === 'delivery' ? 'text-blue-600' : activeTab === 'calendar' ? 'text-emerald-600' : 'text-indigo-700'}`}>{tabConfig[activeTab].label}</span></div>
+              <button onClick={() => { localStorage.setItem('hyunaDefaultTab', activeTab); alert('초기화면이 설정되었습니다.'); }} className={`${activeTab === 'ledger' ? 'bg-gray-500' : activeTab === 'delivery' ? 'bg-blue-600' : 'bg-indigo-600'} text-white text-[10px] px-3 py-2 rounded-lg font-bold shadow-sm active:scale-95`}>현재 탭으로 고정</button>
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
@@ -490,7 +509,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
   );
 }
 
-
 // 5. LEDGER TAB COMPONENT
 function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
   const [ledgerSubTab, setLedgerSubTab] = useState('daily');
@@ -517,6 +535,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
   const suggestionRef = useRef(null);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
+
+  // 🚀 [V3.0] 테마 엔진 연동
+  const themeName = MONTHLY_THEME_MAP[selectedMonth]?.ledger || 'pink';
+  const theme = THEME_PALETTES[themeName];
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -575,7 +597,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
 
-  // 🚀 [V2.0 개선] 수입/지출 스마트 분리 (해시태그)
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
@@ -587,7 +608,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger, formData.type]);
 
-  // 🚀 [V2.0 개선] 수입/지출 스마트 분리 (검색 추천)
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -777,7 +797,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
-      <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center">
+      <div className={`bg-gradient-to-r ${theme.fromColor} ${theme.toColor} rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center`}>
          <div className="relative z-10">
            <div className="text-[10px] font-bold opacity-90 mb-0 tracking-wider">🌸 {selectedYear}년 누적 총 수입</div>
            <div className="text-3xl font-black tracking-tight leading-none mt-1">{formatMoney(yearlyIncome)}<span className="text-lg ml-1 font-bold opacity-80">원</span></div>
@@ -787,31 +807,31 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showFilters ? 'bg-pink-500 text-white' : 'bg-white text-pink-500 border border-pink-200/60'}`}><Search size={16} /></button>
+          <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showFilters ? `${theme.bg500} text-white` : `bg-white ${theme.text500} border ${theme.border100}`}`}><Search size={16} /></button>
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 py-1 flex-1">
-            <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>전체</button>
+            <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : `bg-white text-gray-500 border ${theme.border100}`}`}>전체</button>
             {monthUsedCategories.map(c => (
-              <button key={c} onClick={() => { setFilterType('all'); setFilterCategory(c === filterCategory ? 'all' : c); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === c ? 'bg-pink-500 text-white' : 'bg-white text-gray-500 border border-pink-200/50'}`}>#{c}</button>
+              <button key={c} onClick={() => { setFilterType('all'); setFilterCategory(c === filterCategory ? 'all' : c); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === c ? `${theme.bg500} text-white` : `bg-white text-gray-500 border ${theme.border100}`}`}>#{c}</button>
             ))}
           </div>
         </div>
 
         {showFilters && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-200/60 animate-in slide-in-from-top-2 space-y-3 mb-3">
-            <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-pink-50/50 rounded-xl py-2 pl-9 pr-3 h-[44px] text-sm font-bold outline-none border border-pink-100" /></div>
+          <div className={`bg-white rounded-2xl p-4 shadow-sm border ${theme.border100} animate-in slide-in-from-top-2 space-y-3 mb-3`}>
+            <div className="relative"><Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" /><input type="text" placeholder="검색어 입력" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full ${theme.bg50} rounded-xl py-2 pl-9 pr-3 h-[44px] text-sm font-bold outline-none border ${theme.border100}`} /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none"><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
-              <div><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-sm font-bold outline-none truncate"><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+              <div><select value={filterType} onChange={(e) => { setFilterType(e.target.value); setFilterCategory('all'); }} className={`w-full ${theme.bg50} border ${theme.border100} rounded-xl px-2 h-[44px] text-sm font-bold outline-none`}><option value="all">전체보기</option><option value="지출">지출만</option><option value="수입">수입만</option></select></div>
+              <div><select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={`w-full ${theme.bg50} border ${theme.border100} rounded-xl px-2 h-[44px] text-sm font-bold outline-none truncate`}><option value="all">모든 분류</option>{getSortedCategories(filterType).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
             </div>
-            <div><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /><span className="text-gray-300 font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className="flex-1 bg-pink-50/50 border border-pink-100 rounded-xl px-2 h-[44px] text-xs font-bold outline-none" /></div></div>
-            <button onClick={() => {setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({start:'',end:''});}} className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm flex justify-center items-center gap-1.5 hover:text-pink-600"><RefreshCw size={14}/> 초기화</button>
+            <div><div className="flex items-center gap-1.5"><input type="date" value={ledgerDateRange.start} onChange={(e) => setLedgerDateRange({...ledgerDateRange, start: e.target.value})} className={`flex-1 ${theme.bg50} border ${theme.border100} rounded-xl px-2 h-[44px] text-xs font-bold outline-none`} /><span className="text-gray-300 font-bold">~</span><input type="date" value={ledgerDateRange.end} onChange={(e) => setLedgerDateRange({...ledgerDateRange, end: e.target.value})} className={`flex-1 ${theme.bg50} border ${theme.border100} rounded-xl px-2 h-[44px] text-xs font-bold outline-none`} /></div></div>
+            <button onClick={() => {setSearchQuery(''); setFilterType('all'); setFilterCategory('all'); setLedgerDateRange({start:'',end:''});}} className={`w-full bg-gray-50 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm flex justify-center items-center gap-1.5 hover:${theme.text600}`}><RefreshCw size={14}/> 초기화</button>
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200/80 relative overflow-hidden">
+      <div className={`bg-white rounded-3xl p-5 shadow-md border ${theme.border200} relative overflow-hidden`}>
          <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
-           <PieChart size={16} className="text-pink-500"/> 
+           <PieChart size={16} className={theme.text500}/> 
            {isSearchActive ? '검색된 내역 요약 🔍' : `${selectedMonth}월 가계부 요약 🌷`}
          </h3>
          <div className="grid grid-cols-3 gap-2 mb-3">
@@ -829,11 +849,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          )}
       </div>
 
-      <div className="flex bg-pink-100/40 p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border border-pink-200/50">
-        <button onClick={() => setLedgerSubTab('daily')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='daily'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><List size={14}/> 상세내역</button>
-        <button onClick={() => setLedgerSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><CalendarDays size={14}/> 달력</button>
-        <button onClick={() => setLedgerSubTab('review')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='review'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><PieChart size={14}/> 리포트</button>
-        <button onClick={() => setLedgerSubTab('memo')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='memo'?'bg-white text-pink-600 shadow-sm border border-pink-200/50':'text-gray-500'}`}><NotebookPen size={14}/> 메모장</button>
+      <div className={`flex ${theme.bg100} p-1.5 rounded-2xl mx-1 mb-2 mt-4 shadow-inner border ${theme.border200}`}>
+        <button onClick={() => setLedgerSubTab('daily')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='daily'?`bg-white ${theme.text600} shadow-sm border ${theme.border200}`:'text-gray-500'}`}><List size={14}/> 상세내역</button>
+        <button onClick={() => setLedgerSubTab('calendar')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='calendar'?`bg-white ${theme.text600} shadow-sm border ${theme.border200}`:'text-gray-500'}`}><CalendarDays size={14}/> 달력</button>
+        <button onClick={() => setLedgerSubTab('review')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='review'?`bg-white ${theme.text600} shadow-sm border ${theme.border200}`:'text-gray-500'}`}><PieChart size={14}/> 리포트</button>
+        <button onClick={() => setLedgerSubTab('memo')} className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${ledgerSubTab==='memo'?`bg-white ${theme.text600} shadow-sm border ${theme.border200}`:'text-gray-500'}`}><NotebookPen size={14}/> 메모장</button>
       </div>
 
       {ledgerSubTab === 'calendar' && (() => {
@@ -843,8 +863,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         const dataByDate = {};
         (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
         return (
-          <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
-             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
+          <div className={`bg-white rounded-[2rem] p-4 shadow-md border ${theme.border100} animate-in slide-in-from-bottom-2`}>
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?theme.text400:i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
              <div className="grid grid-cols-7 gap-1">
                {days.map((d, i) => {
                  if(!d) return <div key={`empty-${i}`} className="h-[55px] bg-gray-50/30 rounded-xl border border-gray-100"></div>;
@@ -852,8 +872,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  const dayData = dataByDate[dateStr] || { inc: 0, exp: 0 };
                  const hasData = dayData.inc > 0 || dayData.exp > 0;
                  return (
-                    <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'}`}>
-                     <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
+                    <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?`${theme.border200} ${theme.bg50} shadow-sm`:'border-gray-100 bg-white hover:bg-gray-50'}`}>
+                     <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?theme.text500:(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center truncate tracking-tighter">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
                      {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center truncate tracking-tighter">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
                    </div>
@@ -867,13 +887,13 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {ledgerSubTab === 'review' && (
         <div className="space-y-4 animate-in slide-in-from-right duration-300">
           {reviewData.expense.length > 0 && (
-            <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200/60">
+            <div className={`bg-white rounded-3xl p-5 shadow-md border ${theme.border100}`}>
               <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 TOP 5</span></h3>
               <div className="space-y-3">
                 {reviewData.expense.map(([cat, amt], idx) => (
                   <div key={cat}>
-                    <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-fuchsia-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-fuchsia-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
+                    <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?theme.bg400:idx===2?'bg-gray-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?theme.bg400:idx===2?'bg-gray-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
                   </div>
                 ))}
               </div>
@@ -885,8 +905,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {ledgerSubTab === 'memo' && (
         <div className="space-y-3 animate-in slide-in-from-right duration-300">
            <div className="flex justify-between items-center px-1 mb-2">
-              <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><NotebookPen size={16} className="text-pink-500"/> 자유 메모</h3>
-              <button onClick={() => { setCurrentMemoId(null); setMemoText(''); setIsMemoEditorOpen(true); }} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 새 메모</button>
+              <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><NotebookPen size={16} className={theme.text500}/> 자유 메모</h3>
+              <button onClick={() => { setCurrentMemoId(null); setMemoText(''); setIsMemoEditorOpen(true); }} className={`text-[10px] ${theme.bg50} ${theme.text600} px-3 py-1.5 rounded-full font-bold border ${theme.border200} shadow-sm`}>+ 새 메모</button>
            </div>
            {memos.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)).map(memo => (
               <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setIsMemoEditorOpen(true); }} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer relative hover:bg-gray-50 transition-colors">
@@ -912,10 +932,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  </div>
                  <div className="space-y-2.5">
                   {(groupedLedger[date]||[]).map(t => (
-                    <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:bg-pink-50/50 transition-colors">
+                    <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className={`bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:${theme.bg50} transition-colors`}>
                       <div className="flex justify-between items-center p-3">
                         <div className="flex items-center gap-3 overflow-hidden flex-1">
-                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : `${theme.bg100} ${theme.text500}`}`}>{getCategoryIcon(t.category, t.type)}</div>
                           <div className="truncate pr-2">
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
                             <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
@@ -935,16 +955,20 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       )}
 
       {/* 가계부 플로팅 버튼 */}
-      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-pink-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-400"><Plus size={28}/></button>
+      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className={`fixed bottom-[100px] right-6 ${theme.bg500} text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border ${theme.border600}`}><Plus size={28}/></button>
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
       {selectedCalendarDate && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden">
-            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh]">
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
+              className={`bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 ${theme.border500}`}
+            >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
                   <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
-                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '. ')}
+                     <CalendarCheck className={theme.text500} size={24}/> {selectedCalendarDate.replace(/-/g, '. ')}
                   </h2>
                   <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
                </div>
@@ -952,9 +976,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
                   {groupedLedger[selectedCalendarDate]?.length > 0 ? (
                       groupedLedger[selectedCalendarDate].map(t => (
-                        <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-pink-50/50 transition-colors active:scale-95">
+                        <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className={`bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:${theme.bg50} transition-colors active:scale-95`}>
                           <div className="flex items-center gap-3 overflow-hidden">
-                            <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+                            <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : `${theme.bg100} ${theme.text500}`}`}>{getCategoryIcon(t.category, t.type)}</div>
                             <div className="truncate">
                               <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
                               <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
@@ -974,10 +998,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {/* 영수증 형태의 상세 뷰 모달 */}
       {selectedLedgerDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border border-gray-100">
-               <div className={`absolute top-0 left-0 right-0 h-2 ${selectedLedgerDetail.type === '수입' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedLedgerDetail(null))}
+              className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border border-gray-100"
+            >
+               <div className={`absolute top-0 left-0 right-0 h-2 ${selectedLedgerDetail.type === '수입' ? 'bg-blue-400' : theme.bg400}`}></div>
                <div className="flex justify-between items-start mb-6 mt-2">
-                  <div className={`p-3 rounded-2xl shadow-sm ${selectedLedgerDetail.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                  <div className={`p-3 rounded-2xl shadow-sm ${selectedLedgerDetail.type === '수입' ? 'bg-blue-100 text-blue-500' : `${theme.bg100} ${theme.text500}`}`}>
                      {getCategoryIcon(selectedLedgerDetail.category, selectedLedgerDetail.type)}
                   </div>
                   <button onClick={() => setSelectedLedgerDetail(null)} className="text-gray-400 p-2 bg-gray-50 rounded-full active:scale-95 border border-gray-200"><X size={20}/></button>
@@ -1014,15 +1042,16 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
-            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsModalOpen(false))}
-            className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-10 flex flex-col border-t-8 border-pink-400"
+            className={`bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-10 flex flex-col border-t-8 ${theme.border500}`}
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-3 shrink-0"></div>
             
             <div className="flex justify-between items-center mb-3 shrink-0">
                <h2 className="text-xl font-black text-gray-800">✨ {editingLedgerId ? '내역 수정' : '내역 기록'}</h2>
-               <button onClick={() => setIsModalOpen(false)} className="bg-pink-50 text-pink-500 p-2 rounded-2xl border border-pink-100"><X size={20}/></button>
+               <button onClick={() => setIsModalOpen(false)} className={`bg-gray-50 text-gray-500 p-2 rounded-2xl border border-gray-100 hover:${theme.bg50} hover:${theme.text500}`}><X size={20}/></button>
             </div>
 
             <form className="space-y-3 flex-1 pb-2">
@@ -1035,8 +1064,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                       <button key={idx} type="button" onClick={() => {
                           setFormData({...formData, category: cat, note: note, isFromSavings: false});
                           setIsSuggestionOpen(false); 
-                      }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
-                         <span className={`${formData.type === '수입' ? 'text-blue-500' : 'text-pink-500'} mr-1`}>[{cat}]</span>{note}
+                      }} className={`flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:${theme.bg50} hover:${theme.text600} hover:${theme.border200}`}>
+                         <span className={`${formData.type === '수입' ? 'text-blue-500' : theme.text500} mr-1`}>[{cat}]</span>{note}
                        </button>
                     ))}
                   </div>
@@ -1044,7 +1073,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               )}
 
               <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
-                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
+                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?`bg-white ${theme.text500} shadow-sm border ${theme.border100}`:'text-gray-500'}`}>지출하기</button>
                  <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
@@ -1056,7 +1085,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                        setIsSuggestionOpen(true);
                     }}
                     onFocus={() => setIsSuggestionOpen(true)}
-                    placeholder="내역을 적어주세요" className="w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border focus:border-pink-300 transition-colors shadow-inner" />
+                    placeholder="내역을 적어주세요" className={`w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border ${theme.border300} transition-colors shadow-inner`} />
                  
                  {isSuggestionOpen && formData.note && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[160px] overflow-y-auto">
@@ -1067,8 +1096,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                           <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
                                 setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
                                 setIsSuggestionOpen(false);
-                          }} className="w-full text-left px-3 py-2 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
-                             <span className={`${formData.type === '수입' ? 'text-blue-400 border-blue-200' : 'text-pink-400 border-pink-200'} mr-2 text-[10px] border bg-white px-1.5 py-0.5 rounded shadow-sm`}>[{sn.category}]</span> 
+                          }} className={`w-full text-left px-3 py-2 text-sm font-bold text-gray-700 hover:${theme.bg50} hover:${theme.text600} rounded-lg transition-colors flex items-center`}>
+                             <span className={`${formData.type === '수입' ? 'text-blue-400 border-blue-200' : `${theme.text400} ${theme.border200}`} mr-2 text-[10px] border bg-white px-1.5 py-0.5 rounded shadow-sm`}>[{sn.category}]</span> 
                              {sn.note}
                           </button>
                        ))}
@@ -1076,29 +1105,26 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
-              {/* 금액 입력 (크기 대폭 줄임!) */}
               <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40">
                  <div className="relative">
-                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
+                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : theme.border300} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
                     <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
                  </div>
                  
-               {/* 🚨 오빠님이 찾아내신 잃어버린 알림창 복구 (하얀 박스 안쪽에 위치!) 🚨 */}
-                {amountPlaceholder && (
-                  <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
-                    <Star size={12} className="fill-pink-400 text-pink-400 shrink-0"/> {amountPlaceholder}
-                  </div>
-                )}
+                 {amountPlaceholder && (
+                    <div className={`text-[10px] font-bold ${theme.text500} ${theme.bg50} px-3 py-2 mt-2 rounded-lg border ${theme.border100} animate-in fade-in flex items-center gap-1.5`}>
+                       <Star size={12} className={`${theme.fill400} ${theme.text400} shrink-0`}/> {amountPlaceholder}
+                    </div>
+                 )}
               </div>
 
-              
               <div className="flex gap-3 w-full relative z-30">
                 <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
-                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
+                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className={theme.text500}/> 날짜</label>
                    <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
                 </div>
                 <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
-                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className="text-pink-500"/> 카테고리</label>
+                   <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className={theme.text500}/> 카테고리</label>
                    <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력">+ 직접입력 (신규)</option>
@@ -1138,14 +1164,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               )}
 
               <div className="relative z-20">
-                 <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
+                 <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className={`w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border ${theme.border300} transition-colors`} />
               </div>
 
               <div className="flex gap-2 pt-1 relative z-10">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : `${theme.border500} ${theme.text500}`} disabled:opacity-50`}>
                     기록하고 계속
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : `${theme.bg500} ${theme.border600}`} disabled:opacity-50`}>
                     닫기 및 완료
                  </button>
               </div>
@@ -1160,12 +1186,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
            <div className="flex justify-between items-center p-4 pt-12 border-b bg-white shadow-sm shrink-0">
               <div className="flex items-center gap-3">
                  <button onClick={() => {setIsMemoEditorOpen(false); setIsCalcOpen(false);}} className="text-gray-500 p-2 bg-gray-50 rounded-full"><ChevronLeftCircle size={24}/></button>
-                 <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`p-2.5 rounded-full shadow-sm transition-colors ${isCalcOpen ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-600'}`}><Calculator size={22}/></button>
+                 <button onClick={() => setIsCalcOpen(!isCalcOpen)} className={`p-2.5 rounded-full shadow-sm transition-colors ${isCalcOpen ? `${theme.bg500} text-white` : 'bg-gray-100 text-gray-600'}`}><Calculator size={22}/></button>
               </div>
               <span className="font-black text-gray-800 text-base">📝 노트 작성</span>
               <div className="flex items-center gap-3">
                  {currentMemoId && <button onClick={deleteMemo} className="text-red-500 p-2 rounded-full hover:bg-red-50"><Trash2 size={20}/></button>}
-                 <button onClick={saveMemo} className="bg-pink-500 text-white px-5 py-2.5 rounded-full font-black text-sm shadow-md">저장</button>
+                 <button onClick={saveMemo} className={`${theme.bg500} text-white px-5 py-2.5 rounded-full font-black text-sm shadow-md`}>저장</button>
               </div>
            </div>
 
@@ -1199,7 +1225,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                          <button onClick={() => setIsCalcOpen(false)} className="w-full bg-gray-700/80 text-white py-2 rounded-xl font-bold text-xs mb-3 active:scale-95 shadow-sm border border-gray-600">
                             🔽 계산기 내리기
                          </button>
-                         <button onClick={handleAutoCalc} className="w-full bg-indigo-500 text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2 transition-transform">
+                         <button onClick={handleAutoCalc} className={`w-full ${theme.bg500} text-white py-3 rounded-2xl font-black text-sm mb-3 active:scale-95 shadow-sm flex items-center justify-center gap-2 transition-transform`}>
                             AI 자동합계 계산 🤖
                          </button>
                          
@@ -1219,9 +1245,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     </div>
   );
 } // End of LedgerView
-
-
-
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
@@ -1619,7 +1642,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {selectedShiftDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] p-0 overflow-y-auto no-scrollbar">
             <div 
-              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedShiftDetail(null))}
               className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 relative border-t-8 border-blue-500"
             >
@@ -1682,7 +1706,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           return (
              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
                 <div 
-                  onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
                   onTouchEnd={(e) => handleTouchEnd(e, () => { setSelectedWeeklySummary(null); setSelectedDailySummary(null); })}
                   className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden"
                 >
@@ -1729,7 +1754,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
-            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsDeliveryModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-7 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-500 flex flex-col max-h-[90vh]"
           >
@@ -1737,7 +1763,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
             <form onSubmit={handleDeliverySubmit} className="space-y-4 overflow-y-auto no-scrollbar pb-4">
               
-              {/* 🚀 [V2.0] 날짜/시작/종료 시각적 분리 (gap-4) */}
               <div className="flex gap-4 pb-4 border-b border-gray-100 mb-2 w-full">
                 <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200">
                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1 flex items-center gap-1.5"><CalendarIcon size={12} className="text-blue-500"/>날짜</label>
@@ -1753,7 +1778,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
 
-              {/* 정훈 수익 폼 */}
               <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
                 <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
                 <div className="space-y-2">
@@ -1774,7 +1798,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
               
-              {/* 현아 수익 폼 */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
                 <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                 <div className="space-y-2">
@@ -1806,7 +1829,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 }
 
 // ==========================================
-// 7. ASSETS TAB COMPONENT (V2.0: 예금/적금/대출 통합 자산관리)
+// 7. ASSETS TAB COMPONENT
 // ==========================================
 function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode }) {
   const [assetTab, setAssetTab] = useState('deposit');
@@ -2032,11 +2055,12 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </section>
       )}
 
-      {/* 🚀 [V2.0] 자산/대출 추가 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 자산/대출 추가 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isAddAssetModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsAddAssetModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 border-t-8 border-indigo-500 flex flex-col max-h-[90vh]"
           >
@@ -2074,11 +2098,12 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </div>
       )}
 
-      {/* 🚀 [V2.0] 중도상환 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 중도상환 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isPrepayModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsPrepayModalOpen(false))}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-orange-500 flex flex-col max-h-[90vh]"
           >
@@ -2097,11 +2122,12 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </div>
       )}
 
-      {/* 🚀 [V2.0] 예적금 상세(히스토리) 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 예적금 상세(히스토리) 모달 스와이프 물리엔진 바텀시트 적용 */}
       {selectedAssetDetail && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden p-0">
             <div 
-              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedAssetDetail(null))}
               className={`bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom flex flex-col h-[85vh] border-t-8 ${selectedAssetDetail.assetType === 'deposit' ? 'border-blue-500' : 'border-emerald-500'}`}
             >
@@ -2166,6 +2192,11 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [selectedStamp, setSelectedStamp] = useState('DAY');
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
   const dutyTimelineRef = useRef(null); 
+
+  // 🚀 [V3.0] 가족달력 테마 엔진 연동
+  // 상편에서 선언된 MONTHLY_THEME_MAP과 THEME_PALETTES가 외부(글로벌)에 있으므로 여기서도 사용 가능합니다.
+  const themeName = MONTHLY_THEME_MAP[selectedMonth]?.calendar || 'sky';
+  const theme = THEME_PALETTES[themeName];
 
   const extendedDutyDays = useMemo(() => Array.from({length: 34}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 3)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   const topImportantEvents = useMemo(() => (events || []).filter(e => e.isImportant && e.date && e.date >= todayStr).sort((a,b) => (a.date||'').localeCompare(b.date||'')).slice(0, 3), [events, todayStr]);
@@ -2329,6 +2360,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   return (
     <div className="space-y-5 pb-28 pt-2 animate-in slide-in-from-right duration-500">
       
+      {/* 한줄톡은 현아/정훈의 아이덴티티이므로 기존 핑크/블루 색상 유지 */}
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
          <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center"><span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span><button onClick={() => setIsMessageHistoryOpen(true)} className="text-gray-400 font-bold border-b border-gray-300 pb-0.5 active:text-pink-500">과거 보관소</button></h3>
          <div className="space-y-3 mb-4">
@@ -2377,17 +2409,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       </div>
 
       <div>
-        <div className="flex justify-between items-center px-2 mb-3"><h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Stethoscope size={16} className="text-pink-500"/> 현아 근무 스케줄</h3><button onClick={openDutyBatchModal} className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full font-bold border border-emerald-200 shadow-sm">+ 한달스케쥴 확인/수정</button></div>
+        <div className="flex justify-between items-center px-2 mb-3"><h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Stethoscope size={16} className={theme.text500}/> 현아 근무 스케줄</h3><button onClick={openDutyBatchModal} className={`text-[10px] ${theme.bg50} ${theme.text600} px-3 py-1.5 rounded-full font-bold border ${theme.border200} shadow-sm`}>+ 한달스케쥴 확인/수정</button></div>
         <div className="relative pt-4">
           <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-5 scroll-smooth">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
               const duty = dutyEvent ? dutyEvent.title : 'OFF';
               const isToday = d === todayStr;
+              // 듀티 고유 컬러(DAY/EVE/OFF)는 직관성을 위해 하드코딩 유지, 테두리 포커스만 테마 적용
               let dutyColor = duty === 'DAY' ? 'bg-blue-50 text-blue-600 border-blue-200' : duty === 'EVE' ? 'bg-orange-50 text-orange-600 border-orange-200' : duty === 'OFF' ? 'bg-pink-50 text-pink-600 border-pink-200' : 'bg-white text-gray-400 border-gray-200';
               return (
-                <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative ${isToday ? 'ring-2 ring-emerald-400 ring-offset-1 bg-emerald-50 text-emerald-700 border-emerald-200' : dutyColor}`}>
-                  {isToday && <div className="text-[10px] font-black text-emerald-500 mb-0.5 absolute -top-5 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm whitespace-nowrap z-10">TODAY</div>}
+                <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative ${isToday ? `ring-2 ${theme.border500} ring-offset-1 ${theme.bg50} ${theme.text600} ${theme.border200}` : dutyColor}`}>
+                  {isToday && <div className={`text-[10px] font-black ${theme.text500} mb-0.5 absolute -top-5 bg-white px-2 py-0.5 rounded-full border ${theme.border200} shadow-sm whitespace-nowrap z-10`}>TODAY</div>}
                   <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                   <div className="text-xs font-black">{['일','월','화','수','목','금','토'][new Date(d).getDay()]}</div>
                   <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -2399,13 +2432,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       </div>
 
       {topImportantEvents.length > 0 && (
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
+        <div className={`bg-gradient-to-br ${theme.fromColor} ${theme.toColor} rounded-3xl p-5 text-white shadow-md relative overflow-hidden`}>
           <Star className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
           <h3 className="text-[11px] font-bold opacity-90 mb-3 flex items-center gap-1.5"><Target size={14}/> 다가오는 중요 일정</h3>
           <div className="space-y-2 relative z-10">
             {topImportantEvents.map(e => (
               <div key={e.id} className="bg-white/20 p-2.5 rounded-xl flex items-center gap-2">
-                <div className="bg-white text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm"><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
+                <div className={`bg-white ${theme.text600} px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm`}><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
                 <div className="font-bold text-base truncate">{e.title}</div>
               </div>
             ))}
@@ -2414,7 +2447,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       )}
 
       <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200">
-        <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-emerald-500"/> 가족 일정 타임라인</h3>
+        <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className={theme.text500}/> 가족 일정 타임라인</h3>
         <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
           {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
           {familyEventsList.map((e, i, arr) => (
@@ -2426,7 +2459,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-gray-50 shadow shrink-0 z-10">{getEventIcon(e.type)}</div>
                 <div className="w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl bg-gray-50 border shadow-sm ml-3">
                   <div className="flex justify-between items-start mb-1.5">
-                    <div className="flex flex-col gap-0.5"><span className="text-[10px] font-black text-emerald-600">{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span><span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span></div>
+                    <div className="flex flex-col gap-0.5"><span className={`text-[10px] font-black ${theme.text600}`}>{parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} ({['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})</span><span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max">{e.type}</span></div>
                     <div className="flex gap-1"><button onClick={() => { setEventFormData(e); setEditingEventId(e.id); setIsEventModalOpen(true); }} className="text-gray-400 hover:text-blue-500 bg-white p-1.5 rounded-lg border shadow-sm"><Edit3 size={12}/></button><button onClick={() => deleteEvent(e.id)} className="text-gray-400 hover:text-red-500 bg-white p-1.5 rounded-lg border shadow-sm"><Trash2 size={12}/></button></div>
                   </div>
                   <div className="font-bold text-gray-800 text-base flex items-center gap-1.5 mt-1.5">{e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}</div>
@@ -2437,13 +2470,14 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       </div>
 
-      <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-emerald-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border"><Plus size={28}/></button>
+      <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className={`fixed bottom-[100px] right-6 ${theme.bg500} text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border ${theme.border600}`}><Plus size={28}/></button>
 
-      {/* 🚀 [V2.0] 한줄톡 과거 보관소 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 한줄톡 과거 보관소 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isMessageHistoryOpen && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
             <div 
-              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setIsMessageHistoryOpen(false))}
               className="bg-white w-full max-w-md rounded-t-[3rem] p-6 shadow-2xl flex flex-col h-[80vh] animate-in slide-in-from-bottom border-t-8 border-pink-500"
             >
@@ -2470,16 +2504,17 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          </div>
       )}
 
-      {/* 🚀 [V2.0] 일정 등록 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 일정 등록 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
-            onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, () => setIsEventModalOpen(false))}
-            className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 border-emerald-500"
+            className={`bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 ${theme.border500}`}
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className={`${theme.bg50} ${theme.text600} p-2.5 rounded-2xl border`}><X size={20}/></button></div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="flex gap-4 w-full">
                 <div className="flex-[1.2] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" /></div>
@@ -2490,28 +2525,29 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 <div><div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 등록</div><div className="text-[10px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 강조되어 표시됩니다.</div></div>
                 <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div></label>
               </div>
-              <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-emerald-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border border-emerald-600">{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
+              <button type="submit" disabled={!eventFormData.title.trim()} className={`w-full ${theme.bg500} mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border ${theme.border600}`}>{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 🚀 [V2.0] 듀티 단건 수정 모달 스와이프 바텀시트 적용 */}
+      {/* 🚀 [V2.5] 듀티 단건 수정 모달 스와이프 물리엔진 바텀시트 적용 */}
       {isDutyEditModalOpen && selectedDutyEditDate && (() => {
          const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
          const currentDuty = existingEvent ? existingEvent.title : 'OFF';
          return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
             <div 
-              onTouchStart={handleTouchStart} onTouchMove={handleTouchMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setIsDutyEditModalOpen(false))}
-              className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom border-t-8 border-indigo-400"
+              className={`bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom border-t-8 ${theme.border400}`}
             >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6"><div><h2 className="text-xl font-black text-gray-900">{parseInt(selectedDutyEditDate.slice(5,7))}월 {parseInt(selectedDutyEditDate.slice(8,10))}일 스케줄</h2><p className="text-[10px] text-gray-500 font-bold mt-1">{isDutyEditing ? '변경할 근무를 선택하세요.' : '현재 등록된 스케줄입니다.'}</p></div><button onClick={() => setIsDutyEditModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
                <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-center border shadow-inner"><span className="text-[10px] font-bold text-gray-400 block mb-1">현재 스케줄</span><span className={`text-4xl font-black ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span></div>
                {!isDutyEditing ? (
-                  <button onClick={() => setIsDutyEditing(true)} className="w-full bg-emerald-500 text-white py-4 rounded-[1.5rem] font-black text-lg">수정하기</button>
+                  <button onClick={() => setIsDutyEditing(true)} className={`w-full ${theme.bg500} text-white py-4 rounded-[1.5rem] font-black text-lg`}>수정하기</button>
                ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => handleQuickDutyUpdate(selectedDutyEditDate, 'DAY')} className="bg-blue-50 text-blue-600 border border-blue-200 py-4 rounded-[1.5rem] font-black text-lg">DAY</button>
@@ -2525,13 +2561,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          );
       })()}
 
-      {/* 듀티 일괄/연속 수정 모달 (이건 전체 화면이라 스와이프 미적용 유지) */}
+      {/* 듀티 일괄/연속 수정 모달 (풀화면 스와이프 미적용 유지) */}
       {isDutyBatchModalOpen && (
          <div className="fixed inset-0 bg-white z-[80] flex flex-col animate-in slide-in-from-bottom">
             <div className="flex justify-between items-center p-4 pt-10 border-b">
                <button onClick={() => setIsDutyBatchModalOpen(false)} className="text-gray-500 p-2"><ChevronLeft size={24}/></button>
                <span className="font-black text-lg">한달 스케줄 관리</span>
-               {isDutyBatchEditMode ? <button onClick={saveBatchDuties} className="text-emerald-500 font-black">저장</button> : <button onClick={() => setIsDutyBatchEditMode(true)} className="text-blue-500 font-black">수정</button>}
+               {isDutyBatchEditMode ? <button onClick={saveBatchDuties} className={`${theme.text500} font-black`}>저장</button> : <button onClick={() => setIsDutyBatchEditMode(true)} className="text-blue-500 font-black">수정</button>}
             </div>
             
             <div className="p-4 flex-1 flex flex-col overflow-auto no-scrollbar">
@@ -2544,15 +2580,15 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
                {isDutyBatchEditMode && (
                  <div className="flex gap-2 mb-4 bg-gray-50 p-1.5 rounded-2xl justify-center border border-gray-100 shadow-inner">
-                    <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'touch' ? 'bg-white shadow-sm text-emerald-600 border border-gray-200' : 'text-gray-500'}`}>👆 터치 모드</button>
-                    <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'continuous' ? 'bg-white shadow-sm text-blue-600 border border-gray-200' : 'text-gray-500'}`}>⏩ 연속 모드</button>
+                    <button onClick={() => setDutyBatchMode('touch')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'touch' ? `bg-white shadow-sm ${theme.text600} border border-gray-200` : 'text-gray-500'}`}>👆 터치 모드</button>
+                    <button onClick={() => setDutyBatchMode('continuous')} className={`flex-1 py-3 rounded-xl font-black text-sm transition-colors ${dutyBatchMode === 'continuous' ? `bg-white shadow-sm text-blue-600 border border-gray-200` : 'text-gray-500'}`}>⏩ 연속 모드</button>
                  </div>
                )}
 
                <div className="border border-gray-200 rounded-[2rem] p-4 shadow-sm">
                   <div className="flex justify-center items-center gap-6 mb-4 mt-2">
                      <button onClick={() => setDutyBatchMonth(m => m === 1 ? 12 : m - 1)} className="p-2 text-gray-800 active:scale-95"><ChevronLeft size={20}/></button>
-                     <span className="font-black text-lg text-emerald-600">{dutyBatchYear}년 {dutyBatchMonth}월</span>
+                     <span className={`font-black text-lg ${theme.text600}`}>{dutyBatchYear}년 {dutyBatchMonth}월</span>
                      <button onClick={() => setDutyBatchMonth(m => m === 12 ? 1 : m + 1)} className="p-2 text-gray-800 active:scale-95"><ChevronRight size={20}/></button>
                   </div>
 
@@ -2566,7 +2602,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        let dutyColor = duty === 'DAY' ? 'text-blue-600 border-blue-200 bg-blue-50' : duty === 'EVE' ? 'text-orange-600 border-orange-200 bg-orange-50' : duty === 'OFF' ? 'text-pink-600 border-pink-200 bg-pink-50' : 'text-gray-400 border-gray-100 bg-white';
                        
                        const isCursor = dutyBatchMode === 'continuous' && isDutyBatchEditMode && dateStr === continuousCursorDateStr;
-                       if (isCursor) dutyColor = 'border-2 border-emerald-500 ring-4 ring-emerald-100 z-10 scale-110 shadow-md bg-emerald-50 text-emerald-700';
+                       if (isCursor) dutyColor = `border-2 ${theme.border500} ring-4 ${theme.border100} z-10 scale-110 shadow-md ${theme.bg50} ${theme.text600}`;
                        return (
                           <div key={d} onClick={() => { 
                               if(isDutyBatchEditMode) {
@@ -2587,7 +2623,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                {isDutyBatchEditMode && dutyBatchMode === 'touch' && (
                  <div className="flex gap-2 mt-6 pb-6 justify-center">
                     {['DAY', 'EVE', 'OFF', 'DELETE'].map(stamp => (
-                       <button key={stamp} onClick={() => setSelectedStamp(stamp)} className={`flex-1 py-4 rounded-[1.2rem] font-black text-sm transition-all ${selectedStamp === stamp ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'}`}>
+                       <button key={stamp} onClick={() => setSelectedStamp(stamp)} className={`flex-1 py-4 rounded-[1.2rem] font-black text-sm transition-all ${selectedStamp === stamp ? `${theme.bg500} text-white shadow-md` : 'bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100'}`}>
                           {stamp === 'DELETE' ? '지우개' : stamp}
                        </button>
                     ))}
@@ -2603,7 +2639,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                   </div>
                )}
                {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
-                  <button onClick={saveBatchDuties} className="w-full bg-emerald-500 text-white font-black py-4 rounded-[1.5rem] shadow-xl mb-6 active:scale-95 transition-transform">연속 입력 완료 및 저장</button>
+                  <button onClick={saveBatchDuties} className={`w-full ${theme.bg500} text-white font-black py-4 rounded-[1.5rem] shadow-xl mb-6 active:scale-95 transition-transform`}>연속 입력 완료 및 저장</button>
                )}
             </div>
          </div>
@@ -2746,7 +2782,22 @@ function AppContent() {
     }
   };
 
-  const appBgColor = activeTab === 'ledger' ? 'bg-pink-50/30' : activeTab === 'delivery' ? 'bg-slate-50' : 'bg-gray-50/80';
+  // 🚀 [V3.0] 앱 전체 배경색 및 폰트 컬러 동적 적용
+  let appBgColor = 'bg-gray-50/80';
+  let headerColor = 'text-indigo-500';
+  const currentLedgerTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.ledger || 'pink'];
+  const currentCalendarTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.calendar || 'sky'];
+
+  if (activeTab === 'ledger') {
+     appBgColor = `${currentLedgerTheme.bg50}/30`;
+     headerColor = currentLedgerTheme.text500;
+  } else if (activeTab === 'calendar') {
+     appBgColor = `${currentCalendarTheme.bg50}/30`;
+     headerColor = currentCalendarTheme.text500;
+  } else if (activeTab === 'delivery') {
+     appBgColor = 'bg-slate-50';
+     headerColor = 'text-blue-500';
+  }
 
   return (
     <>
@@ -2767,7 +2818,7 @@ function AppContent() {
         <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl pb-2 shadow-sm border-b border-gray-200/60">
           <header className="pt-10 pb-4 px-6 flex justify-between items-center">
             <div>
-              <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${activeTab === 'ledger' ? 'text-pink-500' : activeTab === 'delivery' ? 'text-blue-500' : activeTab === 'calendar' ? 'text-emerald-500' : 'text-indigo-500'}`}>
+              <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${headerColor}`}>
                 {activeTab === 'ledger' ? '🌸 Lovely Planner' : activeTab === 'delivery' ? '🏍️ Delivery Pro' : activeTab === 'calendar' ? '🌿 Family Calendar' : 'Family Planner'}
               </span>
               <h1 className="text-xl font-black tracking-tight">현아에셋 PRO</h1>
@@ -2778,13 +2829,13 @@ function AppContent() {
                 <span className="mx-2">{selectedYear}년</span>
                 <button onClick={() => setSelectedYear(selectedYear + 1)} className="p-1 hover:bg-gray-100 rounded-full"><ChevronRight size={16}/></button>
               </div>
-              <button onClick={() => setIsManageMode(!isManageMode)} className={`p-2.5 rounded-full transition-all duration-300 shadow-sm border border-gray-200 ${isManageMode ? (activeTab === 'ledger' ? 'bg-pink-500' : activeTab === 'delivery' ? 'bg-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500' : 'bg-indigo-600') + ' text-white shadow-md rotate-90' : 'bg-white text-gray-500'}`}><Settings size={20}/></button>
+              <button onClick={() => setIsManageMode(!isManageMode)} className={`p-2.5 rounded-full transition-all duration-300 shadow-sm border border-gray-200 ${isManageMode ? (activeTab === 'ledger' ? currentLedgerTheme.bg500 : activeTab === 'delivery' ? 'bg-blue-600' : activeTab === 'calendar' ? currentCalendarTheme.bg500 : 'bg-indigo-600') + ' text-white shadow-md rotate-90' : 'bg-white text-gray-500'}`}><Settings size={20}/></button>
             </div>
           </header>
 
           <div className="flex overflow-x-auto no-scrollbar gap-2 py-1 px-5 scroll-smooth">
             {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-              <button key={m} onClick={() => setSelectedMonth(m)} className={`flex-none px-5 py-2 rounded-[1.2rem] font-black text-sm transition-all shadow-sm ${selectedMonth === m ? (activeTab === 'ledger' ? 'bg-pink-500 text-white border-pink-500' : activeTab === 'delivery' ? 'bg-blue-600 text-white border-blue-600' : activeTab === 'calendar' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-indigo-600 text-white border-indigo-600') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'} border`}>
+              <button key={m} onClick={() => setSelectedMonth(m)} className={`flex-none px-5 py-2 rounded-[1.2rem] font-black text-sm transition-all shadow-sm border ${selectedMonth === m ? (activeTab === 'ledger' ? `${currentLedgerTheme.bg500} text-white border-transparent` : activeTab === 'delivery' ? 'bg-blue-600 text-white border-blue-600' : activeTab === 'calendar' ? `${currentCalendarTheme.bg500} text-white border-transparent` : 'bg-indigo-600 text-white border-indigo-600') : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
                 {m}월
               </button>
             ))}
@@ -2805,8 +2856,15 @@ function AppContent() {
             const config = tabConfig[tabId];
             const Icon = config.icon;
             const isActive = activeTab === tabId;
+            
+            // 🚀 [V3.0] 하단 네비게이션 액티브 컬러 동적 적용
+            let activeColor = 'text-indigo-500';
+            if (tabId === 'ledger') activeColor = currentLedgerTheme.text500;
+            if (tabId === 'calendar') activeColor = currentCalendarTheme.text500;
+            if (tabId === 'delivery') activeColor = 'text-blue-500';
+
             return (
-              <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${config.colorClass} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
+              <button key={tabId} onClick={() => setActiveTab(tabId)} className={`flex flex-col items-center w-14 transition-all ${isActive ? `${activeColor} scale-110` : 'text-gray-400 hover:text-gray-500'}`}>
                 <Icon size={22}/>
                 <span className="text-[10px] font-black mt-1.5">{config.label}</span>
               </button>
@@ -2863,4 +2921,3 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }
-
