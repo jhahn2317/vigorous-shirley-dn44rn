@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -44,7 +44,7 @@ const tabConfig = {
   calendar: { id: 'calendar', label: '우리가족', icon: CalendarIcon, colorClass: 'text-emerald-500' },
   ledger: { id: 'ledger', label: '가계부', icon: Wallet, colorClass: 'text-pink-500' },
   delivery: { id: 'delivery', label: '배달수익', icon: Bike, colorClass: 'text-blue-500' },
-  loans: { id: 'loans', label: '대출관리', icon: Landmark, colorClass: 'text-indigo-600' },
+  assets: { id: 'assets', label: '자산관리', icon: Landmark, colorClass: 'text-indigo-600' },
 };
 
 // 2. HELPER FUNCTIONS
@@ -360,14 +360,14 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
         <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-md animate-in slide-in-from-right-2">
           <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><Target size={16} className="text-blue-500"/> {selectedYear}년 {selectedMonth}월 배달 목표</h3>
           <div className="flex items-center gap-2">
-            <input type="number" value={userSettings.deliveryGoals?.[currentMonthKey] || ''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value)||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 h-[48px] text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={userSettings.deliveryGoals?.[currentMonthKey] || ''} onChange={(e) => updateSettings('deliveryGoals', {...(userSettings.deliveryGoals || {}), [currentMonthKey]: parseInt(e.target.value.replace(/[^0-9]/g, ''))||0})} placeholder="목표 금액 입력" className="flex-1 bg-blue-50/50 rounded-xl p-3 h-[48px] text-sm font-black outline-none border border-blue-100 focus:ring-2 ring-blue-300" />
             <span className="text-gray-500 font-bold text-sm">원</span>
           </div>
         </div>
       )}
-      {(activeTab === 'loans' || activeTab === 'calendar') && (
-        <div className={`bg-white p-5 rounded-2xl border ${activeTab==='loans'?'border-indigo-200':'border-emerald-200'} shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500`}>
-          {activeTab === 'loans' ? '설정에 있던 [대출 추가] 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
+      {(activeTab === 'assets' || activeTab === 'calendar') && (
+        <div className={`bg-white p-5 rounded-2xl border ${activeTab==='assets'?'border-indigo-200':'border-emerald-200'} shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500`}>
+          {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
         </div>
       )}
 
@@ -403,7 +403,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
               <div className="space-y-3 mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2">
                  <div>
                     <label className="text-[10px] font-black text-gray-400 block mb-1">앱 비밀번호 (4자리 숫자)</label>
-                    <input type="password" pattern="[0-9]*" inputMode="numeric" value={lockPin} onChange={changeLockPin} placeholder="0000" className="w-full bg-gray-50 border rounded-xl px-4 py-2 font-black text-lg outline-none focus:border-slate-400 tracking-widest text-slate-700" />
+                    <input type="password" inputMode="numeric" pattern="[0-9]*" value={lockPin} onChange={changeLockPin} placeholder="0000" className="w-full bg-gray-50 border rounded-xl px-4 py-2 font-black text-lg outline-none focus:border-slate-400 tracking-widest text-slate-700" />
                  </div>
                  <div>
                     <label className="text-[10px] font-black text-gray-400 block mb-1">자동 잠금 유예시간 (세션 유지)</label>
@@ -460,7 +460,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 }
 
 // 5. LEDGER TAB COMPONENT
-function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
+function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
   const [ledgerSubTab, setLedgerSubTab] = useState('daily'); 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); 
@@ -476,7 +476,9 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
-  const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '' });
+  
+  // V2.0: Added isFromSavings and linkedAssetId for Asset sync
+  const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
 
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
@@ -485,15 +487,12 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
   const [calcInput, setCalcInput] = useState('');
   const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
 
-  // 💡 하이브리드 검색창 상태 (포커스 아웃 감지용)
   const suggestionRef = useRef(null);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
-        setIsSuggestionOpen(false);
-      }
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target)) setIsSuggestionOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -503,6 +502,10 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
   };
+
+  const depositAssets = useMemo(() => {
+     return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
+  }, [assets]);
 
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && typeof t?.date === 'string' && t.date.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
 
@@ -522,8 +525,14 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
   const monthUsedCategories = useMemo(() => Array.from(new Set(filteredLedger.map(t => t.category).filter(Boolean))).sort((a,b) => (a||'').localeCompare(b||'')), [filteredLedger]);
   
-  const ledgerSummary = useMemo(() => ({ income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), expense: filteredLedger.filter(t => t.type === '지출').reduce((a, b) => a + (b.amount||0), 0), net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출').reduce((a, b) => a + (b.amount||0), 0) }), [filteredLedger]);
+  // V2.0: 투명인간 태그 (!t.isFromSavings) 가 적용된 생활비 계산
+  const ledgerSummary = useMemo(() => ({ 
+    income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
+    expense: filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0), 
+    net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0) 
+  }), [filteredLedger]);
 
+  // 리뷰 파이차트에는 예금 사용 내역도 포함해서 보여줌 (원형 그래프 통계용)
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(t => t.type === '지출').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -531,7 +540,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
   const financialSummary = useMemo(() => {
     const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${selectedYear}-${String(selectedMonth).padStart(2, '0')}`));
-    const rawExpense = monthRawLedger.filter(t => t.type === '지출').reduce((a,b)=>a+(b.amount||0),0);
+    const rawExpense = monthRawLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a,b)=>a+(b.amount||0),0);
     const sumPrincipal = monthRawLedger.filter(t => (t.category||'').includes('대출상환') || (t.category||'').includes('대출원금') || (t.category||'').includes('원금상환')).reduce((a,b)=>a+(b.amount||0),0);
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
@@ -548,34 +557,23 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         counts[key] = (counts[key] || 0) + 1;
       }
     });
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1]) 
-      .slice(0, 8) 
-      .map(e => e[0].split('|'));
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger]);
 
-  // 글로벌 검색 자동완성
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.note && t.note.includes(formData.note) && t.note !== formData.note);
     const uniqueMatches = [];
     const seen = new Set();
     matches.sort((a,b) => b.date.localeCompare(a.date)).forEach(t => {
-       if(!seen.has(t.note)) {
-          seen.add(t.note);
-          uniqueMatches.push({ note: t.note, category: t.category, type: t.type });
-       }
+       if(!seen.has(t.note)) { seen.add(t.note); uniqueMatches.push({ note: t.note, category: t.category, type: t.type }); }
     });
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note]);
 
-  // 과거 금액 힌트 (날짜 노출 포함)
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
-    const lastTx = [...ledger]
-      .filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date)
-      .sort((a,b) => b.date.localeCompare(a.date))[0];
-    
+    const lastTx = [...ledger].filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date).sort((a,b) => b.date.localeCompare(a.date))[0];
     if (lastTx && lastTx.amount) {
       const m = parseInt(lastTx.date.slice(5, 7), 10);
       const d = parseInt(lastTx.date.slice(8, 10), 10);
@@ -585,6 +583,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
 
+  // V2.0: 자산 연동 자동화 로직 포함된 저장 함수
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -597,13 +596,45 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         else setCategories(newCats);
       }
     }
-    const newTx = { ...formData, category: finalCategory, amount: parseInt(String(formData.amount).replace(/,/g, ''), 10) };
+
+    const finalAmount = parseInt(String(formData.amount).replace(/,/g, ''), 10);
+    const newTx = { 
+       ...formData, 
+       category: finalCategory, 
+       amount: finalAmount,
+       isFromSavings: formData.type === '지출' && formData.category !== '저축' ? formData.isFromSavings : false
+    };
+
+    // 자산(예적금) 업데이트 로직
+    let assetToUpdate = null;
+    let assetUpdates = null;
+    
+    if (!editingLedgerId && formData.linkedAssetId) { 
+        // 1. 저축할 때 (지출 -> 금고로 입금)
+        if (formData.type === '지출' && formData.category === '저축') {
+            assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
+            if (assetToUpdate) assetUpdates = { type: 'deposit', amount: finalAmount };
+        }
+        // 2. 모아둔 예금에서 쓸 때 (금고에서 출금)
+        else if (formData.type === '지출' && formData.isFromSavings) {
+            assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
+            if (assetToUpdate) assetUpdates = { type: 'withdraw', amount: finalAmount };
+        }
+    }
+
     if (editingLedgerId) {
       if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'ledger', editingLedgerId), newTx);
       else setLedger(ledger.map(t => t.id === editingLedgerId ? {...newTx, id: editingLedgerId} : t));
     } else {
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), newTx);
       else setLedger([{...newTx, id: Date.now().toString()}, ...ledger]);
+
+      // 자산 잔고 및 히스토리 업데이트 적용
+      if (assetToUpdate && assetUpdates && isFirebaseEnabled) {
+          const newBalance = assetUpdates.type === 'deposit' ? assetToUpdate.balance + assetUpdates.amount : Math.max(0, assetToUpdate.balance - assetUpdates.amount);
+          const historyItem = { id: Date.now().toString(), date: formData.date, type: assetUpdates.type, amount: assetUpdates.amount, note: formData.note || finalCategory, category: finalCategory };
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', assetToUpdate.id), { balance: newBalance, history: [historyItem, ...(assetToUpdate.history || [])] });
+      }
     }
     return true;
   };
@@ -612,24 +643,20 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     e.preventDefault();
     const success = await saveTransaction();
     if (success) {
-       if (isContinuous) {
-          setFormData({ ...formData, amount: '', note: '', subNote: '' });
-       } else {
-          setIsModalOpen(false); 
-          setEditingLedgerId(null);
-       }
+       if (isContinuous) setFormData({ ...formData, amount: '', note: '', subNote: '' });
+       else { setIsModalOpen(false); setEditingLedgerId(null); }
     }
   };
 
   const handleEditClick = (t) => {
     setSelectedLedgerDetail(null);
-    setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '' });
+    setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
     setEditingLedgerId(t.id);
     setIsModalOpen(true); 
   };
 
   const handleCopyClick = (t) => {
-    setFormData({ date: todayStr, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '' });
+    setFormData({ date: todayStr, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
     setEditingLedgerId(null);
     setSelectedLedgerDetail(null);
     setIsModalOpen(true);
@@ -695,28 +722,21 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
   const handleAutoCalc = () => {
     if (!memoText.trim()) return;
     const lines = memoText.split('\n');
-    let total = 0;
-    let hasMath = false;
-    
+    let total = 0; let hasMath = false;
     try {
         const lastLine = lines[lines.length - 1].replace(/[^\d+\-*/().]/g, '');
         if (/[+\-*/]/.test(lastLine)) {
-            let sanitized = lastLine.replace(/[+\-*/]+$/, ''); // 꼬리 연산자 무시
+            let sanitized = lastLine.replace(/[+\-*/]+$/, ''); 
             // eslint-disable-next-line no-new-func
             total = new Function('return ' + sanitized)();
             hasMath = true;
-            if(total > 0) {
-               setCalcConfirm({ show: true, count: 1, total });
-               return;
-            }
+            if(total > 0) { setCalcConfirm({ show: true, count: 1, total }); return; }
         }
     } catch(e) {}
-
     if (!hasMath) {
         const matches = memoText.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d+\b/g);
         if (matches) {
-            const extractedNums = matches.map(val => parseInt(val.replace(/,/g, ''), 10))
-                                         .filter(num => num >= 100 && !(num >= 2020 && num <= 2030));
+            const extractedNums = matches.map(val => parseInt(val.replace(/,/g, ''), 10)).filter(num => num >= 100 && !(num >= 2020 && num <= 2030));
             if (extractedNums.length > 0) {
                total = extractedNums.reduce((a, b) => a + b, 0);
                setCalcConfirm({ show: true, count: extractedNums.length, total });
@@ -724,7 +744,6 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
             }
         }
     }
-    
     alert("계산할 금액이나 수식을 찾지 못했습니다. 🥲\n(금액이 너무 작거나 연도만 있는 경우 무시됩니다)");
   };
 
@@ -796,7 +815,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
-        (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출') dataByDate[t.date].exp += t.amount; });
+        (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
 
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
@@ -824,25 +843,12 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         <div className="space-y-4 animate-in slide-in-from-right duration-300">
           {reviewData.expense.length > 0 && (
             <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200/60">
-              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 TOP 5</span><span className="text-rose-500">{formatMoney(ledgerSummary.expense)}원</span></h3>
+              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 TOP 5</span></h3>
               <div className="space-y-3">
                 {reviewData.expense.map(([cat, amt], idx) => (
                   <div key={cat}>
                     <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-fuchsia-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-fuchsia-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {reviewData.income.length > 0 && (
-            <div className="bg-white rounded-3xl p-5 shadow-md border border-blue-200/60">
-              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💰 수입 TOP 5</span><span className="text-blue-500">{formatMoney(ledgerSummary.income)}원</span></h3>
-              <div className="space-y-3">
-                {reviewData.income.map(([cat, amt], idx) => (
-                  <div key={cat}>
-                    <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-blue-500':idx===1?'bg-blue-400':idx===2?'bg-cyan-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-blue-500':idx===1?'bg-blue-400':idx===2?'bg-cyan-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.income) * 100}%` }}></div></div>
                   </div>
                 ))}
               </div>
@@ -887,11 +893,11 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                           <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                           <div className="truncate pr-2">
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
-                            <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
+                            <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       </div>
                     </div>
@@ -904,7 +910,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
       )}
 
       {/* 가계부 플로팅 버튼 */}
-      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-pink-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-400"><Plus size={28}/></button>
+      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-pink-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-400"><Plus size={28}/></button>
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
       {selectedCalendarDate && (
@@ -926,10 +932,10 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                             <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                             <div className="truncate">
                               <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
-                              <div className="font-bold text-sm text-gray-800 truncate">{t.note || t.category}</div>
+                              <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
                             </div>
                           </div>
-                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       ))
                   ) : (
@@ -953,7 +959,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                </div>
                <div className="mb-6">
                   <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarIcon size={12}/> {selectedLedgerDetail.date}</div>
-                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight">{selectedLedgerDetail.note || selectedLedgerDetail.category}</div>
+                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">{selectedLedgerDetail.note || selectedLedgerDetail.category} {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 예금사용</span>}</div>
                   <div className="text-[11px] font-bold text-gray-500 mb-5 px-2.5 py-1 bg-gray-100 inline-block rounded-lg shadow-inner">{selectedLedgerDetail.category}</div>
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">{selectedLedgerDetail.type} 금액</div>
@@ -970,7 +976,6 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                      </div>
                   </div>
                )}
-               {/* 복사 버튼이 추가된 3열 그리드 */}
                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 내역 복사</button>
                   <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 내용 수정</button>
@@ -980,7 +985,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
          </div>
       )}
 
-      {/* 가계부 입력/수정 메인 모달 (입력 순서가 완벽하게 개편된 폼) */}
+      {/* 가계부 입력/수정 메인 모달 (V2.0 자산 연동 마법 포함) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
@@ -993,15 +998,14 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
             <form className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
               
-              {/* 자주 쓰는 내역 (고정비) 템플릿 로드 버튼 */}
               {!editingLedgerId && frequentItems.length > 0 && (
                 <div className="mb-2">
                   <div className="text-[10px] font-black text-gray-400 ml-1 mb-2 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 내역 불러오기</div>
                   <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2">
                     {frequentItems.map(([cat, note], idx) => (
                        <button key={idx} type="button" onClick={() => {
-                          setFormData({...formData, type: '지출', category: cat, note: note});
-                          setIsSuggestionOpen(false); // 템플릿 클릭 시 드롭다운 방지
+                          setFormData({...formData, type: '지출', category: cat, note: note, isFromSavings: false});
+                          setIsSuggestionOpen(false); 
                        }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
                          <span className="text-pink-500 mr-1">[{cat}]</span>{note}
                        </button>
@@ -1011,11 +1015,11 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
               )}
 
               <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner">
-                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0]})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
-                 <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0]})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
+                 <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
+                 <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
-              {/* 1순위: 상세 내용(이름) 입력 및 글로벌 스마트 자동완성 (하이브리드 방식) */}
+              {/* 상세 내용(이름) 입력 및 스마트 자동완성 */}
               <div className="relative z-50" ref={suggestionRef}>
                  <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block">상세 내용 (어디서 쓰셨나요?)</label>
                  <input type="text" value={formData.note} 
@@ -1028,14 +1032,13 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  
                  {isSuggestionOpen && formData.note && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[200px] overflow-y-auto">
-                       {/* 💡 상환 그대로 사용 버튼 최상단 고정 */}
                        <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-3 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
                           ✨ '{formData.note}' 그대로 사용
                        </button>
 
                        {suggestedNotes.map(sn => (
                           <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
-                                setFormData({...formData, note: sn.note, category: sn.category, type: sn.type});
+                                setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
                                 setIsSuggestionOpen(false);
                              }} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
                              <span className="text-pink-400 mr-2 text-[10px] border border-pink-200 bg-white px-1.5 py-0.5 rounded shadow-sm">[{sn.category}]</span> 
@@ -1049,13 +1052,13 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  )}
               </div>
 
-              {/* 2순위: 금액 입력 및 엄청난 과거 힌트 노출 */}
+              {/* 금액 입력 (아이폰 숫자 키패드 지원) */}
               <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative z-40">
                  <div className="flex justify-between items-end mb-2">
                     <label className="text-[10px] font-black text-gray-400 block">금액</label>
                  </div>
                  <div className="relative mb-2">
-                    <input type="text" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none bg-transparent transition-colors`} />
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className={`w-full text-4xl font-black border-b-4 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-2 outline-none bg-transparent transition-colors`} />
                     <span className="absolute right-2 bottom-4 text-2xl font-black text-gray-300">원</span>
                  </div>
                  {amountPlaceholder && (
@@ -1065,7 +1068,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                  )}
               </div>
 
-              {/* 3순위: 날짜 & 카테고리 (자동 변경됨) */}
+              {/* 날짜 & 카테고리 */}
               <div className="flex gap-4 w-full relative z-30">
                 <div className="w-[110px] shrink-0">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
@@ -1073,7 +1076,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
                 </div>
                 <div className="w-[130px] shrink-0">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label>
-                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value}); } }} className="w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm outline-none border focus:border-pink-300 transition-colors">
+                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm outline-none border focus:border-pink-300 transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력">+ 직접입력 (신규)</option>
                    </select>
@@ -1081,12 +1084,52 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
               </div>
 
               {isCustomCategory && (
-                 <div>
+                 <div className="animate-in slide-in-from-top-2">
                     <input type="text" placeholder="새 카테고리명" value={customCategoryInput} onChange={e => setCustomCategoryInput(e.target.value)} className="w-full bg-white rounded-xl px-4 h-[48px] font-black text-base outline-none border shadow-sm focus:border-pink-300 transition-colors" />
                     <label className="flex items-center gap-2 mt-2 ml-1 cursor-pointer">
                        <input type="checkbox" checked={saveToCategoryList} onChange={e => setSaveToCategoryList(e.target.checked)} className="w-5 h-5 text-pink-500" />
                        <span className="text-xs font-bold text-gray-500">목록에 추가</span>
                     </label>
+                 </div>
+              )}
+
+              {/* V2.0: 저축/예금 연동 마법 UI */}
+              {!editingLedgerId && formData.type === '지출' && formData.category === '저축' && depositAssets.length > 0 && (
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
+                   <div className="text-sm font-black text-indigo-700 mb-2 flex items-center gap-1.5"><PiggyBank size={16}/> 어느 금고로 모을까요?</div>
+                   <div className="grid grid-cols-2 gap-2">
+                     {depositAssets.map(a => (
+                        <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-3 rounded-xl text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200'}`}>
+                           <div className="text-xs font-bold mb-1">{a.assetType === 'deposit' ? '예금' : '적금'}</div>
+                           <div className="font-black text-sm truncate">{a.name}</div>
+                        </button>
+                     ))}
+                   </div>
+                </div>
+              )}
+
+              {!editingLedgerId && formData.type === '지출' && formData.category !== '저축' && depositAssets.length > 0 && (
+                 <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 animate-in slide-in-from-top-2">
+                    <label className="flex items-start gap-3 cursor-pointer mb-3">
+                       <div className="pt-0.5">
+                          <input type="checkbox" checked={formData.isFromSavings} onChange={e => setFormData({...formData, isFromSavings: e.target.checked, linkedAssetId: e.target.checked ? (depositAssets[0]?.id || '') : ''})} className="w-5 h-5 text-indigo-500 rounded border-gray-300 focus:ring-indigo-500" />
+                       </div>
+                       <div>
+                          <div className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Building2 size={16} className="text-indigo-500"/> 모아둔 금고(예/적금)에서 쓰기</div>
+                          <p className="text-[10px] text-gray-500 font-bold mt-1">체크하시면 이번 달 생활비 합계에서 제외(투명인간)되며, 자산 잔고가 자동으로 차감됩니다.</p>
+                       </div>
+                    </label>
+                    
+                    {formData.isFromSavings && (
+                       <div className="grid grid-cols-2 gap-2 animate-in fade-in">
+                          {depositAssets.map(a => (
+                             <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-3 rounded-xl text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200'}`}>
+                                <div className="text-xs font-bold mb-1">{a.assetType === 'deposit' ? '예금' : '적금'}</div>
+                                <div className="font-black text-sm truncate">{a.name}</div>
+                             </button>
+                          ))}
+                       </div>
+                    )}
                  </div>
               )}
 
@@ -1097,10 +1140,10 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
 
               {/* 연속 입력 / 닫기 버튼 */}
               <div className="flex gap-2 mt-4 pt-2 relative z-10">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note} className={`flex-1 bg-white border-2 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50 disabled:border-gray-200 disabled:text-gray-400`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50 disabled:border-gray-200 disabled:text-gray-400`}>
                     기록하고 계속 입력
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note} className={`flex-1 py-3.5 rounded-[1.5rem] text-white font-black text-sm active:scale-95 shadow-xl transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50 disabled:bg-gray-300 disabled:border-gray-300`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 py-3.5 rounded-[1.5rem] text-white font-black text-sm active:scale-95 shadow-xl transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50 disabled:bg-gray-300 disabled:border-gray-300`}>
                     닫기 및 완료
                  </button>
               </div>
@@ -1109,7 +1152,7 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
         </div>
       )}
 
-      {/* 메모 에디터 모달 (AI 하이브리드 계산기 포함) */}
+      {/* 메모 에디터 모달 */}
       {isMemoEditorOpen && (
         <div className="fixed inset-0 bg-white z-[80] flex flex-col h-[100dvh] animate-in slide-in-from-bottom duration-300">
            <div className="flex justify-between items-center p-4 pt-12 border-b bg-white shadow-sm shrink-0">
@@ -1174,6 +1217,13 @@ function LedgerView({ ledger, setLedger, memos, setMemos, selectedYear, selected
     </div>
   );
 }
+
+// ==========================================
+// 6. DELIVERY TAB COMPONENT
+// ==========================================
+function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode }) {
+
+
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
@@ -1679,16 +1729,16 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="space-y-2">
                   <div className="flex gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
-                     <input type="number" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
+                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
                      <div className="flex-1 relative">
-                        <input type="text" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
                      </div>
                   </div>
                   <div className="flex gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <input type="number" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
+                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
                      <div className="flex-1 relative">
-                        <input type="text" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
                      </div>
                   </div>
                 </div>
@@ -1700,16 +1750,16 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="space-y-2">
                   <div className="flex gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
-                     <input type="number" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
                      <div className="flex-1 relative">
-                        <input type="text" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
                      </div>
                   </div>
                   <div className="flex gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <input type="number" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
                      <div className="flex-1 relative">
-                        <input type="text" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
                      </div>
                   </div>
                 </div>
@@ -1726,14 +1776,25 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 }
 
 // ==========================================
-// 7. LOAN TAB COMPONENT
+// 7. ASSETS TAB COMPONENT (V2.0: 예금/적금/대출 통합 자산관리)
 // ==========================================
-function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode }) {
+function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode }) {
+  const [assetTab, setAssetTab] = useState('deposit'); 
   const [loanSortBy, setLoanSortBy] = useState(() => localStorage.getItem('hyunaLoanSortBy') || 'date'); 
-  const [isAddLoanModalOpen, setIsAddLoanModalOpen] = useState(false);
-  const [newLoanFormData, setNewLoanFormData] = useState({ name: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
+  
+  const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
+  const [newAssetFormData, setNewAssetFormData] = useState({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
+  
   const [isPrepayModalOpen, setIsPrepayModalOpen] = useState(false);
   const [prepayFormData, setPrepayFormData] = useState({ loanId: '', date: todayStr, principalAmount: '', interestAmount: '' });
+  
+  const [selectedAssetDetail, setSelectedAssetDetail] = useState(null);
+
+  const depositAssets = useMemo(() => {
+     return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
+  }, [assets]);
+  
+  const totalDeposit = depositAssets.reduce((a,b) => a + (b.balance || 0), 0);
 
   const sortedLoans = useMemo(() => {
     const loans = assets?.loans || [];
@@ -1754,38 +1815,44 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
   const totalPaidThisMonth = paidLoansThisMonth.reduce((sum, l) => sum + getMonthlyPayment(l), 0);
   const totalUnpaidThisMonth = sortedLoans.filter(l => !l.paidMonths?.includes(currentMonthKey) && l.status !== '완납').reduce((sum, l) => sum + getMonthlyPayment(l), 0);
 
-  const updateAsset = async (type, id, field, value) => {
+  const updateAsset = async (id, field, value) => {
     if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id), { [field]: value });
-    else setAssets(prev => ({ ...prev, [type]: (prev[type]||[]).map(item => item.id === id ? { ...item, [field]: value } : item) }));
   }
 
-  const deleteAsset = async (type, id) => {
-    if(!window.confirm('삭제하시겠습니까?')) return;
+  const deleteAsset = async (id) => {
+    if(!window.confirm('이 항목을 정말 삭제하시겠습니까?\n(가계부와 연동된 데이터가 있을 경우 주의하세요)')) return;
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', id));
-    else setAssets(prev => ({ ...prev, [type]: (prev[type]||[]).filter(item => item.id !== id) }));
   }
 
   const handlePayLoanThisMonth = async (loan) => {
     if(!user || !window.confirm(`'${loan.name}' 납부를 완료하시겠습니까?`)) return;
     const newPaidMonths = [...(loan.paidMonths || []), currentMonthKey];
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
-    else setAssets(prev => ({ ...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, paidMonths: newPaidMonths } : l) }));
   };
 
   const handleCancelPayLoanThisMonth = async (loan) => {
     if(!user || !window.confirm(`'${loan.name}' 납부를 취소하시겠습니까?`)) return;
     const newPaidMonths = (loan.paidMonths || []).filter(m => m !== currentMonthKey);
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths });
-    else setAssets(prev => ({ ...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, paidMonths: newPaidMonths } : l) }));
   };
 
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
-    if (!newLoanFormData.name.trim() || !newLoanFormData.principal) return;
-    const newAsset = { assetType: 'loan', name: newLoanFormData.name, principal: parseInt(String(newLoanFormData.principal).replace(/[^0-9]/g, '')) || 0, rate: newLoanFormData.rate, paymentMethod: newLoanFormData.paymentMethod, paymentDate: newLoanFormData.paymentDate, duration: 0, customMonthly: 0, status: '상환중', prepaymentHistory: [], paidMonths: [] };
-    if (isFirebaseEnabled && user) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), newAsset);
-    else setAssets(prev => ({ ...prev, loans: [...(prev.loans||[]), {id: Date.now().toString(), ...newAsset}] }));
-    setIsAddLoanModalOpen(false); setNewLoanFormData({ name: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
+    if (!newAssetFormData.name.trim() || !user) return;
+    
+    let newAsset = { assetType: newAssetFormData.assetType, name: newAssetFormData.name };
+    if (newAssetFormData.assetType === 'loan') {
+       if (!newAssetFormData.principal) return;
+       newAsset = { ...newAsset, principal: parseInt(String(newAssetFormData.principal).replace(/[^0-9]/g, '')) || 0, rate: newAssetFormData.rate, paymentMethod: newAssetFormData.paymentMethod, paymentDate: newAssetFormData.paymentDate, duration: 0, customMonthly: 0, status: '상환중', prepaymentHistory: [], paidMonths: [] };
+    } else {
+       if (!newAssetFormData.balance && newAssetFormData.balance !== '0') return;
+       newAsset = { ...newAsset, balance: parseInt(String(newAssetFormData.balance).replace(/[^0-9]/g, '')) || 0, history: [] };
+    }
+
+    if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), newAsset);
+    
+    setIsAddAssetModalOpen(false); 
+    setNewAssetFormData({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
   };
 
   const handlePrepaySubmit = async (e) => {
@@ -1798,8 +1865,7 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
     if (!loan) return;
     const newPrincipal = Math.max(0, loan.principal - pAmount);
     const newHistoryItem = { id: Date.now().toString(), date: prepayFormData.date, principalAmount: pAmount, interestAmount: iAmount };
-    if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: newPrincipal, status: newPrincipal === 0 ? '완납' : loan.status, prepaymentHistory: [newHistoryItem, ...(loan.prepaymentHistory || [])] });
-    else setAssets(prev => ({...prev, loans: (prev.loans||[]).map(l => l.id === loan.id ? { ...l, principal: newPrincipal, status: newPrincipal === 0 ? '완납' : loan.status, prepaymentHistory: [newHistoryItem, ...(l.prepaymentHistory || [])] } : l)}));
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: newPrincipal, status: newPrincipal === 0 ? '완납' : loan.status, prepaymentHistory: [newHistoryItem, ...(loan.prepaymentHistory || [])] });
     setIsPrepayModalOpen(false);
   };
 
@@ -1809,113 +1875,171 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
     const historyItem = (loan?.prepaymentHistory||[]).find(h => h.id === historyId);
     if (!loan || !historyItem) return;
     const restoredPrincipal = loan.principal + historyItem.principalAmount;
-    if (isFirebaseEnabled && user) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (loan.prepaymentHistory||[]).filter(h => h.id !== historyId) });
-    else setAssets(prev => ({...prev, loans: (prev.loans||[]).map(l => l.id === loanId ? { ...l, principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (l.prepaymentHistory||[]).filter(h => h.id !== historyId) } : l)}));
+    if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { principal: restoredPrincipal, status: restoredPrincipal > 0 ? '상환중' : '완납', prepaymentHistory: (loan.prepaymentHistory||[]).filter(h => h.id !== historyId) });
   };
 
   return (
-    <div className="space-y-4 pb-28 pt-4 animate-in slide-in-from-right duration-500">
-      <section>
-        <div className="flex justify-between items-center mb-3 px-2"><h3 className="text-lg font-black text-gray-900">부채 상환 현황</h3></div>
-        <div className="bg-indigo-600 rounded-[2rem] p-5 text-white shadow-md relative overflow-hidden">
-          <Landmark className="absolute -right-6 -bottom-6 w-36 h-36 opacity-10" />
-          <div className="relative z-10">
-            <div className="text-indigo-200 text-xs font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
-            <div className="text-3xl font-black mb-4 tracking-tight leading-none">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
-              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 총 납입 예정</span><span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span></div>
-              <div className="flex justify-between items-center"><span className="text-[11px] text-indigo-100 font-bold">이번 달 납부 완료</span><span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span></div>
-              <div className="flex justify-between items-center pt-3 border-t border-indigo-400/50 mt-1"><span className="text-sm text-white font-bold">이번 달 남은 납입금</span><span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span></div>
+    <div className="space-y-4 pb-28 pt-2 animate-in slide-in-from-right duration-500">
+      
+      <div className="flex bg-white p-1.5 rounded-2xl mx-1 mb-2 shadow-sm border border-gray-200">
+        <button onClick={() => setAssetTab('deposit')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${assetTab==='deposit'?'bg-indigo-500 text-white shadow-md':'text-gray-500 hover:bg-gray-50'}`}><PiggyBank size={16}/> 나의 자산(예적금)</button>
+        <button onClick={() => setAssetTab('loan')} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-1.5 ${assetTab==='loan'?'bg-indigo-500 text-white shadow-md':'text-gray-500 hover:bg-gray-50'}`}><Landmark size={16}/> 나의 부채(대출)</button>
+      </div>
+
+      {assetTab === 'deposit' && (
+        <section className="animate-in fade-in">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[2rem] p-6 text-white shadow-md relative overflow-hidden mb-4">
+            <PiggyBank className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10" fill="white" />
+            <div className="relative z-10">
+              <div className="text-indigo-100 text-[11px] font-bold mb-1 uppercase tracking-widest flex items-center gap-1"><Shield size={12}/> 우리집 총 예적금 자산</div>
+              <div className="text-4xl font-black mb-1 tracking-tight leading-none">{formatLargeMoney(totalDeposit)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section>
-        <div className="flex justify-between items-center mb-3 px-2">
-          <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><List size={16} className="text-indigo-500"/> 개별 대출 상세</h3>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setIsAddLoanModalOpen(true)} className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-black border border-indigo-100 flex items-center gap-1"><Plus size={12}/> 대출 추가</button>
-            <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg shadow-sm border border-gray-200"><ArrowDownUp size={12} className="text-gray-400" /><select value={loanSortBy} onChange={(e) => { setLoanSortBy(e.target.value); localStorage.setItem('hyunaLoanSortBy', e.target.value); }} className="text-[10px] font-bold text-gray-600 outline-none"><option value="date">납부일순</option><option value="principal">잔액순</option><option value="rate">금리순</option></select></div>
+          <div className="flex justify-between items-center mb-3 px-2">
+            <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><Wallet size={16} className="text-indigo-500"/> 보유 통장 목록</h3>
+            <button onClick={() => { setNewAssetFormData({...newAssetFormData, assetType: 'deposit'}); setIsAddAssetModalOpen(true); }} className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-black border border-indigo-100 flex items-center gap-1"><Plus size={12}/> 통장 추가</button>
           </div>
-        </div>
 
-        <div className="space-y-3">
-          {sortedLoans.map((loan) => (
-            <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : loan.paidMonths?.includes(currentMonthKey) ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'}`}>
-              <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2.5">
-                <span className="font-bold text-gray-800 flex items-center text-base">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-4 h-4 text-green-500 ml-1.5"/>}</span>
-                <div className="flex items-center gap-1.5">
-                  {!isManageMode && <span className="text-[10px] bg-white text-indigo-600 px-2 py-0.5 rounded font-black border border-indigo-100 shadow-sm">금리 {loan.rate}%</span>}
-                  {loan.status !== '완납' && <div className="bg-red-50 text-red-600 px-2.5 py-1 rounded-xl font-black text-[10px] flex items-center gap-1 border border-red-100"><CalendarDays size={12}/> 매월 {loan.paymentDate}일</div>}
-                </div>
-              </div>
-              <div className="flex justify-between items-end mb-3">
-                <div className="flex-1">
-                  <div className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-widest flex justify-between items-center">잔액
-                    {isManageMode && <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200"><input type="text" value={loan.rate || ''} onChange={(e) => updateAsset('loans', loan.id, 'rate', e.target.value)} className="w-12 text-right text-xs font-black text-indigo-600 outline-none bg-transparent" placeholder="0.0" /><span className="text-[10px] font-bold text-gray-500">%</span></div>}
-                  </div>
-                  {isManageMode ? <input type="text" value={loan.principal ? formatLargeMoney(loan.principal) : ''} onChange={(e) => updateAsset('loans', loan.id, 'principal', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none" /> : <div className="text-xl font-black text-gray-900 tracking-tight leading-none">{formatLargeMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
-                </div>
-                <div className="text-right ml-3 bg-gray-50 p-2 rounded-2xl border border-gray-200 min-w-[100px] shadow-sm">
-                  <div className="flex justify-end gap-1 mb-1">
-                    {isManageMode && <div className="text-[9px] font-bold text-gray-500 bg-white px-1 py-0.5 rounded border border-gray-200 flex items-center"><input type="text" value={loan.paymentDate || ''} onChange={(e) => updateAsset('loans', loan.id, 'paymentDate', e.target.value)} className="w-6 text-center outline-none bg-transparent" placeholder="일"/></div>}
-                    <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">{isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset('loans', loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}</div>
-                  </div>
-                  <div className="font-black text-[14px] text-indigo-600 leading-none mt-1.5">{formatLargeMoney(getMonthlyPayment(loan))}원</div>
-                </div>
-              </div>
-
-              {isManageMode && loan.paymentMethod === '원리금' && (
-                <div className="bg-orange-50/50 p-2.5 rounded-xl mb-3 space-y-1.5 border border-orange-200 shadow-sm">
-                  <div className="flex justify-between items-center text-[10px]"><span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Timer size={10}/> 남은 상환 기간</span><div className="flex items-center gap-1"><input type="number" value={loan.duration || ''} onChange={(e) => updateAsset('loans', loan.id, 'duration', parseInt(e.target.value)||0)} className="w-16 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white" placeholder="개월" /><span className="font-bold text-orange-800">개월</span></div></div>
-                  <div className="flex justify-between items-center text-[10px]"><span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Settings size={10}/> 직접 금액 입력</span><div className="flex items-center gap-1"><input type="number" value={loan.customMonthly || ''} onChange={(e) => updateAsset('loans', loan.id, 'customMonthly', parseInt(e.target.value)||0)} className="w-24 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white" placeholder="금액" /><span className="font-bold text-orange-800">원</span></div></div>
-                </div>
-              )}
-
-              <div className="pt-3 border-t border-gray-100 mt-1">
-                <div className="flex justify-between items-center mb-1 gap-2">
-                  {loan.status === '완납' ? (
-                    <span className="text-xs font-black text-green-500 flex items-center gap-1 bg-white px-3 py-2 rounded-xl border border-green-200 shadow-sm w-full justify-center"><CheckCircle2 size={14}/> 완납된 대출입니다</span>
-                  ) : loan.paidMonths?.includes(currentMonthKey) ? (
-                    <button onClick={() => handleCancelPayLoanThisMonth(loan)} className="text-[11px] bg-green-100 text-green-700 px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm flex-1 border border-green-200"><CheckCircle2 size={14}/> {selectedMonth}월 납부 취소</button>
-                  ) : (
-                    <button onClick={() => handlePayLoanThisMonth(loan)} className="text-[11px] bg-indigo-600 text-white px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-md flex-1"><CheckCircle2 size={14}/> 이번 달 납부 처리</button>
-                  )}
-                  {loan.principal > 0 && <button onClick={() => { setPrepayFormData({ loanId: loan.id, date: todayStr, principalAmount: '', interestAmount: '' }); setIsPrepayModalOpen(true); }} className="text-[10px] bg-white text-gray-600 px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm border border-gray-200"><Coins size={12}/> 중도상환</button>}
-                  {isManageMode && <button onClick={() => deleteAsset('loans', loan.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200 ml-1"><Trash2 size={14}/></button>}
-                </div>
-                {loan.prepaymentHistory?.length > 0 && (
-                  <div className="mt-2 space-y-1.5">
-                    {loan.prepaymentHistory.map(h => (
-                      <div key={h.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-100/50 shadow-sm">
-                        <div><div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div><div className="text-xs font-black text-gray-800 truncate">원금 {formatLargeMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatLargeMoney(h.interestAmount)}원)</span>}</div></div>
-                        {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg shrink-0 border"><X size={12}/></button>}
+          <div className="space-y-3">
+             {depositAssets.length === 0 && <div className="text-center bg-white py-10 rounded-3xl border border-dashed border-gray-200 text-gray-400 font-bold text-sm">등록된 통장이 없습니다.<br/>[통장 추가]를 눌러 초기 잔액을 설정하세요.</div>}
+             {depositAssets.map(asset => (
+                <div key={asset.id} onClick={() => setSelectedAssetDetail(asset)} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200 cursor-pointer hover:bg-indigo-50/30 transition-colors active:scale-95">
+                   <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                         <span className={`text-[10px] px-2 py-0.5 rounded font-black border shadow-sm ${asset.assetType === 'deposit' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>{asset.assetType === 'deposit' ? '수시입출금 (예금)' : '묶어둔 돈 (적금)'}</span>
                       </div>
-                    ))}
+                      {isManageMode && <button onClick={(e) => { e.stopPropagation(); deleteAsset(asset.id); }} className="text-gray-400 hover:text-red-500 bg-gray-50 p-1.5 rounded-lg shadow-sm border border-gray-200"><Trash2 size={12}/></button>}
+                   </div>
+                   <div className="font-black text-gray-800 text-lg mb-1 truncate">{asset.name}</div>
+                   <div className="text-right">
+                      <div className="text-2xl font-black text-indigo-600 tracking-tight">{formatLargeMoney(asset.balance)}<span className="text-sm text-gray-800 ml-0.5">원</span></div>
+                   </div>
+                </div>
+             ))}
+          </div>
+        </section>
+      )}
+
+      {assetTab === 'loan' && (
+        <section className="animate-in fade-in">
+          <div className="bg-gradient-to-br from-rose-500 to-orange-500 rounded-[2rem] p-6 text-white shadow-md relative overflow-hidden mb-4">
+            <Landmark className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10" fill="white" />
+            <div className="relative z-10">
+              <div className="text-orange-100 text-[11px] font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
+              <div className="text-4xl font-black mb-4 tracking-tight leading-none">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                <div className="flex justify-between items-center"><span className="text-[11px] text-orange-100 font-bold">이번 달 총 납입 예정</span><span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] text-orange-100 font-bold">이번 달 납부 완료</span><span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span></div>
+                <div className="flex justify-between items-center pt-3 border-t border-orange-400/50 mt-1"><span className="text-sm text-white font-bold">이번 달 남은 납입금</span><span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center mb-3 px-2">
+            <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><List size={16} className="text-orange-500"/> 개별 대출 상세</h3>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setNewAssetFormData({...newAssetFormData, assetType: 'loan'}); setIsAddAssetModalOpen(true); }} className="text-[10px] bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg font-black border border-orange-100 flex items-center gap-1"><Plus size={12}/> 대출 추가</button>
+              <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg shadow-sm border border-gray-200"><ArrowDownUp size={12} className="text-gray-400" /><select value={loanSortBy} onChange={(e) => { setLoanSortBy(e.target.value); localStorage.setItem('hyunaLoanSortBy', e.target.value); }} className="text-[10px] font-bold text-gray-600 outline-none"><option value="date">납부일순</option><option value="principal">잔액순</option><option value="rate">금리순</option></select></div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {sortedLoans.length === 0 && <div className="text-center bg-white py-10 rounded-3xl border border-dashed border-gray-200 text-gray-400 font-bold text-sm">등록된 대출이 없습니다.</div>}
+            {sortedLoans.map((loan) => (
+              <div key={loan.id} className={`bg-white rounded-3xl p-4 shadow-sm border ${loan.status === '완납' ? 'opacity-50 border-green-200 bg-green-50/30' : loan.paidMonths?.includes(currentMonthKey) ? 'border-orange-200 bg-orange-50/20' : 'border-gray-200'}`}>
+                <div className="flex justify-between items-center mb-3 border-b border-gray-100 pb-2.5">
+                  <span className="font-bold text-gray-800 flex items-center text-base">{loan.name} {loan.status === '완납' && <CheckCircle2 className="w-4 h-4 text-green-500 ml-1.5"/>}</span>
+                  <div className="flex items-center gap-1.5">
+                    {!isManageMode && <span className="text-[10px] bg-white text-orange-600 px-2 py-0.5 rounded font-black border border-orange-100 shadow-sm">금리 {loan.rate}%</span>}
+                    {loan.status !== '완납' && <div className="bg-red-50 text-red-600 px-2.5 py-1 rounded-xl font-black text-[10px] flex items-center gap-1 border border-red-100"><CalendarDays size={12}/> 매월 {loan.paymentDate}일</div>}
+                  </div>
+                </div>
+                <div className="flex justify-between items-end mb-3">
+                  <div className="flex-1">
+                    <div className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-widest flex justify-between items-center">잔액
+                      {isManageMode && <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200"><input type="text" inputMode="decimal" value={loan.rate || ''} onChange={(e) => updateAsset(loan.id, 'rate', e.target.value)} className="w-12 text-right text-xs font-black text-orange-600 outline-none bg-transparent" placeholder="0.0" /><span className="text-[10px] font-bold text-gray-500">%</span></div>}
+                    </div>
+                    {isManageMode ? <input type="text" inputMode="numeric" pattern="[0-9]*" value={loan.principal ? formatLargeMoney(loan.principal) : ''} onChange={(e) => updateAsset(loan.id, 'principal', parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0)} className="w-full text-lg font-black bg-gray-50 p-2 rounded-xl outline-none border focus:border-orange-300" /> : <div className="text-xl font-black text-gray-900 tracking-tight leading-none">{formatLargeMoney(loan.principal)}<span className="text-sm ml-0.5">원</span></div>}
+                  </div>
+                  <div className="text-right ml-3 bg-gray-50 p-2 rounded-2xl border border-gray-200 min-w-[100px] shadow-sm">
+                    <div className="flex justify-end gap-1 mb-1">
+                      {isManageMode && <div className="text-[9px] font-bold text-gray-500 bg-white px-1 py-0.5 rounded border border-gray-200 flex items-center"><input type="text" inputMode="numeric" pattern="[0-9]*" value={loan.paymentDate || ''} onChange={(e) => updateAsset(loan.id, 'paymentDate', e.target.value)} className="w-6 text-center outline-none bg-transparent" placeholder="일"/></div>}
+                      <div className="text-[10px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border border-gray-200 flex items-center shadow-sm">{isManageMode ? <select value={loan.paymentMethod} onChange={(e) => updateAsset(loan.id, 'paymentMethod', e.target.value)} className="outline-none bg-transparent"><option value="이자">이자</option><option value="원리금">원리금</option></select> : loan.paymentMethod}</div>
+                    </div>
+                    <div className="font-black text-[14px] text-orange-600 leading-none mt-1.5">{formatLargeMoney(getMonthlyPayment(loan))}원</div>
+                  </div>
+                </div>
+
+                {isManageMode && loan.paymentMethod === '원리금' && (
+                  <div className="bg-orange-50/50 p-2.5 rounded-xl mb-3 space-y-1.5 border border-orange-200 shadow-sm">
+                    <div className="flex justify-between items-center text-[10px]"><span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Timer size={10}/> 남은 상환 기간</span><div className="flex items-center gap-1"><input type="text" inputMode="numeric" pattern="[0-9]*" value={loan.duration || ''} onChange={(e) => updateAsset(loan.id, 'duration', parseInt(e.target.value)||0)} className="w-16 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white" placeholder="개월" /><span className="font-bold text-orange-800">개월</span></div></div>
+                    <div className="flex justify-between items-center text-[10px]"><span className="font-bold text-orange-800 ml-1 flex items-center gap-1"><Settings size={10}/> 직접 금액 입력</span><div className="flex items-center gap-1"><input type="text" inputMode="numeric" pattern="[0-9]*" value={loan.customMonthly || ''} onChange={(e) => updateAsset(loan.id, 'customMonthly', parseInt(e.target.value)||0)} className="w-24 text-right p-1 rounded border border-orange-200 outline-none font-black text-orange-900 bg-white" placeholder="금액" /><span className="font-bold text-orange-800">원</span></div></div>
                   </div>
                 )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      {/* 대출 추가 모달 */}
-      {isAddLoanModalOpen && (
+                <div className="pt-3 border-t border-gray-100 mt-1">
+                  <div className="flex justify-between items-center mb-1 gap-2">
+                    {loan.status === '완납' ? (
+                      <span className="text-xs font-black text-green-500 flex items-center gap-1 bg-white px-3 py-2 rounded-xl border border-green-200 shadow-sm w-full justify-center"><CheckCircle2 size={14}/> 완납된 대출입니다</span>
+                    ) : loan.paidMonths?.includes(currentMonthKey) ? (
+                      <button onClick={() => handleCancelPayLoanThisMonth(loan)} className="text-[11px] bg-green-100 text-green-700 px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm flex-1 border border-green-200"><CheckCircle2 size={14}/> {selectedMonth}월 납부 취소</button>
+                    ) : (
+                      <button onClick={() => handlePayLoanThisMonth(loan)} className="text-[11px] bg-orange-500 text-white px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-md flex-1"><CheckCircle2 size={14}/> 이번 달 납부 처리</button>
+                    )}
+                    {loan.principal > 0 && <button onClick={() => { setPrepayFormData({ loanId: loan.id, date: todayStr, principalAmount: '', interestAmount: '' }); setIsPrepayModalOpen(true); }} className="text-[10px] bg-white text-gray-600 px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm border border-gray-200"><Coins size={12}/> 중도상환</button>}
+                    {isManageMode && <button onClick={() => deleteAsset(loan.id)} className="text-gray-400 hover:text-red-500 bg-white p-2 rounded-xl shadow-sm border border-gray-200 ml-1"><Trash2 size={14}/></button>}
+                  </div>
+                  {loan.prepaymentHistory?.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {loan.prepaymentHistory.map(h => (
+                        <div key={h.id} className="flex justify-between items-center bg-white p-2 rounded-xl border border-gray-100/50 shadow-sm">
+                          <div><div className="text-[9px] text-gray-400 font-bold mb-0.5 flex items-center gap-1 truncate"><CalendarIcon size={10}/> {(h.date || '').replace(/-/g, '.')} 상환 완료</div><div className="text-xs font-black text-gray-800 truncate">원금 {formatLargeMoney(h.principalAmount)}원{h.interestAmount > 0 && <span className="text-gray-500 font-bold ml-1 text-[9px]"> (+이자 {formatLargeMoney(h.interestAmount)}원)</span>}</div></div>
+                          {isManageMode && <button onClick={() => deletePrepaymentHistory(loan.id, h.id)} className="text-red-300 hover:text-red-500 p-1.5 bg-gray-50 rounded-lg shrink-0 border"><X size={12}/></button>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 자산/대출 추가 모달 */}
+      {isAddAssetModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300">
              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 대출 추가</h2><button onClick={() => setIsAddLoanModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
+             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 {newAssetFormData.assetType === 'loan' ? '대출' : '통장'} 추가</h2><button onClick={() => setIsAddAssetModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
              <form onSubmit={handleAddAssetItem} className="space-y-4">
-               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출명</label><input type="text" value={newLoanFormData.name} onChange={e => setNewLoanFormData({...newLoanFormData, name: e.target.value})} placeholder="예: 주담대, 마통" className="w-full bg-gray-50 border rounded-xl px-4 h-[48px] font-black text-sm outline-none" /></div>
-               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">대출 원금 (잔액)</label><div className="relative"><input type="text" value={newLoanFormData.principal ? formatLargeMoney(newLoanFormData.principal) : ''} onChange={e => setNewLoanFormData({...newLoanFormData, principal: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /><span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span></div></div>
-               <div className="flex gap-3 w-full pt-2">
-                 <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">금리 (%)</label><input type="text" value={newLoanFormData.rate} onChange={e => setNewLoanFormData({...newLoanFormData, rate: e.target.value})} placeholder="0.0" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
-                 <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">매월 납부일</label><input type="number" value={newLoanFormData.paymentDate} onChange={e => setNewLoanFormData({...newLoanFormData, paymentDate: e.target.value})} placeholder="1" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
-                 <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">상환 방식</label><select value={newLoanFormData.paymentMethod} onChange={e => setNewLoanFormData({...newLoanFormData, paymentMethod: e.target.value})} className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center appearance-none"><option value="이자">이자</option><option value="원리금">원리금</option></select></div>
+               {assetTab === 'deposit' && (
+                 <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner mb-4">
+                   <button type="button" onClick={() => setNewAssetFormData({...newAssetFormData, assetType: 'deposit'})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${newAssetFormData.assetType==='deposit'?'bg-white text-indigo-600 shadow-sm border border-indigo-100':'text-gray-500'}`}>수시 입출금 (예금)</button>
+                   <button type="button" onClick={() => setNewAssetFormData({...newAssetFormData, assetType: 'savings'})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${newAssetFormData.assetType==='savings'?'bg-white text-emerald-600 shadow-sm border border-emerald-100':'text-gray-500'}`}>묶어둔 돈 (적금)</button>
+                 </div>
+               )}
+               
+               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">{newAssetFormData.assetType === 'loan' ? '대출명' : '통장명/은행명'}</label><input type="text" value={newAssetFormData.name} onChange={e => setNewAssetFormData({...newAssetFormData, name: e.target.value})} placeholder={newAssetFormData.assetType === 'loan' ? "예: 주담대, 마통" : "예: 카카오뱅크 비상금, 토스 파킹통장"} className="w-full bg-gray-50 border rounded-xl px-4 h-[48px] font-black text-sm outline-none focus:border-indigo-300" /></div>
+               
+               <div>
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">{newAssetFormData.assetType === 'loan' ? '대출 원금 (잔액)' : '현재 잔액 (초기 잔액)'}</label>
+                  <div className="relative">
+                     <input type="text" inputMode="numeric" pattern="[0-9]*" value={newAssetFormData.assetType === 'loan' ? (newAssetFormData.principal ? formatLargeMoney(newAssetFormData.principal) : '') : (newAssetFormData.balance ? formatLargeMoney(newAssetFormData.balance) : '')} onChange={e => newAssetFormData.assetType === 'loan' ? setNewAssetFormData({...newAssetFormData, principal: e.target.value.replace(/[^0-9]/g, '')}) : setNewAssetFormData({...newAssetFormData, balance: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-400 bg-transparent" />
+                     <span className="absolute right-2 bottom-3 text-lg font-black text-gray-400">원</span>
+                  </div>
+                  {newAssetFormData.assetType !== 'loan' && <p className="text-[10px] font-bold text-indigo-500 mt-2 bg-indigo-50 p-2 rounded-lg border border-indigo-100">현재 통장에 있는 돈을 초기 잔액으로 입력하세요.<br/>이후에는 가계부와 연동되어 자동으로 잔액이 계산됩니다.</p>}
                </div>
-               <button type="submit" disabled={!newLoanFormData.name.trim() || !newLoanFormData.principal} className="w-full bg-indigo-600 mt-6 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 shadow-lg border border-indigo-700 disabled:opacity-50">대출 등록 완료</button>
+               
+               {newAssetFormData.assetType === 'loan' && (
+                 <div className="flex gap-3 w-full pt-2 animate-in fade-in">
+                   <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">금리 (%)</label><input type="text" inputMode="decimal" value={newAssetFormData.rate} onChange={e => setNewAssetFormData({...newAssetFormData, rate: e.target.value})} placeholder="0.0" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
+                   <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">매월 납부일</label><input type="text" inputMode="numeric" pattern="[0-9]*" value={newAssetFormData.paymentDate} onChange={e => setNewAssetFormData({...newAssetFormData, paymentDate: e.target.value.replace(/[^0-9]/g, '')})} placeholder="1" className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center" /></div>
+                   <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">상환 방식</label><select value={newAssetFormData.paymentMethod} onChange={e => setNewAssetFormData({...newAssetFormData, paymentMethod: e.target.value})} className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center appearance-none"><option value="이자">이자</option><option value="원리금">원리금</option></select></div>
+                 </div>
+               )}
+               <button type="submit" disabled={!newAssetFormData.name.trim() || (newAssetFormData.assetType === 'loan' ? !newAssetFormData.principal : (!newAssetFormData.balance && newAssetFormData.balance !== '0'))} className={`w-full mt-6 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 shadow-lg border disabled:opacity-50 ${newAssetFormData.assetType === 'loan' ? 'bg-orange-500 border-orange-600' : 'bg-indigo-600 border-indigo-700'}`}>{newAssetFormData.assetType === 'loan' ? '대출 등록 완료' : '통장 등록 완료'}</button>
              </form>
           </div>
         </div>
@@ -1926,18 +2050,56 @@ function LoanView({ assets, setAssets, selectedYear, selectedMonth, currentMonth
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
           <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-            <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black flex items-center gap-2 text-gray-800"><Coins size={24} className="text-indigo-500"/> 상환 이력 추가</h2><button onClick={() => setIsPrepayModalOpen(false)} className="bg-indigo-50 text-indigo-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black flex items-center gap-2 text-gray-800"><Coins size={24} className="text-orange-500"/> 상환 이력 추가</h2><button onClick={() => setIsPrepayModalOpen(false)} className="bg-orange-50 text-orange-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
             <form onSubmit={handlePrepaySubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
-              <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100"><span className="text-xs font-bold text-indigo-600 block mb-1">상환 대상 대출</span><span className="font-black text-indigo-900 text-lg">{(assets?.loans||[]).find(l => l.id === prepayFormData.loanId)?.name}</span></div>
+              <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100"><span className="text-xs font-bold text-orange-600 block mb-1">상환 대상 대출</span><span className="font-black text-orange-900 text-lg">{(assets?.loans||[]).find(l => l.id === prepayFormData.loanId)?.name}</span></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">상환 원금</label><input type="text" value={prepayFormData.principalAmount ? formatLargeMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
-                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">납부 이자</label><input type="text" value={prepayFormData.interestAmount ? formatLargeMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-indigo-500 bg-transparent" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">상환 원금</label><input type="text" inputMode="numeric" pattern="[0-9]*" value={prepayFormData.principalAmount ? formatLargeMoney(prepayFormData.principalAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, principalAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-orange-400 bg-transparent" /></div>
+                <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">납부 이자</label><input type="text" inputMode="numeric" pattern="[0-9]*" value={prepayFormData.interestAmount ? formatLargeMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-orange-400 bg-transparent" /></div>
               </div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border" /></div>
-              <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-indigo-600 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border border-indigo-700">상환 처리 완료</button>
+              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border focus:border-orange-300" /></div>
+              <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-orange-500 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border border-orange-600">상환 처리 완료</button>
             </form>
           </div>
         </div>
+      )}
+
+      {/* 예적금 상세(히스토리) 모달 */}
+      {selectedAssetDetail && (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden">
+            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom flex flex-col h-[85vh]">
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
+               <div className="flex justify-between items-start mb-4 shrink-0">
+                  <div>
+                     <span className={`text-[10px] px-2 py-0.5 rounded font-black border shadow-sm mb-2 inline-block ${selectedAssetDetail.assetType === 'deposit' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`}>{selectedAssetDetail.assetType === 'deposit' ? '수시입출금 (예금)' : '묶어둔 돈 (적금)'}</span>
+                     <h2 className="text-2xl font-black text-gray-900 tracking-tight">{selectedAssetDetail.name}</h2>
+                     <div className="text-3xl font-black text-indigo-600 mt-1">{formatLargeMoney(selectedAssetDetail.balance)}<span className="text-base text-gray-800 ml-1">원</span></div>
+                  </div>
+                  <button onClick={() => setSelectedAssetDetail(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+               </div>
+               
+               <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4 border-t border-gray-100 pt-4">
+                  {(!selectedAssetDetail.history || selectedAssetDetail.history.length === 0) ? (
+                      <div className="text-center py-16 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">입출금 내역이 없습니다.<br/>가계부에서 저축하거나 예금사용을 체크하면<br/>여기에 자동으로 기록됩니다! ✨</div>
+                  ) : (
+                      selectedAssetDetail.history.map(h => (
+                        <div key={h.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center">
+                          <div>
+                            <div className="text-[10px] font-bold text-gray-400 mb-1">{h.date.replace(/-/g, '.')}</div>
+                            <div className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
+                               <span className={`text-[9px] px-1.5 py-0.5 rounded border ${h.type === 'deposit' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{h.type === 'deposit' ? '입금' : '출금'}</span>
+                               {h.note || h.category}
+                            </div>
+                          </div>
+                          <div className={`font-black text-lg ${h.type === 'deposit' ? 'text-blue-600' : 'text-rose-600'}`}>
+                             {h.type === 'deposit' ? '+' : '-'}{formatLargeMoney(h.amount)}원
+                          </div>
+                        </div>
+                      ))
+                  )}
+               </div>
+            </div>
+         </div>
       )}
     </div>
   );
@@ -2411,13 +2573,13 @@ function AppContent() {
   const todayStr = getKSTDateStr(); 
   
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaCurrentUser') || '현아');
-  const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'loans'];
+  const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
   const [tabOrder, setTabOrder] = useState(() => { const saved = localStorage.getItem('hyunaTabOrder'); return saved ? JSON.parse(saved) : defaultTabOrder; });
   const [isManageMode, setIsManageMode] = useState(false); 
   
   const [ledger, setLedger] = useState([]);
-  const [assets, setAssets] = useState({ loans: [] }); 
+  const [assets, setAssets] = useState({ deposits: [], savings: [], loans: [] }); 
   const [dailyDeliveries, setDailyDeliveries] = useState([]);
   const [events, setEvents] = useState([]); 
   const [messages, setMessages] = useState([]); 
@@ -2487,20 +2649,29 @@ function AppContent() {
       } catch (err) { console.error(err); }
     };
     initAuth();
-    return onAuthStateChanged(auth, setUser);
+    const unsub = onAuthStateChanged(auth, setUser);
+    return () => unsub();
   }, []);
 
   useEffect(() => {
     if (!isFirebaseEnabled || !user) return;
     const unsubLedger = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), (s) => setLedger(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubDelivery = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), (s) => setDailyDeliveries(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-    const unsubAssets = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), (s) => setAssets({ loans: s.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => d.assetType === 'loan') }));
+    const unsubAssets = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), (s) => {
+      const allAssets = s.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAssets({
+         deposits: allAssets.filter(a => a.assetType === 'deposit'),
+         savings: allAssets.filter(a => a.assetType === 'savings'),
+         loans: allAssets.filter(a => a.assetType === 'loan')
+      });
+    });
     const unsubEvents = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'events'), (s) => setEvents(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubMessages = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), (s) => setMessages(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubMemos = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'memos'), (s) => setMemos(s.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
     const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'categories'), (s) => { if(s.exists()) setCategories(s.data()); });
     const unsubPrefs = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), (s) => { if(s.exists()) setUserSettings(s.data()); });
     const unsubTimer = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), (s) => { if(s.exists()) { setTimerActive(s.data().timerActive || false); setTrackingStartTime(s.data().trackingStartTime || null); }});
+    
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubMemos(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
@@ -2582,9 +2753,9 @@ function AppContent() {
         {isManageMode && <SettingsView activeTab={activeTab} tabOrder={tabOrder} setTabOrder={setTabOrder} currentUser={currentUser} setCurrentUser={setCurrentUser} categories={categories} setCategories={setCategories} userSettings={userSettings} setUserSettings={setUserSettings} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} user={user} handleClearAllMessages={handleClearAllMessages} />}
 
         <main className="px-5 max-w-md mx-auto pt-2">
-          {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} />}
           {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} />}
-          {activeTab === 'loans' && <LoanView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
+          {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} />}
           {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} />}
         </main>
 
