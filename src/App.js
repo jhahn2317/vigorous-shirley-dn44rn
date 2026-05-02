@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -20,7 +20,6 @@ const firebaseConfig = {
   messagingSenderId: "571320052451",
   appId: "1:571320052451:web:3ef33254a404675311f3d6"
 };
-
 let app, auth, db;
 let isFirebaseEnabled = true;
 
@@ -39,7 +38,6 @@ const DEFAULT_CATEGORIES = {
   지출: ['식비', '주거/통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
   수입: ['월급', '배달비', '월세', '용돈', '기타수입']
 };
-
 const tabConfig = {
   calendar: { id: 'calendar', label: '우리가족', icon: CalendarIcon, colorClass: 'text-emerald-500' },
   ledger: { id: 'ledger', label: '가계부', icon: Wallet, colorClass: 'text-pink-500' },
@@ -61,10 +59,10 @@ const getKSTTimestamp = () => {
   const kst = new Date(utc + (9 * 3600000));
   let hh = kst.getHours();
   const ampm = hh >= 12 ? '오후' : '오전';
-  hh = hh % 12; hh = hh ? hh : 12; 
+  hh = hh % 12;
+  hh = hh ? hh : 12; 
   return `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 ${ampm} ${hh}:${String(kst.getMinutes()).padStart(2, '0')}`;
 };
-
 const formatTimeStr = (dateObj) => `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
 
 const getPaydayStr = (dateString) => {
@@ -83,7 +81,6 @@ const formatMoney = (v) => {
   const num = typeof v === 'string' ? parseFloat(v.replace(/,/g, '')) : v;
   return isNaN(num) ? '0' : new Intl.NumberFormat('ko-KR').format(num);
 };
-
 const formatLargeMoney = (val) => formatMoney(val);
 
 const formatCompactMoney = (val) => {
@@ -119,7 +116,7 @@ const getMonthlyPayment = (loan) => {
   if (loan.paymentMethod === '원리금') {
     const duration = parseInt(loan.duration) || 0;
     if (duration > 0 && currentRate > 0) {
-      const monthlyRate = currentRate / 100 / 12; 
+      const monthlyRate = currentRate / 100 / 12;
       const principal = loan.principal || 0;      
       return Math.floor(principal * (monthlyRate * Math.pow(1 + monthlyRate, duration)) / (Math.pow(1 + monthlyRate, duration) - 1));
     }
@@ -214,6 +211,22 @@ const AutoScaleValue = ({ value, isNet = false }) => {
   return <div className={`font-black truncate tracking-tighter ${color} ${sizeClass}`}>{sign}{str}</div>;
 };
 
+// 🚀 [V2.0] 스와이프 닫기 공통 함수 (화면 절반 기준)
+export const handleTouchStart = (e) => {
+  e.currentTarget.dataset.startY = e.touches[0].clientY;
+};
+
+export const handleTouchEnd = (e, closeFunction) => {
+  const startY = parseFloat(e.currentTarget.dataset.startY || 0);
+  const currentY = e.changedTouches[0].clientY;
+  const swipeDistance = currentY - startY;
+  const modalHeight = e.currentTarget.clientHeight;
+  
+  if (swipeDistance > modalHeight * 0.5) {
+    closeFunction();
+  }
+};
+
 // 3. LOCK SCREEN COMPONENT
 function LockScreenView({ correctPin, onUnlock }) {
   const [pin, setPin] = useState('');
@@ -233,7 +246,6 @@ function LockScreenView({ correctPin, onUnlock }) {
       }
     }
   };
-
   const handleDelete = () => setPin(prev => prev.slice(0, -1));
 
   return (
@@ -273,7 +285,6 @@ function LockScreenView({ correctPin, onUnlock }) {
 // 4. SETTINGS COMPONENT
 function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages }) {
   const [isSystemSettingsOpen, setIsSystemSettingsOpen] = useState(false);
-
   const [lockEnabled, setLockEnabled] = useState(() => localStorage.getItem('hyunaLockEnabled') === 'true');
   const [lockPin, setLockPin] = useState(() => localStorage.getItem('hyunaLockPin') || '0000');
   const [lockTimeout, setLockTimeout] = useState(() => localStorage.getItem('hyunaLockTimeout') || '0');
@@ -287,13 +298,11 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
   };
 
   const handleSetCurrentUser = (name) => { setCurrentUser(name); localStorage.setItem('hyunaCurrentUser', name); };
-
   const updateSettings = async (field, value) => {
     const newSettings = { ...userSettings, [field]: value };
     if(isFirebaseEnabled && user) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), newSettings);
     else setUserSettings(newSettings);
   };
-
   const toggleLock = (e) => {
     const isChecked = e.target.checked;
     setLockEnabled(isChecked);
@@ -308,9 +317,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
     setLockTimeout(e.target.value);
     localStorage.setItem('hyunaLockTimeout', e.target.value);
   };
-
   const getSortedCategories = (type) => [...(categories[type] || [])].sort((a, b) => (a||'').localeCompare(b||''));
-
   const handleAddCategory = async (type) => {
     const newCat = prompt(`추가할 ${type} 카테고리명을 입력하세요:`);
     if(newCat && newCat.trim() !== '') {
@@ -319,7 +326,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
-  
   const handleDeleteCategory = async (type, cat) => {
     if(window.confirm(`'${cat}' 카테고리를 정말 삭제하시겠습니까?`)) {
        const newCats = {...categories, [type]: (categories[type]||[]).filter(c => c !== cat)};
@@ -327,10 +333,8 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
        else setCategories(newCats);
     }
   };
-
   return (
     <div className="px-5 my-4 animate-in fade-in space-y-4">
-      
       <div className="mb-2 pl-1">
         <h2 className="text-lg font-black text-gray-800 flex items-center gap-1.5"><Settings className="text-gray-500" size={18}/> 메뉴 맞춤 설정</h2>
         <p className="text-xs font-bold text-gray-400 mt-1">자주 사용하는 기능들을 내 입맛에 맞게 관리하세요.</p>
@@ -461,16 +465,15 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
 // 5. LEDGER TAB COMPONENT
 function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, selectedYear, selectedMonth, currentMonthKey, todayStr, categories, setCategories, user, isManageMode }) {
-  const [ledgerSubTab, setLedgerSubTab] = useState('daily'); 
+  const [ledgerSubTab, setLedgerSubTab] = useState('daily');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); 
   const [filterCategory, setFilterCategory] = useState('all');
-  const [showFilters, setShowFilters] = useState(false); 
+  const [showFilters, setShowFilters] = useState(false);
   const [ledgerDateRange, setLedgerDateRange] = useState({ start: '', end: '' });
   
   const [selectedLedgerDetail, setSelectedLedgerDetail] = useState(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLedgerId, setEditingLedgerId] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -479,14 +482,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   
   // V2.0: Added isFromSavings and linkedAssetId for Asset sync
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
-
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
   const [memoText, setMemoText] = useState('');
   const [isCalcOpen, setIsCalcOpen] = useState(false);
   const [calcInput, setCalcInput] = useState('');
   const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
-
   const suggestionRef = useRef(null);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
 
@@ -524,7 +525,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   }, [ledger, selectedYear, selectedMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
 
   const monthUsedCategories = useMemo(() => Array.from(new Set(filteredLedger.map(t => t.category).filter(Boolean))).sort((a,b) => (a||'').localeCompare(b||'')), [filteredLedger]);
-  
+
   // V2.0: 투명인간 태그 (!t.isFromSavings) 가 적용된 생활비 계산
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
@@ -532,7 +533,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
 
-  // 리뷰 파이차트에는 예금 사용 내역도 포함해서 보여줌 (원형 그래프 통계용)
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(t => t.type === '지출').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -610,12 +610,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     let assetUpdates = null;
     
     if (!editingLedgerId && formData.linkedAssetId) { 
-        // 1. 저축할 때 (지출 -> 금고로 입금)
         if (formData.type === '지출' && formData.category === '저축') {
             assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
             if (assetToUpdate) assetUpdates = { type: 'deposit', amount: finalAmount };
         }
-        // 2. 모아둔 예금에서 쓸 때 (금고에서 출금)
         else if (formData.type === '지출' && formData.isFromSavings) {
             assetToUpdate = depositAssets.find(a => a.id === formData.linkedAssetId);
             if (assetToUpdate) assetUpdates = { type: 'withdraw', amount: finalAmount };
@@ -629,7 +627,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'ledger'), newTx);
       else setLedger([{...newTx, id: Date.now().toString()}, ...ledger]);
 
-      // 자산 잔고 및 히스토리 업데이트 적용
       if (assetToUpdate && assetUpdates && isFirebaseEnabled) {
           const newBalance = assetUpdates.type === 'deposit' ? assetToUpdate.balance + assetUpdates.amount : Math.max(0, assetToUpdate.balance - assetUpdates.amount);
           const historyItem = { id: Date.now().toString(), date: formData.date, type: assetUpdates.type, amount: assetUpdates.amount, note: formData.note || finalCategory, category: finalCategory };
@@ -681,14 +678,16 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         if(isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'memos'), newMemo);
         else setMemos([{...newMemo, id: Date.now().toString()}, ...memos]);
     }
-    setIsMemoEditorOpen(false); setIsCalcOpen(false); setCalcConfirm({show:false, count:0, total:0});
+    setIsMemoEditorOpen(false); setIsCalcOpen(false);
+    setCalcConfirm({show:false, count:0, total:0});
   };
 
   const deleteMemo = async () => {
     if (!currentMemoId || !user || !window.confirm("메모를 삭제하시겠습니까?")) return;
     if (isFirebaseEnabled) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memos', currentMemoId));
     else setMemos(memos.filter(m => m.id !== currentMemoId));
-    setIsMemoEditorOpen(false); setIsCalcOpen(false); setCalcConfirm({show:false, count:0, total:0});
+    setIsMemoEditorOpen(false); setIsCalcOpen(false);
+    setCalcConfirm({show:false, count:0, total:0});
   };
 
   const handleCalcBtn = (val) => {
@@ -699,24 +698,25 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
             let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/');
             sanitized = sanitized.replace(/[+\-*/]+$/, ''); 
             // eslint-disable-next-line
-            setCalcInput(String(new Function('return (' + sanitized + ')')())); 
+            setCalcInput(String(new Function('return (' + sanitized + ')')()));
         } catch { setCalcInput('Error'); } 
     }
     else if (val === '+/-') { 
         try { 
             let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]+$/, '');
             // eslint-disable-next-line
-            setCalcInput(String(-new Function('return (' + sanitized + ')')())); 
+            setCalcInput(String(-new Function('return (' + sanitized + ')')()));
         } catch {} 
     }
     else if (val === '%') { 
         try { 
             let sanitized = calcInput.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]+$/, '');
             // eslint-disable-next-line
-            setCalcInput(String(new Function('return (' + sanitized + ')')() / 100)); 
+            setCalcInput(String(new Function('return (' + sanitized + ')')() / 100));
         } catch {} 
     }
-    else { if (calcInput === 'Error') setCalcInput(val); else setCalcInput(prev => prev + val); }
+    else { if (calcInput === 'Error') setCalcInput(val);
+    else setCalcInput(prev => prev + val); }
   };
 
   const handleAutoCalc = () => {
@@ -726,7 +726,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     try {
         const lastLine = lines[lines.length - 1].replace(/[^\d+\-*/().]/g, '');
         if (/[+\-*/]/.test(lastLine)) {
-            let sanitized = lastLine.replace(/[+\-*/]+$/, ''); 
+            let sanitized = lastLine.replace(/[+\-*/]+$/, '');
             // eslint-disable-next-line no-new-func
             total = new Function('return ' + sanitized)();
             hasMath = true;
@@ -748,7 +748,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   };
 
   const isSearchActive = searchQuery || filterType !== 'all' || filterCategory !== 'all' || ledgerDateRange.start || ledgerDateRange.end;
-
+  
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
       <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-3xl p-4 text-white shadow-md relative overflow-hidden flex justify-between items-center">
@@ -816,7 +816,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
         (filteredLedger || []).forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
-
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-200/60 animate-in slide-in-from-bottom-2">
              <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[10px] font-bold ${i===0?'text-pink-400':i===6?'text-blue-400':'text-gray-400'}`}>{d}</div>)}</div>
@@ -827,7 +826,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  const dayData = dataByDate[dateStr] || { inc: 0, exp: 0 };
                  const hasData = dayData.inc > 0 || dayData.exp > 0;
                  return (
-                   <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'}`}>
+                    <div key={`day-${i}`} onClick={() => setSelectedCalendarDate(dateStr)} className={`h-[55px] border rounded-xl p-0.5 flex flex-col items-center justify-start cursor-pointer active:scale-95 transition-transform ${hasData?'border-pink-200 bg-pink-50/40 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'}`}>
                      <span className={`text-[10px] font-bold mb-0.5 ${(i%7)===0?'text-pink-500':(i%7)===6?'text-blue-500':'text-gray-600'}`}>{d}</span>
                      {dayData.inc > 0 && <span className="text-[9px] font-black text-blue-500 w-full text-center truncate tracking-tighter">+{formatCompactMoney(dayData.inc).replace('+','')}</span>}
                      {dayData.exp > 0 && <span className="text-[9px] font-black text-rose-500 w-full text-center truncate tracking-tighter">-{formatCompactMoney(dayData.exp).replace('-','')}</span>}
@@ -985,10 +984,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          </div>
       )}
 
-      {/* 가계부 입력/수정 메인 모달 (V2.0 자산 연동 마법 포함) */}
+      {/* 🚀 [V2.0] 가계부 입력/수정 메인 모달 (바텀시트 & 폼 분리) */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]"
+          >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 shrink-0"></div>
             
             <div className="flex justify-between items-center mb-4 shrink-0">
@@ -1003,10 +1006,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                   <div className="text-[10px] font-black text-gray-400 ml-1 mb-2 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 내역 불러오기</div>
                   <div className="flex overflow-x-auto no-scrollbar gap-2 pb-2">
                     {frequentItems.map(([cat, note], idx) => (
-                       <button key={idx} type="button" onClick={() => {
+                      <button key={idx} type="button" onClick={() => {
                           setFormData({...formData, type: '지출', category: cat, note: note, isFromSavings: false});
                           setIsSuggestionOpen(false); 
-                       }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
+                      }} className="flex-none bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-600 active:scale-95 whitespace-nowrap shadow-sm hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200">
                          <span className="text-pink-500 mr-1">[{cat}]</span>{note}
                        </button>
                     ))}
@@ -1019,7 +1022,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
-              {/* 상세 내용(이름) 입력 및 스마트 자동완성 */}
               <div className="relative z-50" ref={suggestionRef}>
                  <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block">상세 내용 (어디서 쓰셨나요?)</label>
                  <input type="text" value={formData.note} 
@@ -1035,12 +1037,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                        <button type="button" onClick={() => setIsSuggestionOpen(false)} className="w-full text-left px-3 py-3 text-sm font-black text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border-b border-gray-100 mb-1">
                           ✨ '{formData.note}' 그대로 사용
                        </button>
-
                        {suggestedNotes.map(sn => (
                           <button key={`${sn.type}-${sn.category}-${sn.note}`} type="button" onClick={() => {
                                 setFormData({...formData, note: sn.note, category: sn.category, type: sn.type, isFromSavings: false});
                                 setIsSuggestionOpen(false);
-                             }} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
+                          }} className="w-full text-left px-3 py-2.5 text-sm font-bold text-gray-700 hover:bg-pink-50 hover:text-pink-600 rounded-lg transition-colors flex items-center">
                              <span className="text-pink-400 mr-2 text-[10px] border border-pink-200 bg-white px-1.5 py-0.5 rounded shadow-sm">[{sn.category}]</span> 
                              {sn.note}
                           </button>
@@ -1052,7 +1053,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
-              {/* 금액 입력 (아이폰 숫자 키패드 지원) */}
               <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative z-40">
                  <div className="flex justify-between items-end mb-2">
                     <label className="text-[10px] font-black text-gray-400 block">금액</label>
@@ -1068,15 +1068,15 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
-              {/* 날짜 & 카테고리 */}
+              {/* 🚀 [V2.0] 날짜 & 카테고리 시각적 분리 완벽 적용 (gap-4) */}
               <div className="flex gap-4 w-full relative z-30">
-                <div className="w-[110px] shrink-0">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border focus:border-pink-300 transition-colors" />
+                <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-2xl p-3 border border-gray-200">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 flex items-center gap-1.5"><CalendarIcon size={12} className="text-pink-500"/> 날짜</label>
+                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[32px] font-bold text-sm outline-none transition-colors" />
                 </div>
-                <div className="w-[130px] shrink-0">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">카테고리</label>
-                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-gray-50 rounded-xl px-2.5 h-[48px] font-bold text-sm outline-none border focus:border-pink-300 transition-colors">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-3 border border-gray-200">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 flex items-center gap-1.5"><Grid size={12} className="text-pink-500"/> 카테고리</label>
+                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[32px] font-bold text-sm outline-none transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력">+ 직접입력 (신규)</option>
                    </select>
@@ -1121,14 +1121,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                     </label>
                     
                     {formData.isFromSavings && (
-                       <div className="grid grid-cols-2 gap-2 animate-in fade-in">
+                      <div className="grid grid-cols-2 gap-2 animate-in fade-in">
                           {depositAssets.map(a => (
                              <button key={a.id} type="button" onClick={() => setFormData({...formData, linkedAssetId: a.id})} className={`p-3 rounded-xl text-left border transition-all ${formData.linkedAssetId === a.id ? 'bg-indigo-500 text-white border-indigo-600 shadow-md' : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:border-indigo-200'}`}>
                                 <div className="text-xs font-bold mb-1">{a.assetType === 'deposit' ? '예금' : '적금'}</div>
                                 <div className="font-black text-sm truncate">{a.name}</div>
                              </button>
                           ))}
-                       </div>
+                      </div>
                     )}
                  </div>
               )}
@@ -1138,7 +1138,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  <textarea value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="어떤 물건을 샀는지 상세히 적어보세요." className="w-full bg-gray-50 rounded-xl px-4 py-3 h-[80px] font-bold text-sm outline-none border resize-none focus:border-pink-300 transition-colors" />
               </div>
 
-              {/* 연속 입력 / 닫기 버튼 */}
               <div className="flex gap-2 mt-4 pt-2 relative z-10">
                  <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 bg-white border-2 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50 disabled:border-gray-200 disabled:text-gray-400`}>
                     기록하고 계속 입력
@@ -1216,14 +1215,13 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       )}
     </div>
   );
-}
-
+} // End of LedgerView
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
 function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode }) {
-  const [deliverySubTab, setDeliverySubTab] = useState('daily'); 
+  const [deliverySubTab, setDeliverySubTab] = useState('daily');
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
@@ -1233,7 +1231,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [editingDeliveryShift, setEditingDeliveryShift] = useState(null);
-  
   const [deliveryFormData, setDeliveryFormData] = useState({ 
     date: todayStr, startTime: '', endTime: '', 
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
@@ -1252,8 +1249,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const deliveryFilteredTotal = filteredDailyDeliveries.reduce((a,b) => a + (b.amount||0), 0);
   const deliveryFilteredCount = filteredDailyDeliveries.reduce((a,b) => a + (b.count||0), 0);
   const deliveryAvgPerDelivery = deliveryFilteredCount > 0 ? Math.round(deliveryFilteredTotal / deliveryFilteredCount) : 0;
+
   const filteredHyunaItems = filteredDailyDeliveries.filter(d => d.earner === '현아');
   const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
+
   const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
 
   const dailyShifts = useMemo(() => {
@@ -1302,9 +1301,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     });
     return groups;
   }, [dailyDeliveries]);
-  const pastPaydays = Object.keys(paydayGroups).sort((a,b) => b.localeCompare(a)).filter(p => p && p < todayStr); 
-  
+
+  const pastPaydays = Object.keys(paydayGroups).sort((a,b) => b.localeCompare(a)).filter(p => p && p < todayStr);
+
   const globalPending = (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date && getPaydayStr(d.date) >= todayStr);
+
   const pendingByPayday = useMemo(() => {
     const groups = {};
     globalPending.forEach(d => {
@@ -1318,8 +1319,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     });
     return groups;
   }, [globalPending]);
+
   const upcomingPaydays = Object.keys(pendingByPayday).sort();
-  
+
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -1329,11 +1331,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       const amt = parseInt(String(amountStr||0).replace(/,/g, ''), 10);
       if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime });
     };
+
     createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
     createAdd(deliveryFormData.amountJunghoonCoupang, deliveryFormData.countJunghoonCoupang, '정훈', '쿠팡');
     createAdd(deliveryFormData.amountHyunaBaemin, deliveryFormData.countHyunaBaemin, '현아', '배민');
     createAdd(deliveryFormData.amountHyunaCoupang, deliveryFormData.countHyunaCoupang, '현아', '쿠팡');
-    
+
     if (adds.length === 0) return;
 
     if (editingDeliveryShift) {
@@ -1373,14 +1376,14 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       amountJunghoonBaemin: '', countJunghoonBaemin: '',
       amountJunghoonCoupang: '', countJunghoonCoupang: '',
     };
-    
+
     shift.items.forEach(d => {
        const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
        const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
        form[`amount${earnerEng}${platformEng}`] = String(d.amount || '');
        form[`count${earnerEng}${platformEng}`] = String(d.count || '');
     });
-    
+
     setDeliveryFormData(form);
     setEditingDeliveryShift(shift);
     setSelectedShiftDetail(null); 
@@ -1608,10 +1611,14 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       )}
 
       {selectedShiftDetail && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
-            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden border border-gray-100">
-               <div className="absolute top-0 left-0 right-0 h-2 bg-blue-500"></div>
-               <div className="flex justify-between items-start mb-4 mt-2">
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] p-0 overflow-y-auto no-scrollbar">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedShiftDetail(null))}
+              className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 relative border-t-8 border-blue-500"
+            >
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-5 shrink-0"></div>
+               <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-black text-gray-900 flex items-center gap-1.5"><Bike size={20} className="text-blue-500"/> 근무 타임 상세</h3>
                   <button onClick={() => setSelectedShiftDetail(null)} className="text-gray-400 p-2 bg-gray-50 rounded-full active:scale-95 border border-gray-200"><X size={20}/></button>
                </div>
@@ -1662,12 +1669,18 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           const pd = selectedWeeklySummary || selectedDailySummary;
           const items = isWeekly ? (pendingByPayday[pd]?.items || paydayGroups[pd]?.items || []) 
                                  : (dailyShifts[pd] ? dailyShifts[pd].flatMap(s => s.items) : []);
+        
           const title = isWeekly ? `${pd.slice(5).replace('-','/')} 입금 ${pd >= todayStr ? '예정' : '완료'}` : `${pd.slice(5).replace('-','/')} 일일 정산`;
           const metrics = calcDailyMetrics(items);
 
           return (
-             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-5">
-                <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col relative overflow-hidden">
+             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
+                <div 
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={(e) => handleTouchEnd(e, () => { setSelectedWeeklySummary(null); setSelectedDailySummary(null); })}
+                  className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden"
+                >
+                   <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-5 shrink-0"></div>
                    <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
                       <h2 className="text-xl font-black text-gray-800 flex items-center gap-2"><Target className="text-blue-500" size={24}/> {title}</h2>
                       <button onClick={() => {setSelectedWeeklySummary(null); setSelectedDailySummary(null);}} className="bg-gray-100 text-gray-500 p-2 rounded-full active:scale-95"><X size={20}/></button>
@@ -1678,7 +1691,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                        <div className="relative z-10">
                            <div className="text-blue-200 text-xs font-bold mb-1">총 정산 금액</div>
                            <div className="text-4xl font-black tracking-tighter mb-6">{formatLargeMoney(metrics.totalAmt)}<span className="text-lg font-bold opacity-80 ml-1">원</span></div>
-                           
+                    
                            <div className="grid grid-cols-2 gap-4 gap-y-6 border-t border-white/10 pt-5">
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
@@ -1706,15 +1719,32 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-xl shadow-blue-300 flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-500"><Plus size={28}/></button>
 
+      {/* 🚀 [V2.0] 배달 동시 기록 팝업 모달 (바텀시트 적용) */}
       {isDeliveryModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-[90] p-4 py-8 overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-7 shadow-2xl animate-in slide-in-from-bottom duration-300 my-auto border-t-8 border-blue-500">
-            <div className="flex justify-between items-center mb-5"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
-            <form onSubmit={handleDeliverySubmit} className="space-y-4">
-              <div className="flex gap-3 pb-4 border-b border-gray-100 mb-2 w-full">
-                <div className="w-[100px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1.5 h-[40px] font-bold text-xs outline-none" /></div>
-                <div className="w-[85px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">시작</label><input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1 h-[40px] font-bold text-xs outline-none" /></div>
-                <div className="w-[85px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">종료</label><input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-gray-50 border rounded-xl px-1 h-[40px] font-bold text-xs outline-none" /></div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsDeliveryModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-7 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-500 flex flex-col max-h-[90vh]"
+          >
+            <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 shrink-0"></div>
+            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <form onSubmit={handleDeliverySubmit} className="space-y-4 overflow-y-auto no-scrollbar pb-4">
+              
+              {/* 🚀 [V2.0] 날짜/시작/종료 시각적 분리 (gap-4) */}
+              <div className="flex gap-4 pb-4 border-b border-gray-100 mb-2 w-full">
+                <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1 flex items-center gap-1.5"><CalendarIcon size={12} className="text-blue-500"/>날짜</label>
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[32px] font-bold text-xs outline-none" />
+                </div>
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1 flex items-center gap-1.5"><Clock size={12} className="text-blue-500"/>시작</label>
+                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-transparent px-1 h-[32px] font-bold text-xs outline-none" />
+                </div>
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200">
+                  <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1 flex items-center gap-1.5"><Clock size={12} className="text-blue-500"/>종료</label>
+                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-transparent px-1 h-[32px] font-bold text-xs outline-none" />
+                </div>
               </div>
 
               {/* 정훈 수익 폼 */}
@@ -1742,7 +1772,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
                 <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                 <div className="space-y-2">
-                  <div className="flex gap-2 items-center">
+                   <div className="flex gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
                      <div className="flex-1 relative">
@@ -1773,23 +1803,19 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 // 7. ASSETS TAB COMPONENT (V2.0: 예금/적금/대출 통합 자산관리)
 // ==========================================
 function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMonthKey, todayStr, user, isManageMode }) {
-  const [assetTab, setAssetTab] = useState('deposit'); 
+  const [assetTab, setAssetTab] = useState('deposit');
   const [loanSortBy, setLoanSortBy] = useState(() => localStorage.getItem('hyunaLoanSortBy') || 'date'); 
   
   const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
   const [newAssetFormData, setNewAssetFormData] = useState({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
-  
   const [isPrepayModalOpen, setIsPrepayModalOpen] = useState(false);
   const [prepayFormData, setPrepayFormData] = useState({ loanId: '', date: todayStr, principalAmount: '', interestAmount: '' });
-  
   const [selectedAssetDetail, setSelectedAssetDetail] = useState(null);
 
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
-  
   const totalDeposit = depositAssets.reduce((a,b) => a + (b.balance || 0), 0);
-
   const sortedLoans = useMemo(() => {
     const loans = assets?.loans || [];
     const active = loans.filter(l => l.status !== '완납');
@@ -1833,7 +1859,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
     if (!newAssetFormData.name.trim() || !user) return;
-    
     let newAsset = { assetType: newAssetFormData.assetType, name: newAssetFormData.name };
     if (newAssetFormData.assetType === 'loan') {
        if (!newAssetFormData.principal) return;
@@ -1845,7 +1870,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 
     if (isFirebaseEnabled) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'assets'), newAsset);
     
-    setIsAddAssetModalOpen(false); 
+    setIsAddAssetModalOpen(false);
     setNewAssetFormData({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
   };
 
@@ -2001,13 +2026,17 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
         </section>
       )}
 
-      {/* 자산/대출 추가 모달 */}
+      {/* 🚀 [V2.0] 자산/대출 추가 모달 스와이프 바텀시트 적용 */}
       {isAddAssetModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-y-auto no-scrollbar p-0">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsAddAssetModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 border-t-8 border-indigo-500 flex flex-col max-h-[90vh]"
+          >
              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
-             <div className="flex justify-between items-center mb-6"><h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 {newAssetFormData.assetType === 'loan' ? '대출' : '통장'} 추가</h2><button onClick={() => setIsAddAssetModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
-             <form onSubmit={handleAddAssetItem} className="space-y-4">
+             <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-xl font-black text-gray-800 flex items-center gap-1.5"><Landmark className="text-indigo-500" size={20}/> 새 {newAssetFormData.assetType === 'loan' ? '대출' : '통장'} 추가</h2><button onClick={() => setIsAddAssetModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
+             <form onSubmit={handleAddAssetItem} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
                {assetTab === 'deposit' && (
                  <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-200/60 shadow-inner mb-4">
                    <button type="button" onClick={() => setNewAssetFormData({...newAssetFormData, assetType: 'deposit'})} className={`flex-1 py-2.5 rounded-xl text-sm font-black transition-all ${newAssetFormData.assetType==='deposit'?'bg-white text-indigo-600 shadow-sm border border-indigo-100':'text-gray-500'}`}>수시 입출금 (예금)</button>
@@ -2033,16 +2062,20 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
                    <div className="flex-1"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">상환 방식</label><select value={newAssetFormData.paymentMethod} onChange={e => setNewAssetFormData({...newAssetFormData, paymentMethod: e.target.value})} className="w-full bg-gray-50 border rounded-xl px-3 h-[48px] font-black text-sm outline-none text-center appearance-none"><option value="이자">이자</option><option value="원리금">원리금</option></select></div>
                  </div>
                )}
-               <button type="submit" disabled={!newAssetFormData.name.trim() || (newAssetFormData.assetType === 'loan' ? !newAssetFormData.principal : (!newAssetFormData.balance && newAssetFormData.balance !== '0'))} className={`w-full mt-6 py-4 rounded-[1.5rem] text-white font-black text-lg active:scale-95 shadow-lg border disabled:opacity-50 ${newAssetFormData.assetType === 'loan' ? 'bg-orange-500 border-orange-600' : 'bg-indigo-600 border-indigo-700'}`}>{newAssetFormData.assetType === 'loan' ? '대출 등록 완료' : '통장 등록 완료'}</button>
+               <button type="submit" disabled={!newAssetFormData.name.trim() || (newAssetFormData.assetType === 'loan' ? !newAssetFormData.principal : (!newAssetFormData.balance && newAssetFormData.balance !== '0'))} className={`w-full mt-6 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border disabled:opacity-50 ${newAssetFormData.assetType === 'loan' ? 'bg-orange-500 border-orange-600' : 'bg-indigo-600 border-indigo-700'}`}>{newAssetFormData.assetType === 'loan' ? '대출 등록 완료' : '통장 등록 완료'}</button>
              </form>
           </div>
         </div>
       )}
 
-      {/* 중도상환 모달 */}
+      {/* 🚀 [V2.0] 중도상환 모달 스와이프 바텀시트 적용 */}
       {isPrepayModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsPrepayModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-orange-500 flex flex-col max-h-[90vh]"
+          >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
             <div className="flex justify-between items-center mb-6 shrink-0"><h2 className="text-2xl font-black flex items-center gap-2 text-gray-800"><Coins size={24} className="text-orange-500"/> 상환 이력 추가</h2><button onClick={() => setIsPrepayModalOpen(false)} className="bg-orange-50 text-orange-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
             <form onSubmit={handlePrepaySubmit} className="space-y-5 overflow-y-auto no-scrollbar flex-1 pb-4">
@@ -2052,16 +2085,20 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
                 <div><label className="text-[10px] font-black text-gray-400 uppercase ml-2 block mb-1">납부 이자</label><input type="text" inputMode="numeric" pattern="[0-9,]*" value={prepayFormData.interestAmount ? formatLargeMoney(prepayFormData.interestAmount) : ''} onChange={e => setPrepayFormData({...prepayFormData, interestAmount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="0" className="w-full text-3xl font-black border-b-4 border-gray-100 pb-2 outline-none focus:border-orange-400 bg-transparent" /></div>
               </div>
               <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 ml-2 block uppercase">상환 날짜</label><input type="date" value={prepayFormData.date} onChange={e=>setPrepayFormData({...prepayFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-3.5 h-[48px] font-bold text-sm outline-none border focus:border-orange-300" /></div>
-              <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-orange-500 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border border-orange-600">상환 처리 완료</button>
+              <button type="submit" disabled={!prepayFormData.principalAmount && !prepayFormData.interestAmount} className="w-full bg-orange-500 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl border border-orange-600 mt-4">상환 처리 완료</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* 예적금 상세(히스토리) 모달 */}
+      {/* 🚀 [V2.0] 예적금 상세(히스토리) 모달 스와이프 바텀시트 적용 */}
       {selectedAssetDetail && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden">
-            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom flex flex-col h-[85vh]">
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden p-0">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedAssetDetail(null))}
+              className={`bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom flex flex-col h-[85vh] border-t-8 ${selectedAssetDetail.assetType === 'deposit' ? 'border-blue-500' : 'border-emerald-500'}`}
+            >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-start mb-4 shrink-0">
                   <div>
@@ -2106,7 +2143,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   const [eventFormData, setEventFormData] = useState({ date: todayStr, title: '', type: '가족일정', isImportant: false });
-  
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false);
   const [messageFormData, setMessageFormData] = useState({ text: '' });
   const [replyingTo, setReplyingTo] = useState(null);
@@ -2115,7 +2151,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [selectedDutyEditDate, setSelectedDutyEditDate] = useState(null);
   const [isDutyEditModalOpen, setIsDutyEditModalOpen] = useState(false);
   const [isDutyEditing, setIsDutyEditing] = useState(false);
-
   const [isDutyBatchModalOpen, setIsDutyBatchModalOpen] = useState(false);
   const [isDutyBatchEditMode, setIsDutyBatchEditMode] = useState(false);
   const [dutyBatchMode, setDutyBatchMode] = useState('touch'); 
@@ -2124,7 +2159,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [batchDuties, setBatchDuties] = useState({}); 
   const [selectedStamp, setSelectedStamp] = useState('DAY');
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
-
   const dutyTimelineRef = useRef(null); 
 
   const extendedDutyDays = useMemo(() => Array.from({length: 34}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 3)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
@@ -2171,7 +2205,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const handleSendMessage = async () => {
     if(!messageFormData.text.trim() || !user) return;
     
-    const d = new Date(); 
+    const d = new Date();
     let hh = d.getHours();
     const ampm = hh >= 12 ? '오후' : '오전';
     hh = hh % 12 || 12;
@@ -2263,7 +2297,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     
     setBatchDuties(prev => ({...prev, [continuousCursorDateStr]: duty === 'DELETE' ? null : duty}));
-    
     const d = new Date(continuousCursorDateStr);
     d.setDate(d.getDate() + 1);
     const nextStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -2276,7 +2309,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     if(!user) return;
     const monthPrefix = `${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}`;
     const oldDuties = events.filter(e => e.type === '듀티' && e.date.startsWith(monthPrefix));
-    
     if (isFirebaseEnabled) {
       for (const e of oldDuties) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', e.id));
       for (const [date, title] of Object.entries(batchDuties)) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { type: '듀티', title, date, isImportant: false });
@@ -2313,13 +2345,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               return (
                 <div key={m.id} className={`bg-white p-4 rounded-2xl shadow-sm border ${m.author === '현아' ? 'border-pink-200/50' : 'border-blue-200/50'}`}>
                    <div className="flex justify-between items-start mb-1.5">
-                      <div>
+                       <div>
                          <div className="text-[10px] text-gray-400 font-bold mb-1.5 flex items-center gap-1">
                             <span className={`px-1.5 py-0.5 rounded text-white ${m.author === '현아' ? 'bg-pink-400' : 'bg-blue-400'}`}>{m.author}</span>
                             {typeof m.createdAt === 'string' && m.createdAt.slice(5).replace('-','/')} {m.time}
                          </div>
                          <div className="text-base font-black text-gray-800 leading-relaxed break-all">{m.text}</div>
-                      </div>
+                       </div>
                    </div>
                    {(m.replies || []).length > 0 && <div className="mt-3 space-y-1.5 pl-3 border-l-[3px] border-gray-100 py-1">{m.replies.map(r => <div key={r.id} className="flex flex-col bg-gray-50/80 p-3 rounded-xl border border-gray-100/50"><div className="text-[10px] font-bold text-gray-400 mb-1"><span className={`${r.author === '현아' ? 'text-pink-500' : 'text-blue-500'}`}>{r.author}</span></div><div className="text-sm font-black text-gray-700">{r.text}</div></div>)}</div>}
                    {replyingTo === m.id ? (
@@ -2329,7 +2361,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    )}
                 </div>
               )
-            })}
+           })}
          </div>
          <div className="flex gap-2 relative mt-2">
             <div className="absolute -top-7 left-1"><span className={`text-[10px] font-black px-2 py-1 rounded-t-lg text-white ${currentUser === '현아' ? 'bg-pink-500' : 'bg-blue-600'}`}>{currentUser} 작성중</span></div>
@@ -2401,11 +2433,16 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
       <button onClick={() => { setEventFormData({ date: todayStr, title: '', type: '가족일정', isImportant: false }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-emerald-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border"><Plus size={28}/></button>
 
-      {/* 💡 한줄톡 과거 보관소 모달 */}
+      {/* 🚀 [V2.0] 한줄톡 과거 보관소 모달 스와이프 바텀시트 적용 */}
       {isMessageHistoryOpen && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-4 pb-8 overflow-hidden">
-            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 shadow-2xl flex flex-col h-[80vh] animate-in slide-in-from-bottom">
-               <div className="flex justify-between items-center mb-4">
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setIsMessageHistoryOpen(false))}
+              className="bg-white w-full max-w-md rounded-t-[3rem] p-6 shadow-2xl flex flex-col h-[80vh] animate-in slide-in-from-bottom border-t-8 border-pink-500"
+            >
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
+               <div className="flex justify-between items-center mb-4 shrink-0">
                   <h3 className="text-xl font-black text-gray-800">🗂️ 톡 과거 보관소</h3>
                   <button onClick={() => setIsMessageHistoryOpen(false)} className="bg-gray-100 p-2 rounded-full active:scale-95"><X size={20}/></button>
                </div>
@@ -2427,16 +2464,20 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          </div>
       )}
 
-      {/* 일정 등록 모달 */}
+      {/* 🚀 [V2.0] 일정 등록 모달 스와이프 바텀시트 적용 */}
       {isEventModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar">
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => handleTouchEnd(e, () => setIsEventModalOpen(false))}
+            className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 flex flex-col max-h-[90vh] border-t-8 border-emerald-500"
+          >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
             <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className="bg-emerald-50 text-emerald-600 p-2.5 rounded-2xl border"><X size={20}/></button></div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               <div className="flex gap-4 w-full">
-                <div className="w-[110px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" /></div>
-                <div className="w-[130px] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label><select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border"><option value="가족일정">가족일정</option><option value="회식">회식</option><option value="기타">기타</option></select></div>
+                <div className="flex-[1.2] shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label><input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" /></div>
+                <div className="flex-1 shrink-0"><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label><select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border"><option value="가족일정">가족일정</option><option value="회식">회식</option><option value="기타">기타</option></select></div>
               </div>
               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
@@ -2449,13 +2490,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 듀티 단건 수정 모달 */}
+      {/* 🚀 [V2.0] 듀티 단건 수정 모달 스와이프 바텀시트 적용 */}
       {isDutyEditModalOpen && selectedDutyEditDate && (() => {
          const existingEvent = events.find(e => e.date === selectedDutyEditDate && e.type === '듀티');
          const currentDuty = existingEvent ? existingEvent.title : 'OFF';
          return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70]">
-            <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setIsDutyEditModalOpen(false))}
+              className="bg-white w-full max-w-md rounded-t-[3rem] p-5 pb-12 shadow-2xl animate-in slide-in-from-bottom border-t-8 border-indigo-400"
+            >
+               <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6"><div><h2 className="text-xl font-black text-gray-900">{parseInt(selectedDutyEditDate.slice(5,7))}월 {parseInt(selectedDutyEditDate.slice(8,10))}일 스케줄</h2><p className="text-[10px] text-gray-500 font-bold mt-1">{isDutyEditing ? '변경할 근무를 선택하세요.' : '현재 등록된 스케줄입니다.'}</p></div><button onClick={() => setIsDutyEditModalOpen(false)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl"><X size={20}/></button></div>
                <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-center border shadow-inner"><span className="text-[10px] font-bold text-gray-400 block mb-1">현재 스케줄</span><span className={`text-4xl font-black ${currentDuty === 'DAY' ? 'text-blue-500' : currentDuty === 'EVE' ? 'text-orange-500' : currentDuty === 'OFF' ? 'text-pink-500' : 'text-gray-400'}`}>{currentDuty}</span></div>
                {!isDutyEditing ? (
@@ -2473,7 +2519,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
          );
       })()}
 
-      {/* 듀티 일괄/연속 수정 모달 */}
+      {/* 듀티 일괄/연속 수정 모달 (이건 전체 화면이라 스와이프 미적용 유지) */}
       {isDutyBatchModalOpen && (
          <div className="fixed inset-0 bg-white z-[80] flex flex-col animate-in slide-in-from-bottom">
             <div className="flex justify-between items-center p-4 pt-10 border-b">
@@ -2515,7 +2561,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        
                        const isCursor = dutyBatchMode === 'continuous' && isDutyBatchEditMode && dateStr === continuousCursorDateStr;
                        if (isCursor) dutyColor = 'border-2 border-emerald-500 ring-4 ring-emerald-100 z-10 scale-110 shadow-md bg-emerald-50 text-emerald-700';
-
                        return (
                           <div key={d} onClick={() => { 
                               if(isDutyBatchEditMode) {
@@ -2544,7 +2589,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                )}
 
                {isDutyBatchEditMode && dutyBatchMode === 'continuous' && (
-                  <div className="mt-6 pt-4 border-t border-gray-100 flex gap-2 pb-6">
+                 <div className="mt-6 pt-4 border-t border-gray-100 flex gap-2 pb-6">
                      <button onClick={() => handleContinuousStamp('DAY')} className="flex-1 bg-blue-50 text-blue-600 font-black py-4 rounded-[1.2rem] border border-blue-200 active:scale-95 transition-transform shadow-sm">DAY</button>
                      <button onClick={() => handleContinuousStamp('EVE')} className="flex-1 bg-orange-50 text-orange-600 font-black py-4 rounded-[1.2rem] border border-orange-200 active:scale-95 transition-transform shadow-sm">EVE</button>
                      <button onClick={() => handleContinuousStamp('OFF')} className="flex-1 bg-pink-50 text-pink-600 font-black py-4 rounded-[1.2rem] border border-pink-200 active:scale-95 transition-transform shadow-sm">OFF</button>
@@ -2564,8 +2609,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 // 9. MAIN APP CONTENT
 function AppContent() {
   const [user, setUser] = useState(null);
-  const todayStr = getKSTDateStr(); 
-  
+  const todayStr = getKSTDateStr();
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaCurrentUser') || '현아');
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar'); 
@@ -2582,13 +2626,12 @@ function AppContent() {
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {} });
 
   const [selectedYear, setSelectedYear] = useState(parseInt(todayStr.slice(0,4)));
-  const [selectedMonth, setSelectedMonth] = useState(parseInt(todayStr.slice(5,7))); 
+  const [selectedMonth, setSelectedMonth] = useState(parseInt(todayStr.slice(5,7)));
   const currentMonthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
   const [timerActive, setTimerActive] = useState(false);
   const [trackingStartTime, setTrackingStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
   const [isAppLocked, setIsAppLocked] = useState(false);
 
   useEffect(() => {
@@ -2622,7 +2665,6 @@ function AppContent() {
         checkLockStatus();
       }
     };
-
     checkLockStatus();
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -2665,7 +2707,6 @@ function AppContent() {
     const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'categories'), (s) => { if(s.exists()) setCategories(s.data()); });
     const unsubPrefs = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), (s) => { if(s.exists()) setUserSettings(s.data()); });
     const unsubTimer = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), (s) => { if(s.exists()) { setTimerActive(s.data().timerActive || false); setTrackingStartTime(s.data().trackingStartTime || null); }});
-    
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubMemos(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
@@ -2764,7 +2805,7 @@ function AppContent() {
                 <span className="text-[10px] font-black mt-1.5">{config.label}</span>
               </button>
             )
-          })}
+           })}
         </nav>
 
         <style dangerouslySetInnerHTML={{__html: `
@@ -2791,9 +2832,12 @@ function AppContent() {
 
 // 10. ERROR BOUNDARY
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null, errorInfo: null }; }
+  constructor(props) { super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) { console.error(error, errorInfo); this.setState({ errorInfo }); }
+  componentDidCatch(error, errorInfo) { console.error(error, errorInfo);
+    this.setState({ errorInfo }); }
   render() {
     if (this.state.hasError) {
       return (
@@ -2813,3 +2857,4 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }
+
