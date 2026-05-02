@@ -259,7 +259,7 @@ export const handleTouchEnd = (e, closeFunction) => {
 
   e.currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
 
-  if (swipeDistance > modalHeight * 0.35) {
+  if (swipeDistance > modalHeight * 0.28) {
     e.currentTarget.style.transform = 'translateY(100%)';
     setTimeout(() => {
       closeFunction();
@@ -2194,12 +2194,24 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
 
+ // 💡 듀티 캘린더 & 가족 일정 타임라인 동시 자동 스크롤 엔진
   useEffect(() => {
     setTimeout(() => {
-      const todayEl = document.getElementById('duty-today');
-      if (todayEl) todayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      // 1. 현아 근무 스케줄(가로) 오늘 날짜로 휙!
+      const dutyTodayEl = document.getElementById('duty-today');
+      if (dutyTodayEl) dutyTodayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+      // 2. 가족 일정 타임라인(세로) 다가오는 일정으로 휙!
+      const timelineTodayEl = document.getElementById('timeline-today');
+      if (timelineTodayEl) timelineTodayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 300);
   }, []);
+
+  // 💡 오늘 또는 오늘 이후의 가장 가까운 일정의 위치(Index)를 찾는 로직 (없으면 맨 마지막 과거 일정으로)
+  const upcomingEventIndex = useMemo(() => {
+    const idx = familyEventsList.findIndex(e => e.date >= todayStr);
+    return idx !== -1 ? idx : familyEventsList.length - 1;
+  }, [familyEventsList, todayStr]);
 
   useEffect(() => {
     if(isDutyBatchModalOpen) {
@@ -2444,8 +2456,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
         <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
           {familyEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">등록된 일정이 없습니다.</div>}
-          {familyEventsList.map((e, i, arr) => (
-            <div key={e.id}>
+         {familyEventsList.map((e, i, arr) => (
+            // 💡 1단계에서 찾은 다가오는 일정에 'timeline-today'라는 GPS 태그를 달아줍니다!
+            <div key={e.id} id={i === upcomingEventIndex ? 'timeline-today' : undefined}>
               {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
                 <div className="relative flex items-center justify-center py-4"><div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">{e.date.slice(0,4)}년 {parseInt(e.date.slice(5,7))}월</div></div>
               )}
