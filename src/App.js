@@ -2517,15 +2517,15 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
             <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className={`${theme.bg50} ${theme.text600} p-2.5 rounded-2xl border`}><X size={20}/></button></div>
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               
-              {/* 💡 날짜 칸 사이즈를 확 줄이고, 분류 칸을 빵빵하게 늘려서 겹침 현상 해결! */}
+            {/* 💡 아이폰 달력 삐져나옴(겹침) 완벽 방지! (배경과 테두리를 바깥쪽 래퍼로 이동) */}
               <div className="flex gap-3 w-full">
-                <div className="w-[140px] shrink-0">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">날짜</label>
-                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-gray-50 rounded-xl px-2 h-[48px] font-bold text-sm outline-none border" />
+                <div className="flex-[1.1] shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">날짜</label>
+                   <input type="date" value={eventFormData.date} onChange={e=>setEventFormData({...eventFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
                 </div>
-                <div className="flex-1 shrink-0">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">분류</label>
-                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-gray-50 rounded-xl px-3 h-[48px] font-bold text-base outline-none border appearance-none">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
+                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">분류</label>
+                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-base outline-none appearance-none">
                       <option value="가족일정">가족일정</option>
                       <option value="회식">회식</option>
                       <option value="기타">기타</option>
