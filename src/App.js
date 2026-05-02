@@ -1049,13 +1049,22 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
+              {/* 금액 입력 (크기 대폭 줄임!) */}
               <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40">
                  <div className="relative">
                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
                     <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
                  </div>
+                 
+               {/* 🚨 오빠님이 찾아내신 잃어버린 알림창 복구 (하얀 박스 안쪽에 위치!) 🚨 */}
+                {amountPlaceholder && (
+                  <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
+                    <Star size={12} className="fill-pink-400 text-pink-400 shrink-0"/> {amountPlaceholder}
+                  </div>
+                )}
               </div>
 
+              
               <div className="flex gap-3 w-full relative z-30">
                 <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
