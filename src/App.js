@@ -2587,7 +2587,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
   };
 
-  // 💡 [V4.7] 나만의 빨간 날 (임시휴무) 지정/해제 토글 함수
   const toggleCustomHoliday = async (dateStr) => {
      if (!user) return;
      let newHolidays = [...customHolidays];
@@ -2661,7 +2660,8 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           <button onClick={openDutyBatchModal} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 한달스케쥴 확인/수정</button>
         </div>
         
-        <div className="relative pt-3.3">
+        {/* 💡 [수정됨] 오빠님이 조정하신 pt-4 적용 */}
+        <div className="relative pt-4">
           <div ref={dutyTimelineRef} className="flex overflow-x-auto no-scrollbar gap-2 px-2 pb-4 pt-1">
             {extendedDutyDays.map((d) => {
               const dutyEvent = events.find(e => e.date === d && e.type === '듀티');
@@ -2672,7 +2672,8 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               return (
                 <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} 
                      className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative transition-all ${dutyColor} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 scale-105 z-10 shadow-sm' : ''}`}>
-                  {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-3=2.5 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
+                  {/* 💡 [수정됨] 오빠님이 원하신 -top-3.5 적용 */}
+                  {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-3.5 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
                   <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                   <div className="text-xs font-black">{['일','월','화','수','목','금','토'][new Date(d).getDay()]}</div>
                   <div className="mt-2 text-sm font-black tracking-tighter">{duty}</div>
@@ -2811,12 +2812,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  const isToday = dateStr === todayStr;
                  const hasEvent = dayEvents.length > 0;
                  
-                 // 💡 [V4.7] 나만의 빨간 날 (임시휴무) 엔진 적용
                  const holidayName = getHolidayName(dateStr);
                  const isCustomHoliday = customHolidays.includes(dateStr);
                  const dayIndex = (i % 7);
                  
-                 // 국가공휴일, 일요일, 혹은 내가 지정한 빨간날이면 Red
                  const isRed = dayIndex === 0 || holidayName || isCustomHoliday;
                  const isBlue = dayIndex === 6 && !holidayName && !isCustomHoliday;
                  const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-gray-600';
@@ -2846,15 +2845,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         );
       })()}
 
+      {/* 💡 [수정됨] 달력 날짜 클릭 시 나오는 모달 (일정 추가 버튼 부활) */}
       {selectedCalendarDate && (() => {
         const dayEvents = familyEventsList.filter(e => {
            const start = e.date;
            const end = e.endDate || e.date;
            return selectedCalendarDate >= start && selectedCalendarDate <= end;
         });
-        
-        // 💡 [V4.7] 해당 날짜가 휴일로 지정되었는지 확인
-        const isHoliday = customHolidays.includes(selectedCalendarDate);
 
         return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
@@ -2873,20 +2870,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                </div>
                
                <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
-                  {/* 💡 [V4.7] 나만의 빨간 날 (임시휴무) 지정 토글 버튼 */}
-                  <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex justify-between items-center shadow-inner mb-2">
-                     <div>
-                        <div className="text-xs font-black text-red-600 mb-0.5 flex items-center gap-1">나만의 빨간 날 지정</div>
-                        <div className="text-[10px] text-red-500/80 font-bold">달력에 이 날짜를 빨갛게 칠합니다.</div>
-                     </div>
-                     <button onClick={() => toggleCustomHoliday(selectedCalendarDate)} className={`text-[10px] px-3 py-2 rounded-xl font-black border shadow-sm transition-colors active:scale-95 ${isHoliday ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-500 border-red-200'}`}>
-                        {isHoliday ? '🔴 휴일 지정됨' : '⚪ 휴일로 만들기'}
-                     </button>
-                  </div>
-
                   {dayEvents.length === 0 ? (
                       <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                          이 날짜에 등록된 일정이 없습니다. <br/>하단 (+) 버튼을 눌러 일정을 추가해 보세요!
+                          이 날짜에 등록된 일정이 없습니다. 🍃
                       </div>
                   ) : (
                     dayEvents.map(e => (
@@ -2906,6 +2892,16 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                     ))
                   )}
                </div>
+
+               {/* 💡 일정 추가 버튼 */}
+               <button onClick={() => { 
+                   setSelectedCalendarDate(null); 
+                   setEventFormData({ date: selectedCalendarDate, endDate: selectedCalendarDate, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); 
+                   setEditingEventId(null); 
+                   setIsEventModalOpen(true); 
+               }} className="w-full bg-pink-50 text-pink-600 border border-pink-200 mt-4 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2">
+                  <Plus size={18}/> 이 날짜에 일정 추가하기
+               </button>
             </div>
          </div>
         );
@@ -2952,7 +2948,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
       <button onClick={() => { setEventFormData({ date: todayStr, endDate: todayStr, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 일정 등록 모달 */}
+      {/* 💡 [수정됨] 일정 등록 모달 (빨간 날 토글 위치 이동) */}
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
@@ -2975,19 +2971,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    <input type="date" value={eventFormData.endDate || ''} onChange={e=>setEventFormData({...eventFormData, endDate:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
                 </div>
               </div>
-                                                                                  
-              {/* 💡 [V4.7 수정] 빨간 날 지정을 일정 등록 모달 안으로 이동 */}
-              <div className="bg-red-50 p-3 rounded-2xl border border-red-100 flex items-center justify-between mb-2">
-                <div>
-                   <div className="text-sm font-black text-red-600 flex items-center gap-1">🔴 달력에 빨간 날로 표시</div>
-                   <div className="text-[9px] text-red-500 font-bold mt-0.5">우리가족 임시휴무, 연차 등 쉬는 날!</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                   <input type="checkbox" className="sr-only peer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
-                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                </label>
-              </div>
-                                                                                  
+
               <div className="flex gap-3 w-full">
                 <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">참석자</label>
@@ -3005,6 +2989,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                       <option value="기타">기타</option>
                    </select>
                  </div>
+              </div>
+
+              {/* 💡 [수정됨] 나만의 빨간 날 지정을 일정 폼 안으로 쏙! */}
+              <div className="bg-red-50 p-3 rounded-2xl border border-red-100 flex items-center justify-between mt-2">
+                <div>
+                   <div className="text-sm font-black text-red-600 flex items-center gap-1">🔴 달력에 빨간 날로 표시</div>
+                   <div className="text-[9px] text-red-500 font-bold mt-0.5">우리가족 임시휴무, 연차 등 쉬는 날!</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                   <input type="checkbox" className="sr-only peer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
+                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                </label>
               </div>
 
               <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
@@ -3176,6 +3172,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   );
 }
 
+        
 // ==========================================
 // 9. MAIN APP CONTENT
 // ==========================================
