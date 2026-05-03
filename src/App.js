@@ -1356,9 +1356,15 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
-  // 💡 [V4.8] 월별 배달 수익 요약창 접기/펴기 상태
   const [isDeliverySummaryOpen, setIsDeliverySummaryOpen] = useState(false);
   
+  // 💡 [V4.9] 배달 중 실시간 중간 계산기를 위한 임시 상태 (DB 저장 X)
+  const [isLiveCalcOpen, setIsLiveCalcOpen] = useState(false);
+  const [liveData, setLiveData] = useState({
+    amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
+    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
+  });
+
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
 
@@ -1378,6 +1384,30 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
     amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
   });
+
+  // 💡 [V4.9] 실시간 시급/단가 계산기 (초침 갱신 제거, 분 단위 계산)
+  const liveMetrics = useMemo(() => {
+    const amt = 
+      (parseInt(liveData.amountHyunaBaemin.replace(/,/g, ''))||0) + 
+      (parseInt(liveData.amountHyunaCoupang.replace(/,/g, ''))||0) + 
+      (parseInt(liveData.amountJunghoonBaemin.replace(/,/g, ''))||0) + 
+      (parseInt(liveData.amountJunghoonCoupang.replace(/,/g, ''))||0);
+    const cnt = 
+      (parseInt(liveData.countHyunaBaemin)||0) + 
+      (parseInt(liveData.countHyunaCoupang)||0) + 
+      (parseInt(liveData.countJunghoonBaemin)||0) + 
+      (parseInt(liveData.countJunghoonCoupang)||0);
+      
+    const activeMinutes = Math.floor(elapsedSeconds / 60); 
+    const hours = activeMinutes / 60;
+    
+    return {
+      totalAmt: amt,
+      totalCnt: cnt,
+      avg: cnt > 0 ? Math.round(amt / cnt) : 0,
+      hourly: hours > 0 ? Math.round(amt / hours) : 0
+    };
+  }, [liveData, elapsedSeconds]);
 
   const filteredDailyDeliveries = useMemo(() => {
     let data = dailyDeliveries || [];
@@ -1430,7 +1460,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const dailyDates = Object.keys(dailyShifts);
 
-  // 💡 [V4.8.5] 수동 정산 확정 데이터 불러오기
   const clearedPaydays = userSettings.clearedPaydays || [];
 
   const pendingByPayday = useMemo(() => {
@@ -1438,7 +1467,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     (dailyDeliveries || []).forEach(d => {
       const pd = getPaydayStr(d.date);
       if (!pd) return; 
-      // 💡 확정 안 된 애들만 대기열로 모음! (날짜 지났어도 안 지워짐)
+      if (pd < '2026-05-01') return; 
       if (clearedPaydays.includes(pd)) return; 
       
       if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
@@ -1466,12 +1495,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     return groups;
   }, [dailyDeliveries]);
 
-  // 💡 [V4.8.5] 수동 확정된 내역들만 과거 보관소로 이동!
   const pastPaydays = Object.keys(paydayGroups)
-    .filter(pd => clearedPaydays.includes(pd))
+    .filter(pd => clearedPaydays.includes(pd) || pd < '2026-05-01')
     .sort((a,b) => b.localeCompare(a));
 
-  // 💡 [V4.8] 주간 데이터를 완벽하게 발라내는 커스텀 메트릭스 계산기
   const getGroupMetrics = (items) => {
     let totalMins = 0;
     const byDate = {};
@@ -1514,11 +1541,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     let mins = totalMins % 60;
     let durationStr = totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-';
     let perDelivery = totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0;
+    let hourlyRate = totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0;
     
-    return { durationStr, totalCnt, totalAmt, perDelivery };
+    return { durationStr, totalCnt, totalAmt, perDelivery, hourlyRate };
   };
 
-  // 💡 [V4.8.5] 수동 정산 확정 버튼 함수
   const handleClearPayday = async (pd) => {
     if (!user) return;
     const newCleared = [...clearedPaydays, pd];
@@ -1528,7 +1555,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     setSelectedWeeklySummary(null);
   };
 
-  // 💡 [V4.8.5] 수동 정산 확정 취소(복구) 버튼 함수
   const handleUndoClearPayday = async (pd) => {
     if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return;
     const newCleared = clearedPaydays.filter(p => p !== pd);
@@ -1642,6 +1668,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           if(timerActive) {
             const end = new Date();
             const startObj = new Date(trackingStartTime);
+            
+            // 💡 [V4.9] 배달 완료 모달창 켤 때 완전 빈칸으로 깨끗하게 띄우기
             setDeliveryFormData({
               date: getKSTDateStr(),
               amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '',
@@ -1651,6 +1679,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             });
             setEditingDeliveryShift(null);
             handleEndDelivery();
+            
+            // 💡 [V4.9] 휘발성 메모리(중간 계산기 데이터) 싹 지우기
+            setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''});
+            setIsLiveCalcOpen(false);
+            
             setIsDeliveryModalOpen(true);
           } else {
             handleStartDelivery();
@@ -1659,6 +1692,64 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           {timerActive ? `${Math.floor(elapsedSeconds/3600)}:${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}:${String(elapsedSeconds%60).padStart(2,'0')} 종료` : '시작하기'}
         </button>
       </div>
+
+      {/* 💡 [V4.9] 실시간 중간 정산 계산기 (아코디언 토글) */}
+      {timerActive && (
+        <div className="mb-1">
+          <button onClick={() => setIsLiveCalcOpen(!isLiveCalcOpen)} className="w-full bg-white border border-slate-200 rounded-xl p-3 flex justify-center items-center gap-1.5 shadow-sm text-xs font-black text-slate-600 active:bg-slate-50 transition-colors">
+            📊 중간 정산 계산기 {isLiveCalcOpen ? '▲' : '▼'}
+          </button>
+          
+          {isLiveCalcOpen && (
+             <div className="bg-slate-50 rounded-2xl p-4 mt-1 border border-slate-200 shadow-inner animate-in slide-in-from-top-2">
+                {/* 실시간 전광판 */}
+                <div className="grid grid-cols-3 gap-2 mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                   <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">총 수익 ({liveMetrics.totalCnt}건)</div><div className="text-sm font-black text-blue-600">{formatLargeMoney(liveMetrics.totalAmt)}원</div></div>
+                   <div className="text-center border-x border-slate-100"><div className="text-[9px] font-bold text-gray-400 mb-0.5">평균 단가</div><div className="text-sm font-black text-gray-700">{formatLargeMoney(liveMetrics.avg)}원</div></div>
+                   <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
+                </div>
+
+                {/* 간편 입력 폼 (정훈) */}
+                <div className="space-y-2 mb-3">
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
+                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonBaemin} onChange={e => setLiveData({...liveData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1">
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonBaemin ? formatLargeMoney(liveData.amountJunghoonBaemin) : ''} onChange={e => setLiveData({...liveData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
+                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonCoupang} onChange={e => setLiveData({...liveData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1">
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonCoupang ? formatLargeMoney(liveData.amountJunghoonCoupang) : ''} onChange={e => setLiveData({...liveData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                </div>
+
+                {/* 간편 입력 폼 (현아) */}
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
+                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaBaemin} onChange={e => setLiveData({...liveData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1">
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaBaemin ? formatLargeMoney(liveData.amountHyunaBaemin) : ''} onChange={e => setLiveData({...liveData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                     <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
+                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaCoupang} onChange={e => setLiveData({...liveData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1">
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaCoupang ? formatLargeMoney(liveData.amountHyunaCoupang) : ''} onChange={e => setLiveData({...liveData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                     </div>
+                  </div>
+                </div>
+                
+                <div className="mt-3 text-[9px] text-center text-gray-400 font-bold">운행 종료 시 위 데이터는 자동으로 지워집니다 🧹</div>
+             </div>
+          )}
+        </div>
+      )}
 
       {/* 2. 월간 수익 접기/펴기 영역 */}
       <div>
@@ -1702,7 +1793,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         )}
       </div>
 
-      {/* 3. 주간 정산 대기금 (위로 올라옴 & 디테일 데이터 추가) */}
+      {/* 3. 주간 정산 대기금 영역 */}
       <div className="grid grid-cols-2 gap-2 mt-1">
         {upcomingPaydays.length === 0 ? (
           <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border text-center text-gray-400 text-sm font-bold">입금 대기 중인 정산금이 없습니다.</div>
@@ -1934,7 +2025,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
          </div>
       )}
 
-      {/* 💡 [V4.8.5] 주차별 디테일 & 정산 수동 확정 모달 */}
       { (selectedWeeklySummary || selectedDailySummary) && (() => {
           const isWeekly = !!selectedWeeklySummary;
           const pd = selectedWeeklySummary || selectedDailySummary;
@@ -1988,7 +2078,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                        </div>
                    </div>
 
-                   {/* 💡 [V4.8.5] 입금 수동 확정 버튼 영역 */}
                    {isWeekly && (
                       <div className="mt-5 pt-3 border-t border-gray-100">
                          {!isCleared ? (
@@ -2092,7 +2181,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     </div>
   );
 }
-
                                                                                 
 // ==========================================
 // 7. ASSETS TAB COMPONENT
