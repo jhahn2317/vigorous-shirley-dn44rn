@@ -1430,6 +1430,28 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const dailyDates = Object.keys(dailyShifts);
 
+  // 💡 [V4.8.5] 수동 정산 확정 데이터 불러오기
+  const clearedPaydays = userSettings.clearedPaydays || [];
+
+  const pendingByPayday = useMemo(() => {
+    const groups = {};
+    (dailyDeliveries || []).forEach(d => {
+      const pd = getPaydayStr(d.date);
+      if (!pd) return; 
+      // 💡 확정 안 된 애들만 대기열로 모음! (날짜 지났어도 안 지워짐)
+      if (clearedPaydays.includes(pd)) return; 
+      
+      if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
+      groups[pd].total += (d.amount || 0);
+      if (d.earner === '현아') groups[pd].hyuna += (d.amount || 0);
+      if (d.earner === '정훈') groups[pd].junghoon += (d.amount || 0);
+      groups[pd].items.push(d);
+    });
+    return groups;
+  }, [dailyDeliveries, clearedPaydays]);
+
+  const upcomingPaydays = Object.keys(pendingByPayday).sort();
+
   const paydayGroups = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
@@ -1444,24 +1466,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     return groups;
   }, [dailyDeliveries]);
 
-  const pastPaydays = Object.keys(paydayGroups).sort((a,b) => b.localeCompare(a)).filter(p => p && p < todayStr);
-  const globalPending = (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date && getPaydayStr(d.date) >= todayStr);
-
-  const pendingByPayday = useMemo(() => {
-    const groups = {};
-    globalPending.forEach(d => {
-      const pd = getPaydayStr(d.date);
-      if (!pd) return; 
-      if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
-      groups[pd].total += (d.amount || 0);
-      if (d.earner === '현아') groups[pd].hyuna += (d.amount || 0);
-      if (d.earner === '정훈') groups[pd].junghoon += (d.amount || 0);
-      groups[pd].items.push(d);
-    });
-    return groups;
-  }, [globalPending]);
-
-  const upcomingPaydays = Object.keys(pendingByPayday).sort();
+  // 💡 [V4.8.5] 수동 확정된 내역들만 과거 보관소로 이동!
+  const pastPaydays = Object.keys(paydayGroups)
+    .filter(pd => clearedPaydays.includes(pd))
+    .sort((a,b) => b.localeCompare(a));
 
   // 💡 [V4.8] 주간 데이터를 완벽하게 발라내는 커스텀 메트릭스 계산기
   const getGroupMetrics = (items) => {
@@ -1508,6 +1516,26 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     let perDelivery = totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0;
     
     return { durationStr, totalCnt, totalAmt, perDelivery };
+  };
+
+  // 💡 [V4.8.5] 수동 정산 확정 버튼 함수
+  const handleClearPayday = async (pd) => {
+    if (!user) return;
+    const newCleared = [...clearedPaydays, pd];
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared });
+    }
+    setSelectedWeeklySummary(null);
+  };
+
+  // 💡 [V4.8.5] 수동 정산 확정 취소(복구) 버튼 함수
+  const handleUndoClearPayday = async (pd) => {
+    if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return;
+    const newCleared = clearedPaydays.filter(p => p !== pd);
+    if (isFirebaseEnabled) {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared });
+    }
+    setSelectedWeeklySummary(null);
   };
 
   const handleDeliverySubmit = async (e) => {
@@ -1677,7 +1705,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       {/* 3. 주간 정산 대기금 (위로 올라옴 & 디테일 데이터 추가) */}
       <div className="grid grid-cols-2 gap-2 mt-1">
         {upcomingPaydays.length === 0 ? (
-          <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border text-center text-gray-400 text-sm font-bold">대기 중인 정산금이 없습니다.</div>
+          <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border text-center text-gray-400 text-sm font-bold">입금 대기 중인 정산금이 없습니다.</div>
         ) : (
           upcomingPaydays.slice(0,2).map((pd, idx) => {
             const group = pendingByPayday[pd];
@@ -1765,8 +1793,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         <div className="space-y-3 animate-in slide-in-from-right duration-300 mt-1">
           {pastPaydays.map(pDate => (
             <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
-              <div><div className="text-xs text-gray-400 font-bold mb-1.5">{pDate.slice(5).replace('-', '/')} 입금완료</div><div className="font-black text-gray-800 text-base">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</div></div>
-              <div className="text-right"><div className="text-xl font-black text-blue-600">{formatLargeMoney(paydayGroups[pDate].total)}원</div></div>
+              <div><div className="text-xs text-gray-400 font-bold mb-1.5">{pDate.slice(5).replace('-', '/')} 입금완료 (보관됨)</div><div className="font-black text-gray-800 text-base">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</div></div>
+              <div className="text-right"><div className="text-xl font-black text-slate-400 line-through decoration-slate-300">{formatLargeMoney(paydayGroups[pDate].total)}원</div></div>
             </div>
           ))}
         </div>
@@ -1811,6 +1839,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                  <div className="space-y-2">
                   {shiftList.map(shift => {
                     const pDay = getPaydayStr(shift.date);
+                    const isCleared = clearedPaydays.includes(pDay);
 
                     return (
                       <div key={shift.id} onClick={() => setSelectedShiftDetail(shift)} className="flex justify-between items-center bg-slate-50/50 p-3.5 rounded-2xl hover:bg-blue-50/50 transition-colors border border-slate-100/50 cursor-pointer active:scale-95">
@@ -1835,7 +1864,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="text-right">
                              <div className="font-black text-base text-gray-900">{formatLargeMoney(shift.totalAmt)}원</div>
-                             <div className={`text-[9px] font-bold mt-0.5 ${pDay && pDay >= todayStr ? 'text-blue-500' : 'text-gray-500'}`}>{pDay && pDay >= todayStr ? `${pDay.slice(5).replace('-','/')} 입금 대기` : '정산 완료'}</div>
+                             <div className={`text-[9px] font-bold mt-0.5 ${isCleared ? 'text-gray-400' : pDay && pDay <= todayStr ? 'text-rose-500' : 'text-blue-500'}`}>
+                                 {isCleared ? '입금 보관됨' : pDay && pDay <= todayStr ? '미확정 대기중' : '입금 대기'}
+                             </div>
                           </div>
                         </div>
                       </div>
@@ -1903,14 +1934,18 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
          </div>
       )}
 
+      {/* 💡 [V4.8.5] 주차별 디테일 & 정산 수동 확정 모달 */}
       { (selectedWeeklySummary || selectedDailySummary) && (() => {
           const isWeekly = !!selectedWeeklySummary;
           const pd = selectedWeeklySummary || selectedDailySummary;
+          const isCleared = clearedPaydays.includes(pd);
+          const isPaydayReached = todayStr >= pd;
+          
           const items = isWeekly ? (pendingByPayday[pd]?.items || paydayGroups[pd]?.items || []) 
                                  : (dailyDeliveries || []).filter(d => d.date === pd);
         
-          const title = isWeekly ? `${pd.slice(5).replace('-','/')} 입금 ${pd >= todayStr ? '예정' : '완료'}` : `${pd.slice(5).replace('-','/')} 일일 정산`;
-          const metrics = calcDailyMetrics(items);
+          const title = isWeekly ? `${pd.slice(5).replace('-','/')} 입금 ${isCleared ? '완료' : isPaydayReached ? '확정 대기중' : '예정'}` : `${pd.slice(5).replace('-','/')} 일일 정산`;
+          const metrics = getGroupMetrics(items);
 
           return (
              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
@@ -1918,7 +1953,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={(e) => handleTouchEnd(e, () => { setSelectedWeeklySummary(null); setSelectedDailySummary(null); })}
-                  className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden"
+                  className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden"
                 >
                    <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-5 shrink-0"></div>
                    <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
@@ -1939,7 +1974,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">근무 시간</div>
-                                 <div className="text-xl font-black">{metrics.durationStr || '-'}</div>
+                                 <div className="text-xl font-black">{metrics.durationStr}</div>
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
@@ -1947,11 +1982,33 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                               </div>
                               <div>
                                  <div className="text-[10px] text-blue-300 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
-                                 <div className="text-xl font-black">{formatLargeMoney(metrics.hourlyRate)}원</div>
+                                 <div className="text-xl font-black">{formatLargeMoney(metrics.hourlyRate || 0)}원</div>
                               </div>
                            </div>
                        </div>
                    </div>
+
+                   {/* 💡 [V4.8.5] 입금 수동 확정 버튼 영역 */}
+                   {isWeekly && (
+                      <div className="mt-5 pt-3 border-t border-gray-100">
+                         {!isCleared ? (
+                            <button 
+                               onClick={() => handleClearPayday(pd)} 
+                               disabled={!isPaydayReached}
+                               className={`w-full py-4 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-2 ${isPaydayReached ? 'bg-blue-600 text-white shadow-lg active:scale-95' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                            >
+                               {isPaydayReached ? '💰 주차별 보관함으로 이동 (입금 완료)' : '금요일부터 입금 확정이 가능합니다 ⏳'}
+                            </button>
+                         ) : (
+                            <button 
+                               onClick={() => handleUndoClearPayday(pd)} 
+                               className="w-full py-4 rounded-[1.5rem] bg-gray-50 border border-gray-200 text-gray-500 font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+                            >
+                               <RefreshCw size={16}/> 다시 대기열로 되돌리기 (실수 방지)
+                            </button>
+                         )}
+                      </div>
+                   )}
                 </div>
              </div>
           );
@@ -2036,6 +2093,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   );
 }
 
+                                                                                
 // ==========================================
 // 7. ASSETS TAB COMPONENT
 // ==========================================
