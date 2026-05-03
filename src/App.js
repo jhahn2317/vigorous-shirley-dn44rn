@@ -1059,21 +1059,15 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {/* 가계부 플로팅 버튼 */}
       <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
-{selectedCalendarDate && (() => {
-        const dayEvents = familyEventsList.filter(e => {
-           const start = e.date;
-           const end = e.endDate || e.date;
-           return selectedCalendarDate >= start && selectedCalendarDate <= end;
-        });
-
+{/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
+      {selectedCalendarDate && (() => {
+        const dayEvents = (ledger || []).filter(t => t.date === selectedCalendarDate);
         return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
             <div 
               onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
-              className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
+              className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
             >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
@@ -1084,29 +1078,31 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                </div>
                
                <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
-                  {dayEvents.length === 0 ? (
-                      <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                          이 날짜에 등록된 일정이 없습니다. 🍃
-                      </div>
-                  ) : (
-                    dayEvents.map(e => (
-                      <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
-                          <div className="truncate">
-                            <div className="flex items-center gap-1 mb-0.5">
-                               <span className="text-[10px] font-bold text-pink-500">{e.type}</span>
-                               {e.participant && <span className="text-[8px] bg-white border text-gray-500 px-1 py-0.5 rounded shadow-sm">{e.participant === '현아' ? '👩' : e.participant === '정훈' ? '🧑' : '👨‍👩‍👦'}</span>}
-                            </div>
-                            <div className="font-black text-base text-gray-800 flex items-center gap-1">{e.title} {e.isImportant && <Star size={12} className="text-amber-400 fill-amber-400"/>}</div>
+                  {dayEvents.length > 0 ? (
+                      dayEvents.map(t => (
+                        <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-pink-50 transition-colors active:scale-95">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                             <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+                             <div className="truncate">
+                               <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
+                               <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
+                             </div>
                           </div>
+                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
-                        <ChevronRight className="text-gray-300 w-5 h-5 shrink-0" />
-                      </div>
-                    ))
+                      ))
+                  ) : (
+                      <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">이 날짜에는 등록된 내역이 없어요! 🍃</div>
                   )}
                </div>
+            </div>
+         </div>
+        );
+      })()}
 
+
+
+                                                                                  
                {/* 💡 오빠님 요청: 해당 날짜에 바로 일정 등록하는 버튼 부활! */}
                <button onClick={() => { 
                    setSelectedCalendarDate(null); 
