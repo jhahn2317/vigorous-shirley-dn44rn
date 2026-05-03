@@ -1356,6 +1356,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
+  // 💡 [V4.8] 월별 배달 수익 요약창 접기/펴기 상태
+  const [isDeliverySummaryOpen, setIsDeliverySummaryOpen] = useState(false);
+  
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
 
@@ -1460,6 +1463,53 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const upcomingPaydays = Object.keys(pendingByPayday).sort();
 
+  // 💡 [V4.8] 주간 데이터를 완벽하게 발라내는 커스텀 메트릭스 계산기
+  const getGroupMetrics = (items) => {
+    let totalMins = 0;
+    const byDate = {};
+    items.forEach(d => {
+      if(!d.date) return;
+      if(!byDate[d.date]) byDate[d.date] = [];
+      byDate[d.date].push(d);
+    });
+    
+    Object.values(byDate).forEach(dayItems => {
+      let intervals = [];
+      dayItems.forEach(d => {
+        if(d.startTime && d.endTime && typeof d.startTime === 'string' && typeof d.endTime === 'string') {
+          let [sh, sm] = d.startTime.split(':').map(Number);
+          let [eh, em] = d.endTime.split(':').map(Number);
+          if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+            let start = sh * 60 + sm;
+            let end = eh * 60 + em;
+            if (end <= start) end += 1440; 
+            intervals.push({start, end});
+          }
+        }
+      });
+      intervals.sort((a,b) => a.start - b.start);
+      let merged = [];
+      if (intervals.length > 0) {
+        let current = {...intervals[0]};
+        for(let i=1; i<intervals.length; i++) {
+          if (intervals[i].start <= current.end) current.end = Math.max(current.end, intervals[i].end);
+          else { merged.push(current); current = {...intervals[i]}; }
+        }
+        merged.push(current);
+      }
+      totalMins += merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+    });
+    
+    const totalAmt = items.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const totalCnt = items.reduce((acc, curr) => acc + (curr.count || 0), 0);
+    let hours = Math.floor(totalMins / 60);
+    let mins = totalMins % 60;
+    let durationStr = totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-';
+    let perDelivery = totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0;
+    
+    return { durationStr, totalCnt, totalAmt, perDelivery };
+  };
+
   const handleDeliverySubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
@@ -1544,7 +1594,9 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   return (
     <div className="flex flex-col gap-2 pb-4 pt-1 animate-in fade-in duration-500">
-      <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-slate-200 flex justify-between items-center">
+      
+      {/* 1. 타이머 영역 */}
+      <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-slate-200 flex justify-between items-center mb-1">
         <div className="flex items-center gap-2 ml-1">
           {timerActive ? <Timer className="w-5 h-5 text-blue-500 animate-pulse" /> : <Play className="w-5 h-5 text-slate-400" />}
           <div>
@@ -1580,56 +1632,76 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         </button>
       </div>
 
+      {/* 2. 월간 수익 접기/펴기 영역 */}
+      <div>
+        {isDeliverySummaryOpen ? (
+          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsDeliverySummaryOpen(false)}>
+            <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
+            <div className="flex justify-between items-end mb-3 relative z-10 cursor-pointer">
+              <div>
+                <div className="text-[11px] font-bold opacity-90 mb-0.5 flex items-center gap-1">
+                   <ChevronUp size={14}/> {(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${calMonth}월 배달 수익`}
+                </div>
+                <div className="text-4xl font-black tracking-tighter leading-none mt-1">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
+              </div>
+              <div className="text-right">
+                <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}원</div>
+                <div className="text-[10px] font-bold opacity-90 flex flex-col items-end"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span></div>
+              </div>
+            </div>
+            
+            {(userSettings.deliveryGoals?.[currentMonthKey] || 0) > 0 && !deliveryDateRange.start && !deliveryDateRange.end && (() => {
+               const goal = userSettings.deliveryGoals[currentMonthKey];
+               const pct = Math.min(100, (deliveryFilteredTotal / goal) * 100);
+               return (
+                 <div className="mb-2 relative z-10">
+                   <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90"><span>목표 {formatLargeMoney(goal)}원</span><span>{pct.toFixed(1)}% 달성</span></div>
+                   <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden"><div className="bg-white h-full rounded-full transition-all duration-1000" style={{width: `${pct}%`}}></div></div>
+                 </div>
+               );
+            })()}
+
+            <div className="flex bg-white/10 rounded-xl p-3 mt-3 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
+              <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
+              <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white border border-blue-200/60 rounded-[1rem] p-3 shadow-sm flex justify-between items-center cursor-pointer text-blue-500 hover:bg-blue-50 transition-colors mb-1" onClick={() => setIsDeliverySummaryOpen(true)}>
+             <span className="text-xs font-black flex items-center gap-1.5">🏍️ {(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익 확인' : `${calMonth}월 배달 수익 확인`}</span>
+             <ChevronDownSquare size={16} />
+          </div>
+        )}
+      </div>
+
+      {/* 3. 주간 정산 대기금 (위로 올라옴 & 디테일 데이터 추가) */}
       <div className="grid grid-cols-2 gap-2 mt-1">
         {upcomingPaydays.length === 0 ? (
           <div className="col-span-2 bg-white rounded-2xl p-4 shadow-sm border text-center text-gray-400 text-sm font-bold">대기 중인 정산금이 없습니다.</div>
         ) : (
           upcomingPaydays.slice(0,2).map((pd, idx) => {
             const group = pendingByPayday[pd];
+            const metrics = getGroupMetrics(group.items);
             return (
-              <div key={pd} onClick={() => setSelectedWeeklySummary(pd)} className={`bg-white rounded-2xl p-3.5 shadow-sm border ${idx === 0 ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200'} flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}>
+              <div key={pd} onClick={() => setSelectedWeeklySummary(pd)} className={`bg-white rounded-2xl p-4 shadow-sm border ${idx === 0 ? 'border-blue-300 bg-blue-50/40' : 'border-slate-200'} flex flex-col justify-between cursor-pointer active:scale-95 transition-transform`}>
                 <div className="flex justify-between items-start mb-2">
                   <span className={`text-[11px] font-black ${idx === 0 ? "text-blue-600" : "text-gray-500"}`}>{pd.slice(5).replace('-','/')}</span>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${idx === 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'}`}>{idx === 0 ? '이번주' : '다음주'}</span>
                 </div>
-                <div className={`text-2xl font-black ${idx === 0 ? 'text-blue-600' : 'text-gray-700'}`}>{formatLargeMoney(group.total)}<span className="text-base">원</span></div>
+                <div className={`text-2xl font-black mb-2 tracking-tighter ${idx === 0 ? 'text-blue-600' : 'text-gray-800'}`}>{formatLargeMoney(group.total)}<span className="text-sm">원</span></div>
+                
+                <div className="border-t border-gray-100 pt-2.5 mt-1 space-y-1">
+                   <div className="flex justify-between items-center text-[9px] font-bold"><span className="text-gray-400">총 건수</span><span className="text-gray-700">{formatLargeMoney(metrics.totalCnt)}건</span></div>
+                   <div className="flex justify-between items-center text-[9px] font-bold"><span className="text-gray-400">평균 단가</span><span className="text-gray-700">{formatLargeMoney(metrics.perDelivery)}원</span></div>
+                   <div className="flex justify-between items-center text-[9px] font-bold"><span className="text-gray-400">총 시간</span><span className="text-gray-700">{metrics.durationStr}</span></div>
+                </div>
               </div>
             )
           })
         )}
       </div>
 
-      <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mt-1">
-        <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
-        <div className="flex justify-between items-end mb-3 relative z-10">
-          <div>
-            <div className="text-[11px] font-bold opacity-90 mb-0.5">{(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 배달 수익' : `${calMonth}월 배달 수익`}</div>
-            <div className="text-4xl font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
-          </div>
-          <div className="text-right">
-            <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}원</div>
-            <div className="text-[10px] font-bold opacity-90 flex flex-col items-end"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span></div>
-          </div>
-        </div>
-        
-        {(userSettings.deliveryGoals?.[currentMonthKey] || 0) > 0 && !deliveryDateRange.start && !deliveryDateRange.end && (() => {
-           const goal = userSettings.deliveryGoals[currentMonthKey];
-           const pct = Math.min(100, (deliveryFilteredTotal / goal) * 100);
-           return (
-             <div className="mb-2 relative z-10">
-               <div className="flex justify-between text-[10px] font-bold mb-1 opacity-90"><span>목표 {formatLargeMoney(goal)}원</span><span>{pct.toFixed(1)}% 달성</span></div>
-               <div className="w-full bg-black/20 rounded-full h-2 overflow-hidden"><div className="bg-white h-full rounded-full transition-all duration-1000" style={{width: `${pct}%`}}></div></div>
-             </div>
-           );
-        })()}
-
-        <div className="flex bg-white/10 rounded-xl p-3 mt-3 divide-x divide-white/20 relative z-10 shadow-sm border border-white/10">
-          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">정훈 <span>{filteredJunghoonItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
-          <div className="flex-1 px-3"><div className="text-[10px] opacity-80 mb-1 flex justify-between font-bold">현아 <span>{filteredHyunaItems.reduce((a,b)=>a+(b.count||0),0)}건</span></div><div className="text-base font-black">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}원</div></div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mt-1">
+      <div className="flex items-center gap-2 mt-2">
         <div className="flex bg-white p-1 rounded-xl flex-1 shadow-sm border"><button onClick={() => setDeliverySubTab('daily')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='daily'?'bg-blue-50 text-blue-600 shadow-sm':'text-gray-500'}`}>상세내역</button><button onClick={() => setDeliverySubTab('calendar')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='calendar'?'bg-blue-50 text-blue-600 shadow-sm':'text-gray-500'}`}>달력</button><button onClick={() => setDeliverySubTab('weekly')} className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all ${deliverySubTab==='weekly'?'bg-blue-50 text-blue-600 shadow-sm':'text-gray-500'}`}>주차별</button></div>
         <button onClick={() => setShowDeliveryFilters(!showDeliveryFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showDeliveryFilters ? 'bg-blue-500 text-white' : 'bg-white text-slate-500 border'}`}><Filter size={18} /></button>
       </div>
@@ -1670,7 +1742,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                  const dayData = dataByDate[dateStr] || { amt: 0 };
                  const isToday = dateStr === todayStr;
                  
-                 // 💡 [V4.7] 배달 달력에도 나만의 빨간 날 반영
                  const holidayName = getHolidayName(dateStr);
                  const isCustomHoliday = customHolidays.includes(dateStr);
                  const dayIndex = (i % 7);
