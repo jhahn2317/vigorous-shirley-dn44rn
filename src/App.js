@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid, Repeat, ChevronDownSquare
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid, Repeat, ChevronDownSquare, AlertCircle
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
@@ -96,6 +96,14 @@ const getKSTDateStr = () => {
   return `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
 };
 
+// 💡 [V5.0] 자정 분할 엔진을 위한 정밀 날짜 변환기
+const getKSTDateStrFromDate = (dObj) => {
+  if (!dObj || isNaN(dObj.getTime())) return '';
+  const utc = dObj.getTime() + (dObj.getTimezoneOffset() * 60000);
+  const kstTime = new Date(utc + (9 * 3600000));
+  return `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
+};
+
 const getKSTTimestamp = () => {
   const d = new Date();
   const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
@@ -107,7 +115,6 @@ const getKSTTimestamp = () => {
   return `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 ${ampm} ${hh}:${String(kst.getMinutes()).padStart(2, '0')}`;
 };
 
-// 초강력 D-Day 계산기
 const getDDay = (targetDateStr) => {
   if(!targetDateStr) return '';
   const todayStr = getKSTDateStr();
@@ -274,7 +281,6 @@ export const handleTouchMove = (e) => {
     e.currentTarget.style.transform = `translateY(${swipeDistance}px)`;
   }
 };
-
 export const handleTouchEnd = (e, closeFunction) => {
   const startY = parseFloat(e.currentTarget.dataset.startY || 0);
   const currentY = e.changedTouches[0].clientY;
@@ -306,7 +312,6 @@ function LockScreenView({ correctPin, onUnlock }) {
       }
     }
   };
-
   const handleDelete = () => setPin(prev => prev.slice(0, -1));
 
   return (
@@ -316,13 +321,11 @@ function LockScreenView({ correctPin, onUnlock }) {
         <h2 className="text-2xl font-black text-white tracking-tight">비밀번호를 입력하세요</h2>
         <p className="text-gray-400 text-sm mt-2 font-bold">Hope Fam 플래너 보호 중</p>
       </div>
-     
       <div className={`flex gap-4 mb-16 ${error ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
         {[0, 1, 2, 3].map(i => <div key={i} className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'bg-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-white/20'}`} />)}
       </div>
       <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-10 max-w-sm w-full">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => <button key={num} onClick={() => handlePress(num.toString())} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">{num}</button>)}
-     
         <div />
         <button onClick={() => handlePress('0')} className="w-16 h-16 rounded-full bg-white/5 text-white text-2xl font-black flex items-center justify-center active:bg-white/20 active:scale-95 transition-all mx-auto border border-white/5">0</button>
         <button onClick={handleDelete} className="w-16 h-16 rounded-full text-white/70 flex items-center justify-center active:bg-white/10 active:scale-95 transition-all mx-auto"><Delete className="w-8 h-8" /></button>
@@ -399,7 +402,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
               <div key={type}>
                 <div className="flex justify-between items-center mb-2">
                   <span className={`text-xs font-bold ${type==='지출'?'text-gray-500':'text-blue-500'}`}>{type} 카테고리</span>
-                 <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-gray-50 text-gray-600 border-gray-200':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
+                  <button onClick={() => handleAddCategory(type)} className={`text-[10px] ${type==='지출'?'bg-gray-50 text-gray-600 border-gray-200':'bg-blue-50 text-blue-600 border-blue-100'} px-2 py-1 rounded font-bold border`}>+ 추가</button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {getSortedCategories(type).map(c => (
@@ -424,7 +427,7 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
       {(activeTab === 'assets' || activeTab === 'calendar') && (
         <div className={`bg-white p-5 rounded-2xl border ${activeTab==='assets'?'border-indigo-200':'border-emerald-200'} shadow-md animate-in slide-in-from-right-2 text-center text-sm font-bold text-gray-500`}>
-        {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
+          {activeTab === 'assets' ? '설정에 있던 자산/대출 추가 버튼은 메인 화면으로 이동되었습니다.' : '우리가족 메뉴는 별도의 설정이 필요하지 않습니다.'}
         </div>
       )}
 
@@ -470,7 +473,6 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-700"></div>
                </label>
             </div>
-   
             {lockEnabled && (
               <div className="space-y-3 mt-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2">
                  <div>
@@ -573,7 +575,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   }, [selectedYear, selectedMonth]);
   
   const [isYearlyIncomeOpen, setIsYearlyIncomeOpen] = useState(false);
-  
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target)) setIsSuggestionOpen(false);
@@ -581,18 +583,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  
+
   const getSortedCategories = (type) => {
     let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
   };
-  
+
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
-  
+
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && typeof t?.date === 'string' && t.date.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
-  
+
   const filteredLedger = useMemo(() => {
     let data = ledger || [];
     if (ledgerDateRange.start || ledgerDateRange.end) {
@@ -606,7 +608,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     if (searchQuery.trim()) data = data.filter(t => (t.note||'').toLowerCase().includes(searchQuery.toLowerCase()) || (t.category||'').toLowerCase().includes(searchQuery.toLowerCase()));
     return data;
   }, [ledger, calYear, calMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
-  
+
   const monthUsedCategories = useMemo(() => {
     const categoryTotals = {};
     filteredLedger.forEach(t => {
@@ -617,18 +619,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
-  
+
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
     expense: filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0), 
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
-  
+
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(t => t.type === '지출').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
   }), [filteredLedger]);
-  
+
   const financialSummary = useMemo(() => {
     const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     const rawExpense = monthRawLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a,b)=>a+(b.amount||0),0);
@@ -636,10 +638,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
   }, [ledger, calYear, calMonth]);
-  
+
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
-  
+
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
@@ -650,7 +652,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger, formData.type]);
-  
+
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -661,7 +663,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note, formData.type]);
-  
+
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
     const lastTx = [...ledger].filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date).sort((a,b) => b.date.localeCompare(a.date))[0];
@@ -671,10 +673,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       const verb = formData.type === '수입' ? '기록한' : '지출한';
       return `최근 ${m}월 ${d}일에 ${verb} 금액은 ${new Intl.NumberFormat('ko-KR').format(lastTx.amount)}원이었어요 😊`;
     }
-  
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
-  
+
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -727,7 +728,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     }
     return true;
   };
-  
+
   const handleTransactionSubmit = async (e, isContinuous = false) => {
     e.preventDefault();
     const success = await saveTransaction();
@@ -736,7 +737,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        else { setIsModalOpen(false); setEditingLedgerId(null); }
     }
   };
-  
+
   const handleEditClick = (t) => {
     setSelectedLedgerDetail(null);
     setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
@@ -757,7 +758,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     else setLedger((ledger||[]).filter(t => t.id !== id));
     setSelectedLedgerDetail(null);
   };
-  
+
   const saveMemo = async () => {
     if(!user || !window.confirm("메모를 저장하시겠습니까?")) return;
     const stamp = getKSTTimestamp();
@@ -917,10 +918,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         const daysInMonth = new Date(calYear, calMonth, 0).getDate();
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
-        
         const calLedger = (ledger || []).filter(t => typeof t?.date === 'string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
         calLedger.forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
-        
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-bottom-2 mt-1">
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
@@ -1056,7 +1055,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {/* 가계부 플로팅 버튼 */}
       <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 💡 [수정됨] 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 (가계부 전용) */}
+      {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
       {selectedCalendarDate && (() => {
         const dayEvents = (ledger || []).filter(t => t.date === selectedCalendarDate);
         return (
@@ -1344,10 +1343,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       )}
     </div>
   );
-} // End of LedgerView
+}
 
-
-        
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
@@ -1358,7 +1355,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   
   const [isDeliverySummaryOpen, setIsDeliverySummaryOpen] = useState(false);
   
-  // 💡 [V4.9] 배달 중 실시간 중간 계산기를 위한 임시 상태 (DB 저장 X)
   const [isLiveCalcOpen, setIsLiveCalcOpen] = useState(false);
   const [liveData, setLiveData] = useState({
     amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
@@ -1367,6 +1363,13 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
+
+  // 💡 [V5.0] 자정 분할 및 데이터 보호를 위한 Queue와 Recovery State 추가
+  const [splitQueue, setSplitQueue] = useState([]);
+  const [recoveryShift, setRecoveryShift] = useState(() => {
+    const saved = localStorage.getItem('hyunaRecoveryShift');
+    return saved ? JSON.parse(saved) : null;
+  });
 
   useEffect(() => {
     setCalYear(selectedYear);
@@ -1379,34 +1382,15 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [editingDeliveryShift, setEditingDeliveryShift] = useState(null);
-  const [deliveryFormData, setDeliveryFormData] = useState({ 
-    date: todayStr, startTime: '', endTime: '', 
-    amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
-    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
-  });
+  
+  const emptyForm = { date: todayStr, startTime: '', endTime: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' };
+  const [deliveryFormData, setDeliveryFormData] = useState(emptyForm);
 
-  // 💡 [V4.9] 실시간 시급/단가 계산기 (초침 갱신 제거, 분 단위 계산)
   const liveMetrics = useMemo(() => {
-    const amt = 
-      (parseInt(liveData.amountHyunaBaemin.replace(/,/g, ''))||0) + 
-      (parseInt(liveData.amountHyunaCoupang.replace(/,/g, ''))||0) + 
-      (parseInt(liveData.amountJunghoonBaemin.replace(/,/g, ''))||0) + 
-      (parseInt(liveData.amountJunghoonCoupang.replace(/,/g, ''))||0);
-    const cnt = 
-      (parseInt(liveData.countHyunaBaemin)||0) + 
-      (parseInt(liveData.countHyunaCoupang)||0) + 
-      (parseInt(liveData.countJunghoonBaemin)||0) + 
-      (parseInt(liveData.countJunghoonCoupang)||0);
-      
-    const activeMinutes = Math.floor(elapsedSeconds / 60); 
-    const hours = activeMinutes / 60;
-    
-    return {
-      totalAmt: amt,
-      totalCnt: cnt,
-      avg: cnt > 0 ? Math.round(amt / cnt) : 0,
-      hourly: hours > 0 ? Math.round(amt / hours) : 0
-    };
+    const amt = (parseInt(liveData.amountHyunaBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountHyunaCoupang.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonCoupang.replace(/,/g, ''))||0);
+    const cnt = (parseInt(liveData.countHyunaBaemin)||0) + (parseInt(liveData.countHyunaCoupang)||0) + (parseInt(liveData.countJunghoonBaemin)||0) + (parseInt(liveData.countJunghoonCoupang)||0);
+    const activeMinutes = Math.floor(elapsedSeconds / 60); const hours = activeMinutes / 60;
+    return { totalAmt: amt, totalCnt: cnt, avg: cnt > 0 ? Math.round(amt / cnt) : 0, hourly: hours > 0 ? Math.round(amt / hours) : 0 };
   }, [liveData, elapsedSeconds]);
 
   const filteredDailyDeliveries = useMemo(() => {
@@ -1421,10 +1405,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const deliveryFilteredTotal = filteredDailyDeliveries.reduce((a,b) => a + (b.amount||0), 0);
   const deliveryFilteredCount = filteredDailyDeliveries.reduce((a,b) => a + (b.count||0), 0);
   const deliveryAvgPerDelivery = deliveryFilteredCount > 0 ? Math.round(deliveryFilteredTotal / deliveryFilteredCount) : 0;
-
   const filteredHyunaItems = filteredDailyDeliveries.filter(d => d.earner === '현아');
   const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
-
   const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
 
   const dailyShifts = useMemo(() => {
@@ -1432,25 +1414,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     filteredDailyDeliveries.forEach(d => {
         if(!d.date) return;
         if(!shiftsByDate[d.date]) shiftsByDate[d.date] = {};
-        
         const shiftKey = (d.startTime && d.endTime) ? `${d.startTime}-${d.endTime}` : `no-time-${d.id}`;
-        
-        if(!shiftsByDate[d.date][shiftKey]) {
-            shiftsByDate[d.date][shiftKey] = {
-                id: shiftKey,
-                date: d.date,
-                startTime: d.startTime,
-                endTime: d.endTime,
-                items: [],
-                totalAmt: 0,
-                totalCnt: 0
-            };
-        }
+        if(!shiftsByDate[d.date][shiftKey]) { shiftsByDate[d.date][shiftKey] = { id: shiftKey, date: d.date, startTime: d.startTime, endTime: d.endTime, items: [], totalAmt: 0, totalCnt: 0 }; }
         shiftsByDate[d.date][shiftKey].items.push(d);
         shiftsByDate[d.date][shiftKey].totalAmt += (d.amount || 0);
         shiftsByDate[d.date][shiftKey].totalCnt += (d.count || 0);
     });
-    
     const result = {};
     Object.keys(shiftsByDate).sort((a,b)=>new Date(b)-new Date(a)).forEach(date => {
         result[date] = Object.values(shiftsByDate[date]).sort((a,b) => (b.startTime||'').localeCompare(a.startTime||''));
@@ -1459,17 +1428,13 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   }, [filteredDailyDeliveries]);
 
   const dailyDates = Object.keys(dailyShifts);
-
   const clearedPaydays = userSettings.clearedPaydays || [];
 
   const pendingByPayday = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
       const pd = getPaydayStr(d.date);
-      if (!pd) return; 
-      if (pd < '2026-05-01') return; 
-      if (clearedPaydays.includes(pd)) return; 
-      
+      if (!pd || pd < '2026-05-01' || clearedPaydays.includes(pd)) return; 
       if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
       groups[pd].total += (d.amount || 0);
       if (d.earner === '현아') groups[pd].hyuna += (d.amount || 0);
@@ -1480,7 +1445,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   }, [dailyDeliveries, clearedPaydays]);
 
   const upcomingPaydays = Object.keys(pendingByPayday).sort();
-
   const paydayGroups = useMemo(() => {
     const groups = {};
     (dailyDeliveries || []).forEach(d => {
@@ -1495,35 +1459,22 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     return groups;
   }, [dailyDeliveries]);
 
-  const pastPaydays = Object.keys(paydayGroups)
-    .filter(pd => clearedPaydays.includes(pd) || pd < '2026-05-01')
-    .sort((a,b) => b.localeCompare(a));
+  const pastPaydays = Object.keys(paydayGroups).filter(pd => clearedPaydays.includes(pd) || pd < '2026-05-01').sort((a,b) => b.localeCompare(a));
 
   const getGroupMetrics = (items) => {
-    let totalMins = 0;
-    const byDate = {};
-    items.forEach(d => {
-      if(!d.date) return;
-      if(!byDate[d.date]) byDate[d.date] = [];
-      byDate[d.date].push(d);
-    });
-    
+    let totalMins = 0; const byDate = {};
+    items.forEach(d => { if(!d.date) return; if(!byDate[d.date]) byDate[d.date] = []; byDate[d.date].push(d); });
     Object.values(byDate).forEach(dayItems => {
       let intervals = [];
       dayItems.forEach(d => {
-        if(d.startTime && d.endTime && typeof d.startTime === 'string' && typeof d.endTime === 'string') {
-          let [sh, sm] = d.startTime.split(':').map(Number);
-          let [eh, em] = d.endTime.split(':').map(Number);
-          if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
-            let start = sh * 60 + sm;
-            let end = eh * 60 + em;
-            if (end <= start) end += 1440; 
-            intervals.push({start, end});
-          }
+        if(d.startTime && d.endTime) {
+          let [sh, sm] = d.startTime.split(':').map(Number); let [eh, em] = d.endTime.split(':').map(Number);
+          let start = sh * 60 + sm; let end = eh * 60 + em;
+          if (end <= start) end += 1440; 
+          intervals.push({start, end});
         }
       });
-      intervals.sort((a,b) => a.start - b.start);
-      let merged = [];
+      intervals.sort((a,b) => a.start - b.start); let merged = [];
       if (intervals.length > 0) {
         let current = {...intervals[0]};
         for(let i=1; i<intervals.length; i++) {
@@ -1534,45 +1485,46 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       }
       totalMins += merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
     });
-    
-    const totalAmt = items.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-    const totalCnt = items.reduce((acc, curr) => acc + (curr.count || 0), 0);
-    let hours = Math.floor(totalMins / 60);
-    let mins = totalMins % 60;
-    let durationStr = totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-';
-    let perDelivery = totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0;
-    let hourlyRate = totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0;
-    
-    return { durationStr, totalCnt, totalAmt, perDelivery, hourlyRate };
+    const totalAmt = items.reduce((acc, curr) => acc + (curr.amount || 0), 0); const totalCnt = items.reduce((acc, curr) => acc + (curr.count || 0), 0);
+    let hours = Math.floor(totalMins / 60); let mins = totalMins % 60;
+    return { durationStr: totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-', totalCnt, totalAmt, perDelivery: totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0, hourlyRate: totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0 };
   };
 
-  const handleClearPayday = async (pd) => {
-    if (!user) return;
-    const newCleared = [...clearedPaydays, pd];
-    if (isFirebaseEnabled) {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared });
-    }
-    setSelectedWeeklySummary(null);
-  };
+  const handleClearPayday = async (pd) => { if (!user) return; const newCleared = [...clearedPaydays, pd]; if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
+  const handleUndoClearPayday = async (pd) => { if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return; const newCleared = clearedPaydays.filter(p => p !== pd); if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
 
-  const handleUndoClearPayday = async (pd) => {
-    if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return;
-    const newCleared = clearedPaydays.filter(p => p !== pd);
-    if (isFirebaseEnabled) {
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared });
-    }
-    setSelectedWeeklySummary(null);
+  // 💡 [V5.0] 오늘 날짜 해당 플랫폼/사용자의 '이미 저장된' 금액과 건수를 가져오는 함수 (자동 뺄셈용)
+  const getTodaySaved = (earner, platform, targetDate) => {
+    let amt = 0, cnt = 0;
+    (dailyDeliveries || []).forEach(d => {
+       if (d.date === targetDate && d.earner === earner && d.platform === platform) {
+           amt += (d.amount || 0); cnt += (d.count || 0);
+       }
+    });
+    return { amt, cnt };
   };
 
   const handleDeliverySubmit = async (e) => {
-    e.preventDefault();
-    if (!user) return;
+    e.preventDefault(); if (!user) return;
+    const timestamp = new Date().toISOString(); const adds = [];
 
-    const timestamp = new Date().toISOString();
-    const adds = [];
-    const createAdd = (amountStr, countStr, earner, platform) => {
-      const amt = parseInt(String(amountStr||0).replace(/,/g, ''), 10);
-      if(amt > 0) adds.push({ date: deliveryFormData.date, earner, platform, amount: amt, count: parseInt(countStr) || 0, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime, updatedAt: timestamp, updatedBy: currentUser });
+    const createAdd = (inputAmtStr, inputCntStr, earner, platform) => {
+      const inputAmt = parseInt(String(inputAmtStr||0).replace(/,/g, ''), 10) || 0;
+      const inputCnt = parseInt(String(inputCntStr||0).replace(/,/g, ''), 10) || 0;
+      if(inputAmt === 0 && inputCnt === 0) return;
+      
+      let finalAmt = inputAmt, finalCnt = inputCnt;
+      
+      // 💡 [V5.0] 새로운 기록 작성 중이라면 '기존에 이미 저장된 오늘치 데이터'를 자동으로 빼줌 (차액 계산)
+      if (!editingDeliveryShift) {
+         const saved = getTodaySaved(earner, platform, deliveryFormData.date);
+         finalAmt = Math.max(0, inputAmt - saved.amt);
+         finalCnt = Math.max(0, inputCnt - saved.cnt);
+      }
+      
+      if(finalAmt > 0 || finalCnt > 0) {
+         adds.push({ date: deliveryFormData.date, earner, platform, amount: finalAmt, count: finalCnt, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime, updatedAt: timestamp, updatedBy: currentUser });
+      }
     };
 
     createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
@@ -1580,176 +1532,211 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     createAdd(deliveryFormData.amountHyunaBaemin, deliveryFormData.countHyunaBaemin, '현아', '배민');
     createAdd(deliveryFormData.amountHyunaCoupang, deliveryFormData.countHyunaCoupang, '현아', '쿠팡');
 
-    if (adds.length === 0) return;
-
-    if (editingDeliveryShift) {
-      if (isFirebaseEnabled) {
-        for(const item of editingDeliveryShift.items) {
-           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
-        }
-        for(const newDel of adds) {
-           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
+    if (adds.length > 0) {
+      if (editingDeliveryShift) {
+        if (isFirebaseEnabled) {
+          for(const item of editingDeliveryShift.items) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id)); }
+          for(const newDel of adds) { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel); }
         }
       } else {
-        setDailyDeliveries(prev => {
-           const filtered = (prev||[]).filter(p => !editingDeliveryShift.items.find(old => old.id === p.id));
-           const newItems = adds.map(a => ({...a, id: Date.now().toString() + Math.random()}));
-           return [...newItems, ...filtered];
-        });
-      }
-    } else {
-      if (isFirebaseEnabled) {
-        for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel);
-      } else {
-        setDailyDeliveries(prev => [...adds.map(a => ({...a, id: Date.now().toString() + Math.random()})), ...(prev||[])]);
+        if (isFirebaseEnabled) { for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel); }
       }
     }
     
-    setIsDeliveryModalOpen(false); 
-    setEditingDeliveryShift(null);
+    // 💡 [V5.0] 자정 분할 (스플릿 큐) 처리 로직
+    if (splitQueue.length > 0) {
+       const nextShift = splitQueue[0];
+       setDeliveryFormData({
+           ...emptyForm,
+           date: nextShift.date,
+           startTime: nextShift.startTime,
+           endTime: nextShift.endTime
+       });
+       setSplitQueue(splitQueue.slice(1));
+    } else {
+       // 모든 큐가 끝났으면 보호막 초기화 및 종료
+       localStorage.removeItem('hyunaRecoveryShift');
+       setRecoveryShift(null);
+       setIsDeliveryModalOpen(false); 
+       setEditingDeliveryShift(null);
+       setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); 
+       setIsLiveCalcOpen(false);
+    }
   };
 
   const openEditShiftForm = (shift) => {
-    const form = {
-      date: shift.date,
-      startTime: shift.startTime || '',
-      endTime: shift.endTime || '',
-      amountHyunaBaemin: '', countHyunaBaemin: '',
-      amountHyunaCoupang: '', countHyunaCoupang: '',
-      amountJunghoonBaemin: '', countJunghoonBaemin: '',
-      amountJunghoonCoupang: '', countJunghoonCoupang: '',
-    };
-
+    const form = { ...emptyForm, date: shift.date, startTime: shift.startTime || '', endTime: shift.endTime || '' };
     shift.items.forEach(d => {
        const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
        const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
        form[`amount${earnerEng}${platformEng}`] = String(d.amount || '');
        form[`count${earnerEng}${platformEng}`] = String(d.count || '');
     });
-
-    setDeliveryFormData(form);
-    setEditingDeliveryShift(shift);
-    setSelectedShiftDetail(null); 
-    setIsDeliveryModalOpen(true); 
+    setDeliveryFormData(form); setEditingDeliveryShift(shift); setSelectedShiftDetail(null); setIsDeliveryModalOpen(true); 
   };
 
   const deleteShift = async (shift) => {
     if(!window.confirm('이 시간대의 기록을 통째로 모두 삭제하시겠습니까?')) return;
-
-    if (isFirebaseEnabled && user) {
-        for(const item of shift.items) {
-           await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
-        }
-    } else {
-        setDailyDeliveries(prev => (prev||[]).filter(p => !shift.items.find(old => old.id === p.id)));
-    }
+    if (isFirebaseEnabled && user) { for(const item of shift.items) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id)); } }
     setSelectedShiftDetail(null);
+  };
+
+  // 💡 [V5.0] 데이터 증발 방지를 위한 모달 닫기 제어 함수
+  const handleCloseDeliveryModal = () => {
+     if (window.confirm("창을 닫으시면 마감 기록이 날아갑니다. 정말 닫으시겠습니까?\n(타이머를 오래 켰던 경우 메인 화면에 임시 보관됩니다)")) {
+         setIsDeliveryModalOpen(false);
+         // 30분 이상 탔거나(split이 있거나) 새로운 작성일 때만 임시 저장
+         if (!editingDeliveryShift && deliveryFormData.startTime) {
+             const recoveryData = { formData: deliveryFormData, splitQueue: splitQueue };
+             localStorage.setItem('hyunaRecoveryShift', JSON.stringify(recoveryData));
+             setRecoveryShift(recoveryData);
+         }
+     }
+  };
+
+  // 💡 [V5.0] 차액 실시간 표시용 컴포넌트
+  const NetDiffInfo = ({ earner, platform, inputAmt, inputCnt, date }) => {
+     if (editingDeliveryShift) return null;
+     const saved = getTodaySaved(earner, platform, date);
+     if (saved.amt === 0 && saved.cnt === 0) return null;
+     
+     const netAmt = Math.max(0, (parseInt(String(inputAmt).replace(/,/g,''))||0) - saved.amt);
+     const netCnt = Math.max(0, (parseInt(String(inputCnt).replace(/,/g,''))||0) - saved.cnt);
+     
+     return (
+         <div className="text-[10px] text-blue-500 mt-1 ml-1 font-bold">
+             어제/낮 누적액 {formatLargeMoney(saved.amt)}원 ➔ <span className="text-rose-500 font-black tracking-tight">이번 저장 차액: +{formatLargeMoney(netAmt)}원</span> ({netCnt}건)
+         </div>
+     )
   };
 
   return (
     <div className="flex flex-col gap-2 pb-4 pt-1 animate-in fade-in duration-500">
       
-      {/* 1. 타이머 영역 */}
-      <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-slate-200 flex justify-between items-center mb-1">
-        <div className="flex items-center gap-2 ml-1">
-          {timerActive ? <Timer className="w-5 h-5 text-blue-500 animate-pulse" /> : <Play className="w-5 h-5 text-slate-400" />}
-          <div>
-            <div className="text-sm font-black text-gray-800">실시간 기록 {timerActive && <span className="inline-block w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>}</div>
-            <div className="text-[10px] text-blue-400 font-bold">
-               {timerActive ? (() => {
-                  const sd = new Date(trackingStartTime);
-                  const dayName = ['일','월','화','수','목','금','토'][sd.getDay()];
-                  return `${String(sd.getMonth()+1).padStart(2,'0')}-${String(sd.getDate()).padStart(2,'0')}(${dayName}) ${formatTimeStr(sd)}분부터 근무중`;
-               })() : '시작 버튼을 눌러주세요'}
+      {/* 💡 [V5.0] 저장 안 된 마감 기록(미아 방지) 붉은색 경고 배너 */}
+      {recoveryShift && !timerActive && (
+         <div className="bg-red-50 border border-red-200 rounded-2xl p-3 shadow-sm flex flex-col gap-2 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+               <AlertCircle size={16} className="text-red-500" />
+               <span className="text-xs font-black text-red-600">저장 안 된 마감 기록이 있습니다!</span>
+            </div>
+            <div className="flex gap-2 justify-end">
+                <button onClick={() => {
+                    if(window.confirm('임시 기록을 영구 삭제하시겠습니까?')) {
+                        localStorage.removeItem('hyunaRecoveryShift'); setRecoveryShift(null);
+                    }
+                }} className="bg-white text-red-500 border border-red-200 text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-sm active:scale-95">삭제</button>
+                <button onClick={() => {
+                    setDeliveryFormData(recoveryShift.formData);
+                    setSplitQueue(recoveryShift.splitQueue || []);
+                    setIsDeliveryModalOpen(true);
+                }} className="bg-red-500 text-white text-xs px-4 py-1.5 rounded-lg font-black shadow-md active:scale-95">마감 이어쓰기 🚀</button>
+            </div>
+         </div>
+      )}
+
+      {/* 1. 타이머 & 실시간 대시보드 영역 */}
+      <div className={`bg-white rounded-[2rem] p-4 shadow-md border transition-all duration-500 ${timerActive ? 'border-blue-400 ring-4 ring-blue-50' : 'border-slate-200'}`}>
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3 ml-1">
+            <div className={`p-3 rounded-2xl ${timerActive ? 'bg-blue-500 text-white animate-pulse' : 'bg-slate-100 text-slate-400'}`}>
+               <Timer size={24} />
+            </div>
+            <div>
+              <div className="text-base font-black text-gray-800">실시간 기록 {timerActive && <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-1"></span>}</div>
+              <div className="text-xs text-blue-500 font-bold">
+                 {timerActive ? `${Math.floor(elapsedSeconds/3600)}시간 ${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}분 ${String(elapsedSeconds%60).padStart(2,'0')}초` : '시작 버튼을 눌러주세요'}
+              </div>
             </div>
           </div>
-        </div>
-        <button onClick={() => { 
-          if(timerActive) {
-            const end = new Date();
-            const startObj = new Date(trackingStartTime);
-            
-            // 💡 [V4.9] 배달 완료 모달창 켤 때 완전 빈칸으로 깨끗하게 띄우기
-            setDeliveryFormData({
-              date: getKSTDateStr(),
-              amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '',
-              amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '',
-              startTime: formatTimeStr(startObj),
-              endTime: formatTimeStr(end)
-            });
-            setEditingDeliveryShift(null);
-            handleEndDelivery();
-            
-            // 💡 [V4.9] 휘발성 메모리(중간 계산기 데이터) 싹 지우기
-            setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''});
-            setIsLiveCalcOpen(false);
-            
-            setIsDeliveryModalOpen(true);
-          } else {
-            handleStartDelivery();
-          }
-        }} className={`px-5 py-2.5 rounded-xl font-black text-sm shadow-sm ${timerActive ? 'bg-slate-800 text-white' : 'bg-blue-600 text-white'}`}>
-          {timerActive ? `${Math.floor(elapsedSeconds/3600)}:${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}:${String(elapsedSeconds%60).padStart(2,'0')} 종료` : '시작하기'}
-        </button>
-      </div>
-
-      {/* 💡 [V4.9] 실시간 중간 정산 계산기 (아코디언 토글) */}
-      {timerActive && (
-        <div className="mb-1">
-          <button onClick={() => setIsLiveCalcOpen(!isLiveCalcOpen)} className="w-full bg-white border border-slate-200 rounded-xl p-3 flex justify-center items-center gap-1.5 shadow-sm text-xs font-black text-slate-600 active:bg-slate-50 transition-colors">
-            📊 중간 정산 계산기 {isLiveCalcOpen ? '▲' : '▼'}
-          </button>
-          
-          {isLiveCalcOpen && (
-             <div className="bg-slate-50 rounded-2xl p-4 mt-1 border border-slate-200 shadow-inner animate-in slide-in-from-top-2">
-                {/* 실시간 전광판 */}
-                <div className="grid grid-cols-3 gap-2 mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                   <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">총 수익 ({liveMetrics.totalCnt}건)</div><div className="text-sm font-black text-blue-600">{formatLargeMoney(liveMetrics.totalAmt)}원</div></div>
-                   <div className="text-center border-x border-slate-100"><div className="text-[9px] font-bold text-gray-400 mb-0.5">평균 단가</div><div className="text-sm font-black text-gray-700">{formatLargeMoney(liveMetrics.avg)}원</div></div>
-                   <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
-                </div>
-
-                {/* 간편 입력 폼 (정훈) */}
-                <div className="space-y-2 mb-3">
-                  <div className="flex gap-2 items-center">
-                     <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
-                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonBaemin} onChange={e => setLiveData({...liveData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonBaemin ? formatLargeMoney(liveData.amountJunghoonBaemin) : ''} onChange={e => setLiveData({...liveData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
-                     </div>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                     <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonCoupang} onChange={e => setLiveData({...liveData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonCoupang ? formatLargeMoney(liveData.amountJunghoonCoupang) : ''} onChange={e => setLiveData({...liveData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
-                     </div>
-                  </div>
-                </div>
-
-                {/* 간편 입력 폼 (현아) */}
-                <div className="space-y-2">
-                  <div className="flex gap-2 items-center">
-                     <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
-                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaBaemin} onChange={e => setLiveData({...liveData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaBaemin ? formatLargeMoney(liveData.amountHyunaBaemin) : ''} onChange={e => setLiveData({...liveData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
-                     </div>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                     <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaCoupang} onChange={e => setLiveData({...liveData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaCoupang ? formatLargeMoney(liveData.amountHyunaCoupang) : ''} onChange={e => setLiveData({...liveData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
-                     </div>
-                  </div>
-                </div>
+          <button onClick={() => { 
+            if(timerActive) {
+              if(!window.confirm("운행을 마감하시겠습니까?")) return;
                 
-                <div className="mt-3 text-[9px] text-center text-gray-400 font-bold">운행 종료 시 위 데이터는 자동으로 지워집니다 🧹</div>
-             </div>
-          )}
+              const endObj = new Date();
+              const startObj = new Date(trackingStartTime);
+              const startDateStr = getKSTDateStrFromDate(startObj);
+              const endDateStr = getKSTDateStrFromDate(endObj);
+              
+              // 💡 [V5.0] 자정(00:00) 통과 여부 검사 및 큐(Queue) 분할 세팅
+              if (startDateStr !== endDateStr) {
+                  // 자정을 넘겼으면 오늘(어제 날짜) 23:59분에 끊고, 내일(오늘 날짜) 00:00 부터 남은 시간을 큐에 넣음
+                  setDeliveryFormData({ ...emptyForm, date: startDateStr, startTime: formatTimeStr(startObj), endTime: '23:59' });
+                  setSplitQueue([{ date: endDateStr, startTime: '00:00', endTime: formatTimeStr(endObj) }]);
+              } else {
+                  setDeliveryFormData({ ...emptyForm, date: startDateStr, startTime: formatTimeStr(startObj), endTime: formatTimeStr(endObj) });
+                  setSplitQueue([]);
+              }
+              
+              setEditingDeliveryShift(null);
+              handleEndDelivery();
+              
+              setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''});
+              setIsLiveCalcOpen(false);
+              
+              setIsDeliveryModalOpen(true);
+            } else {
+              setLiveCount(0); setLiveAmount(0); handleStartDelivery();
+            }
+          }} className={`px-6 py-3 rounded-2xl font-black text-sm shadow-md transition-all active:scale-95 ${timerActive ? 'bg-gray-800 text-white' : 'bg-blue-600 text-white'}`}>
+            {timerActive ? '운행 종료' : '배달 시작'}
+          </button>
         </div>
-      )}
+
+        {timerActive && (
+          <div className="mb-1">
+            <button onClick={() => setIsLiveCalcOpen(!isLiveCalcOpen)} className="w-full bg-white border border-slate-200 rounded-xl p-3 flex justify-center items-center gap-1.5 shadow-sm text-xs font-black text-slate-600 active:bg-slate-50 transition-colors">
+              📊 중간 정산 계산기 {isLiveCalcOpen ? '▲' : '▼'}
+            </button>
+            
+            {isLiveCalcOpen && (
+               <div className="bg-slate-50 rounded-2xl p-4 mt-1 border border-slate-200 shadow-inner animate-in slide-in-from-top-2">
+                  <div className="grid grid-cols-3 gap-2 mb-4 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                     <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">총 수익 ({liveMetrics.totalCnt}건)</div><div className="text-sm font-black text-blue-600">{formatLargeMoney(liveMetrics.totalAmt)}원</div></div>
+                     <div className="text-center border-x border-slate-100"><div className="text-[9px] font-bold text-gray-400 mb-0.5">평균 단가</div><div className="text-sm font-black text-gray-700">{formatLargeMoney(liveMetrics.avg)}원</div></div>
+                     <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
+                  </div>
+
+                  <div className="space-y-2 mb-3">
+                    <div className="flex gap-2 items-center">
+                       <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
+                       <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonBaemin} onChange={e => setLiveData({...liveData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                       <div className="flex-1">
+                          <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonBaemin ? formatLargeMoney(liveData.amountJunghoonBaemin) : ''} onChange={e => setLiveData({...liveData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                       </div>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                       <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
+                       <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonCoupang} onChange={e => setLiveData({...liveData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                       <div className="flex-1">
+                          <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonCoupang ? formatLargeMoney(liveData.amountJunghoonCoupang) : ''} onChange={e => setLiveData({...liveData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정훈 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                       <span className="text-[10px] font-bold bg-[#2ac1bc] text-white px-2 py-1 rounded w-10 text-center shrink-0">배민</span>
+                       <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaBaemin} onChange={e => setLiveData({...liveData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                       <div className="flex-1">
+                          <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaBaemin ? formatLargeMoney(liveData.amountHyunaBaemin) : ''} onChange={e => setLiveData({...liveData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 배민 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                       </div>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                       <span className="text-[10px] font-bold bg-[#111111] text-white px-2 py-1 rounded w-10 text-center shrink-0">쿠팡</span>
+                       <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaCoupang} onChange={e => setLiveData({...liveData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[50px] shrink-0 text-xs font-black bg-white rounded-lg px-2 h-[36px] text-center outline-none border border-slate-200 focus:border-blue-400" />
+                       <div className="flex-1">
+                          <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaCoupang ? formatLargeMoney(liveData.amountHyunaCoupang) : ''} onChange={e => setLiveData({...liveData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="현아 쿠팡 금액" className="w-full text-xs font-black bg-white rounded-lg px-3 h-[36px] outline-none border border-slate-200 focus:border-blue-400" />
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3 text-[9px] text-center text-gray-400 font-bold">운행 종료 시 위 데이터는 자동으로 지워집니다 🧹</div>
+               </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* 2. 월간 수익 접기/펴기 영역 */}
       <div>
@@ -2110,11 +2097,19 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
-            onTouchEnd={(e) => handleTouchEnd(e, () => setIsDeliveryModalOpen(false))}
+            // 💡 [V5.0] X 버튼 대신 화면 밖 터치 시에도 증발 방지 로직 적용
+            onTouchEnd={(e) => handleTouchEnd(e, handleCloseDeliveryModal)}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-7 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-500 flex flex-col max-h-[90vh]"
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4 shrink-0"></div>
-            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : '배달 동시 기록 🏍️'}</h2><button onClick={() => setIsDeliveryModalOpen(false)} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : splitQueue.length > 0 ? '이전 시간 정산 기록 🏍️' : '배달 최종 마감 🏍️'}</h2><button onClick={handleCloseDeliveryModal} className="bg-blue-50 text-blue-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            
+            {!editingDeliveryShift && (
+               <div className="bg-blue-50/50 border border-blue-200 text-blue-600 text-[10px] font-bold p-3 rounded-xl mb-4 text-center">
+                  💡 배달앱의 <span className="font-black text-blue-700 underline underline-offset-2">오늘 누적 총수입/총건수</span>를 입력하세요.<br/>(이전에 저장된 기록은 알아서 쏙 빼고 차액만 저장됩니다!)
+               </div>
+            )}
+            
             <form onSubmit={handleDeliverySubmit} className="space-y-4 overflow-y-auto no-scrollbar pb-4">
               
               <div className="flex gap-4 pb-4 border-b border-gray-100 mb-2 w-full">
@@ -2135,19 +2130,26 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
                 <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
                 <div className="space-y-2">
-                  <div className="flex gap-2 items-center">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        </div>
                      </div>
+                     <NetDiffInfo earner="정훈" platform="배민" inputAmt={deliveryFormData.amountJunghoonBaemin} inputCnt={deliveryFormData.countJunghoonBaemin} date={deliveryFormData.date} />
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className="w-full border-t border-blue-100 my-1"></div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        </div>
                      </div>
+                     <NetDiffInfo earner="정훈" platform="쿠팡" inputAmt={deliveryFormData.amountJunghoonCoupang} inputCnt={deliveryFormData.countJunghoonCoupang} date={deliveryFormData.date} />
                   </div>
                 </div>
               </div>
@@ -2155,24 +2157,31 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
                 <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                 <div className="space-y-2">
-                   <div className="flex gap-2 items-center">
+                   <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        </div>
                      </div>
+                     <NetDiffInfo earner="현아" platform="배민" inputAmt={deliveryFormData.amountHyunaBaemin} inputCnt={deliveryFormData.countHyunaBaemin} date={deliveryFormData.date} />
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className="w-full border-t border-slate-200 my-1"></div>
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        </div>
                      </div>
+                     <NetDiffInfo earner="현아" platform="쿠팡" inputAmt={deliveryFormData.amountHyunaCoupang} inputCnt={deliveryFormData.countHyunaCoupang} date={deliveryFormData.date} />
                   </div>
                 </div>
               </div>
               <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full shrink-0 min-h-[56px] flex items-center justify-center whitespace-nowrap bg-blue-600 mt-2 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50">
-                {editingDeliveryShift ? '수정 완료 🚀' : '동시 저장 완료 🚀'}
+                {editingDeliveryShift ? '수정 완료 🚀' : splitQueue.length > 0 ? '이전 타임 저장하고 다음 쓰기 🚀' : '최종 마감 저장 🚀'}
               </button>
             </form>
           </div>
@@ -2181,7 +2190,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     </div>
   );
 }
-                                                                                
+
 // ==========================================
 // 7. ASSETS TAB COMPONENT
 // ==========================================
@@ -2197,10 +2206,11 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
   
   const [isManualBalanceEdit, setIsManualBalanceEdit] = useState(false);
   const [manualBalanceInput, setManualBalanceInput] = useState('');
-
+  
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
+  
   const totalDeposit = depositAssets.reduce((a,b) => a + (b.balance || 0), 0);
   
   const sortedLoans = useMemo(() => {
@@ -2242,7 +2252,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     const newPaidMonths = (loan.paidMonths || []).filter(m => m !== currentMonthKey);
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', loan.id), { paidMonths: newPaidMonths, updatedAt: new Date().toISOString(), updatedBy: currentUser });
   };
-
+  
   const handleAddAssetItem = async (e) => {
     e.preventDefault();
     if (!newAssetFormData.name.trim() || !user) return;
@@ -2260,7 +2270,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     setIsAddAssetModalOpen(false);
     setNewAssetFormData({ assetType: 'deposit', name: '', balance: '', principal: '', rate: '', paymentDate: '1', paymentMethod: '이자' });
   };
-
+  
   const handlePrepaySubmit = async (e) => {
     e.preventDefault();
     if(!user) return;
@@ -2290,10 +2300,8 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
     if (diff === 0) { setIsManualBalanceEdit(false); return; }
     
     if(!window.confirm(`잔액을 ${formatLargeMoney(newBal)}원으로 수정하시겠습니까?\n차액 ${formatLargeMoney(Math.abs(diff))}원은 히스토리에 자동 기록됩니다.`)) return;
-
     const historyItem = { id: Date.now().toString(), date: todayStr, type: diff > 0 ? 'deposit' : 'withdraw', amount: Math.abs(diff), note: '잔액 수동 조정', category: '기타' };
     const newHistory = [historyItem, ...(selectedAssetDetail.history || [])];
-    
     if (isFirebaseEnabled) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'assets', selectedAssetDetail.id), { balance: newBal, history: newHistory, updatedAt: new Date().toISOString(), updatedBy: currentUser });
     setSelectedAssetDetail({...selectedAssetDetail, balance: newBal, history: newHistory});
     setIsManualBalanceEdit(false);
@@ -2348,7 +2356,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
             <div className="relative z-10">
               <div className="text-orange-100 text-[11px] font-bold mb-1 uppercase tracking-widest">총 대출 잔액</div>
               <div className="text-4xl font-black mb-4 tracking-tight leading-none">{formatLargeMoney(totalPrincipal)}<span className="text-xl ml-1 font-bold opacity-80">원</span></div>
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+               <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
                 <div className="flex justify-between items-center"><span className="text-[11px] text-orange-100 font-bold">이번 달 총 납입 예정</span><span className="text-base font-black text-white">{formatLargeMoney(totalMonthlyPayment)}원</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] text-orange-100 font-bold">이번 달 납부 완료</span><span className="text-base font-black text-emerald-300">{formatLargeMoney(totalPaidThisMonth)}원</span></div>
                 <div className="flex justify-between items-center pt-3 border-t border-orange-400/50 mt-1"><span className="text-sm text-white font-bold">이번 달 남은 납입금</span><span className="text-xl font-black text-white">{formatLargeMoney(totalUnpaidThisMonth)}원</span></div>
@@ -2359,7 +2367,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
           <div className="flex justify-between items-center mb-3 px-2">
             <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5"><List size={16} className="text-orange-500"/> 개별 대출 상세</h3>
             <div className="flex items-center gap-2">
-              <button onClick={() => { setNewAssetFormData({...newAssetFormData, assetType: 'loan'}); setIsAddAssetModalOpen(true); }} className="text-[10px] bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg font-black border border-orange-100 flex items-center gap-1"><Plus size={12}/> 대출 추가</button>
+               <button onClick={() => { setNewAssetFormData({...newAssetFormData, assetType: 'loan'}); setIsAddAssetModalOpen(true); }} className="text-[10px] bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg font-black border border-orange-100 flex items-center gap-1"><Plus size={12}/> 대출 추가</button>
               <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg shadow-sm border border-gray-200"><ArrowDownUp size={12} className="text-gray-400" /><select value={loanSortBy} onChange={(e) => { setLoanSortBy(e.target.value); localStorage.setItem('hyunaLoanSortBy', e.target.value); }} className="text-[10px] font-bold text-gray-600 outline-none"><option value="date">납부일순</option><option value="principal">잔액순</option><option value="rate">금리순</option></select></div>
             </div>
           </div>
@@ -2493,11 +2501,9 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
       )}
 
       {selectedAssetDetail && (() => {
-         // 💡 [V4.7] 예적금 월별 간략 요약보기 필터링 (현재 선택된 월 기준)
          const monthHistory = (selectedAssetDetail.history || []).filter(h => h.date.startsWith(currentMonthKey));
          const monthIn = monthHistory.filter(h => h.type === 'deposit' && h.note !== '잔액 수동 조정').reduce((acc, curr) => acc + curr.amount, 0);
          const monthOut = monthHistory.filter(h => h.type === 'withdraw' && h.note !== '잔액 수동 조정').reduce((acc, curr) => acc + curr.amount, 0);
-         
          return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[80] overflow-hidden p-0">
             <div 
@@ -2529,7 +2535,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
                </div>
                
                <div className="overflow-y-auto no-scrollbar flex-1 pb-4 border-t border-gray-100 pt-4">
-                  {/* 💡 [V4.7] 월별 요약 박스 추가 */}
                   <div className="bg-gray-50 rounded-2xl p-3 mb-4 border border-gray-200 flex justify-between items-center shadow-inner">
                      <div className="text-center flex-1 border-r border-gray-200"><div className="text-[10px] font-bold text-blue-500 mb-0.5">{selectedMonth}월 입금</div><div className="text-sm font-black text-blue-600">+{formatLargeMoney(monthIn)}</div></div>
                      <div className="text-center flex-1"><div className="text-[10px] font-bold text-rose-500 mb-0.5">{selectedMonth}월 출금</div><div className="text-sm font-black text-rose-600">-{formatLargeMoney(monthOut)}</div></div>
@@ -2575,7 +2580,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
-
   useEffect(() => {
     setCalYear(selectedYear);
     setCalMonth(selectedMonth);
@@ -2587,7 +2591,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     date: todayStr, endDate: '', title: '', type: '가족일정', isImportant: false, 
     participant: '가족', isYearly: false, calendarType: 'solar' 
   });
-  
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false);
   const [messageFormData, setMessageFormData] = useState({ text: '' });
   const [replyingTo, setReplyingTo] = useState(null);
@@ -2604,19 +2607,33 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [batchDuties, setBatchDuties] = useState({}); 
   const [selectedStamp, setSelectedStamp] = useState('DAY');
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
-  
   const dutyTimelineRef = useRef(null); 
 
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   
-  const topImportantEvents = useMemo(() => (events || []).filter(e => e.isImportant && e.date && (e.endDate ? e.endDate >= todayStr : e.date >= todayStr)).sort((a,b) => (a.date||'').localeCompare(b.date||'')).slice(0, 3), [events, todayStr]);
-  const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
-  
-  const timelineEventsList = useMemo(() => familyEventsList.filter(e => (e.endDate || e.date) >= todayStr), [familyEventsList, todayStr]);
+  // 💡 [V5.0] 주요 일정은 오늘부터 '딱 10일 전(D-10)' 이내의 항목만 보이도록 필터링 엔진 장착!
+  const topImportantEvents = useMemo(() => {
+    return (events || [])
+      .filter(e => {
+        if (!e.isImportant || !e.date) return false;
+        const end = e.endDate || e.date;
+        if (end < todayStr) return false; 
+        
+        const today = new Date(todayStr);
+        const target = new Date(e.date);
+        if(isNaN(target.getTime())) return false;
+        
+        const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays <= 10;
+      })
+      .sort((a,b) => (a.date||'').localeCompare(b.date||''))
+      .slice(0, 3);
+  }, [events, todayStr]);
 
+  const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
+  const timelineEventsList = useMemo(() => familyEventsList.filter(e => (e.endDate || e.date) >= todayStr), [familyEventsList, todayStr]);
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
-
   const getSmartIcon = (title, type) => {
     const t = title || '';
     if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
@@ -2631,7 +2648,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     if (type === '회식') return '🍻';
     return '⭐'; 
   };
-
   useEffect(() => {
     if(isDutyBatchModalOpen) {
       setContinuousCursorDateStr(`${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}-01`);
@@ -2640,11 +2656,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       setBatchDuties(current);
     }
   }, [dutyBatchYear, dutyBatchMonth, isDutyBatchModalOpen, events]);
-
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     if (!eventFormData.title.trim() || !user) return;
-    
     const finalData = { ...eventFormData, updatedAt: new Date().toISOString(), updatedBy: currentUser };
     if (!finalData.endDate || finalData.endDate < finalData.date) {
       finalData.endDate = finalData.date;
@@ -2659,7 +2673,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsEventModalOpen(false); setEditingEventId(null); setSelectedEventDetail(null);
   };
-
   const deleteEvent = async (id) => {
     if(!window.confirm('일정을 삭제하시겠습니까?')) return;
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
@@ -2680,7 +2693,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData({ text: '' });
   };
-
   const handleAddReplySubmit = async (msgId) => {
     if (!replyText.trim() || !user) return;
     const msg = messages.find(m => m.id === msgId);
@@ -2691,7 +2703,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages(messages.map(m => m.id === msgId ? { ...m, replies: updatedReplies, isoUpdate: new Date().toISOString() } : m));
     setReplyText(''); setReplyingTo(null);
   };
-
   const handleCheckMessage = async (id) => {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
@@ -2703,7 +2714,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
     }
   };
-
   const handleQuickDutyUpdate = async (dateStr, newDuty) => {
     if (!user) return;
     const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
@@ -2729,7 +2739,8 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       }
     }
     if (changed) {
-      const msgText = `- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ? existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}`;
+      const msgText = `- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ?
+      existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}`;
       const d = new Date(); 
       let hh = d.getHours();
       const ampm = hh >= 12 ? '오후' : '오전';
@@ -2747,7 +2758,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setContinuousCursorDateStr(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}-01`);
     setIsDutyBatchModalOpen(true);
   };
-
   const handleContinuousStamp = (duty) => {
     if (duty === 'BACK') {
        const d = new Date(continuousCursorDateStr);
@@ -2780,7 +2790,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
   };
-
   const toggleCustomHoliday = async (dateStr) => {
      if (!user) return;
      let newHolidays = [...customHolidays];
@@ -2862,11 +2871,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               const duty = dutyEvent ? dutyEvent.title : 'OFF';
               const isToday = d === todayStr;
               let dutyColor = duty === 'DAY' ? 'bg-blue-50 text-blue-600 border-blue-200' : duty === 'EVE' ? 'bg-orange-50 text-orange-600 border-orange-200' : duty === 'OFF' ? 'bg-pink-50 text-pink-600 border-pink-200' : 'bg-white text-gray-400 border-gray-200';
-              
               return (
                 <div key={d} id={isToday ? 'duty-today' : undefined} onClick={() => { setSelectedDutyEditDate(d); setIsDutyEditing(false); setIsDutyEditModalOpen(true); }} 
                      className={`flex-none w-[64px] py-1.5 px-2.5 rounded-[1.2rem] border shadow-sm flex flex-col items-center justify-center cursor-pointer relative transition-all ${dutyColor} ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 scale-105 z-10 shadow-sm' : ''}`}>
-                  {/* 💡 [수정됨] 오빠님이 원하신 -top-3.5 적용 */}
                   {isToday && <div className={`text-[10px] font-black text-gray-800 mb-0.5 absolute -top-3.5 bg-white px-2 py-0.5 rounded-full border border-gray-300 shadow-sm whitespace-nowrap z-20`}>TODAY</div>}
                   <div className="text-[10px] font-bold mb-1 mt-1">{parseInt(d.slice(5,7))}/{parseInt(d.slice(8,10))}</div>
                   <div className="text-xs font-black">{['일','월','화','수','목','금','토'][new Date(d).getDay()]}</div>
@@ -2881,7 +2888,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       {topImportantEvents.length > 0 && (
         <div className="bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
           <Star className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
-          <h3 className="text-[11px] font-bold opacity-90 mb-3 flex items-center gap-1.5"><Target size={14}/> 다가오는 중요 일정</h3>
+          <h3 className="text-[11px] font-bold opacity-90 mb-3 flex items-center gap-1.5"><Target size={14}/> 다가오는 중요 일정 (D-10)</h3>
           <div className="space-y-1.5 relative z-10">
             {topImportantEvents.map(e => (
               <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-transform">
@@ -2987,7 +2994,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               count++;
           }
         });
-
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-right mt-1">
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
@@ -3005,15 +3011,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  const dayEvents = eventsByDate[dateStr] || [];
                  const isToday = dateStr === todayStr;
                  const hasEvent = dayEvents.length > 0;
-                 
                  const holidayName = getHolidayName(dateStr);
                  const isCustomHoliday = customHolidays.includes(dateStr);
                  const dayIndex = (i % 7);
-                 
                  const isRed = dayIndex === 0 || holidayName || isCustomHoliday;
                  const isBlue = dayIndex === 6 && !holidayName && !isCustomHoliday;
                  const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-gray-600';
-
                  return (
                    <div key={`day-${i}`} 
                      onClick={() => { 
@@ -3072,7 +3075,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                     dayEvents.map(e => (
                       <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
+                           <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
                           <div className="truncate">
                             <div className="flex items-center gap-1 mb-0.5">
                                <span className="text-[10px] font-bold text-pink-500">{e.type}</span>
@@ -3089,10 +3092,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
                {/* 💡 일정 추가 버튼 */}
                <button onClick={() => { 
-                   setSelectedCalendarDate(null); 
+                   setSelectedCalendarDate(null);
                    setEventFormData({ date: selectedCalendarDate, endDate: selectedCalendarDate, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); 
                    setEditingEventId(null); 
-                   setIsEventModalOpen(true); 
+                   setIsEventModalOpen(true);
                }} className="w-full bg-pink-50 text-pink-600 border border-pink-200 mt-4 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2">
                   <Plus size={18}/> 이 날짜에 일정 추가하기
                </button>
@@ -3182,7 +3185,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                       <option value="회식">회식</option>
                       <option value="기타">기타</option>
                    </select>
-                 </div>
+                </div>
               </div>
 
               {/* 💡 [수정됨] 나만의 빨간 날 지정을 일정 폼 안으로 쏙! */}
@@ -3366,7 +3369,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   );
 }
 
-        
 // ==========================================
 // 9. MAIN APP CONTENT
 // ==========================================
@@ -3464,6 +3466,7 @@ function AppContent() {
         checkLockStatus();
       }
     };
+
     checkLockStatus();
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -3549,7 +3552,7 @@ function AppContent() {
   let headerColor = 'text-indigo-500';
   const currentLedgerTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.ledger || 'pink'];
   const currentCalendarTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.calendar || 'sky'];
-  
+
   if (activeTab === 'ledger') {
      appBgColor = `${currentLedgerTheme.bg50}/30`;
      headerColor = currentLedgerTheme.text500;
@@ -3586,7 +3589,7 @@ function AppContent() {
           <header className="pt-10 pb-4 px-6 flex justify-between items-center">
             <div>
               <span className={`text-[10px] font-black tracking-widest uppercase block mb-0.5 ${headerColor}`}>
-                {activeTab === 'ledger' ? '🌸 Lovely Planner' : activeTab === 'delivery' ? '🏍️ Delivery Pro' : activeTab === 'calendar' ? '🌿 Family Calendar' : 'Family Planner'}
+                 {activeTab === 'ledger' ? '🌸 Lovely Planner' : activeTab === 'delivery' ? '🏍️ Delivery Pro' : activeTab === 'calendar' ? '🌿 Family Calendar' : 'Family Planner'}
               </span>
               <h1 className="text-xl font-black tracking-tight">현아에셋 PRO</h1>
             </div>
@@ -3680,11 +3683,12 @@ function AppContent() {
 // 10. ERROR BOUNDARY
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props);
-  this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(error, errorInfo) { console.error(error, errorInfo);
-  this.setState({ errorInfo }); }
+    this.setState({ errorInfo }); 
+  }
   render() {
     if (this.state.hasError) {
       return (
