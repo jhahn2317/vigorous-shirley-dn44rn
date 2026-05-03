@@ -1060,14 +1060,20 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
-      {selectedCalendarDate && (() => {
-        const dayEvents = (ledger || []).filter(t => t.date === selectedCalendarDate);
+{selectedCalendarDate && (() => {
+        const dayEvents = familyEventsList.filter(e => {
+           const start = e.date;
+           const end = e.endDate || e.date;
+           return selectedCalendarDate >= start && selectedCalendarDate <= end;
+        });
+
         return (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[70] overflow-hidden p-0">
             <div 
               onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
               onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedCalendarDate(null))}
-              className="bg-white w-full max-w-md rounded-t-[2.5rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
+              className="bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[80vh] border-t-8 border-pink-500"
             >
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
@@ -1078,23 +1084,38 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                </div>
                
                <div className="overflow-y-auto no-scrollbar space-y-3 flex-1 pb-4">
-                  {dayEvents.length > 0 ? (
-                      dayEvents.map(t => (
-                        <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-pink-50 transition-colors active:scale-95">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                             <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
-                             <div className="truncate">
-                               <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
-                               <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
-                             </div>
-                          </div>
-                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
-                        </div>
-                      ))
+                  {dayEvents.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                          이 날짜에 등록된 일정이 없습니다. 🍃
+                      </div>
                   ) : (
-                      <div className="text-center py-12 text-gray-400 font-bold bg-gray-50 rounded-2xl border border-dashed border-gray-200">이 날짜에는 등록된 내역이 없어요! 🍃</div>
+                    dayEvents.map(e => (
+                      <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
+                          <div className="truncate">
+                            <div className="flex items-center gap-1 mb-0.5">
+                               <span className="text-[10px] font-bold text-pink-500">{e.type}</span>
+                               {e.participant && <span className="text-[8px] bg-white border text-gray-500 px-1 py-0.5 rounded shadow-sm">{e.participant === '현아' ? '👩' : e.participant === '정훈' ? '🧑' : '👨‍👩‍👦'}</span>}
+                            </div>
+                            <div className="font-black text-base text-gray-800 flex items-center gap-1">{e.title} {e.isImportant && <Star size={12} className="text-amber-400 fill-amber-400"/>}</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="text-gray-300 w-5 h-5 shrink-0" />
+                      </div>
+                    ))
                   )}
                </div>
+
+               {/* 💡 오빠님 요청: 해당 날짜에 바로 일정 등록하는 버튼 부활! */}
+               <button onClick={() => { 
+                   setSelectedCalendarDate(null); 
+                   setEventFormData({ date: selectedCalendarDate, endDate: selectedCalendarDate, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); 
+                   setEditingEventId(null); 
+                   setIsEventModalOpen(true); 
+               }} className="w-full bg-pink-50 text-pink-600 border border-pink-200 mt-4 py-3.5 rounded-[1.5rem] font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2">
+                  <Plus size={18}/> 이 날짜에 일정 추가하기
+               </button>
             </div>
          </div>
         );
@@ -2954,7 +2975,19 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    <input type="date" value={eventFormData.endDate || ''} onChange={e=>setEventFormData({...eventFormData, endDate:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none" />
                 </div>
               </div>
-
+                                                                                  
+              {/* 💡 [V4.7 수정] 빨간 날 지정을 일정 등록 모달 안으로 이동 */}
+              <div className="bg-red-50 p-3 rounded-2xl border border-red-100 flex items-center justify-between mb-2">
+                <div>
+                   <div className="text-sm font-black text-red-600 flex items-center gap-1">🔴 달력에 빨간 날로 표시</div>
+                   <div className="text-[9px] text-red-500 font-bold mt-0.5">우리가족 임시휴무, 연차 등 쉬는 날!</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                   <input type="checkbox" className="sr-only peer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
+                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                </label>
+              </div>
+                                                                                  
               <div className="flex gap-3 w-full">
                 <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">참석자</label>
