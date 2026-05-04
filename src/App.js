@@ -1456,7 +1456,1141 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   );
 }
 
-                                                                   
+// ==========================================
+// 6. DELIVERY TAB COMPONENT
+// ==========================================
+function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selectedMonth, currentMonthKey, todayStr, userSettings, timerActive, trackingStartTime, elapsedSeconds, handleStartDelivery, handleEndDelivery, user, isManageMode, currentUser, customHolidays }) {
+  const [deliverySubTab, setDeliverySubTab] = useState('daily');
+  const [deliveryDateRange, setDeliveryDateRange] = useState({ start: '', end: '' });
+  const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
+  
+  const [isDeliverySummaryOpen, setIsDeliverySummaryOpen] = useState(false);
+  const [isPendingSummaryOpen, setIsPendingSummaryOpen] = useState(true);
+  const [isYearlySummaryOpen, setIsYearlySummaryOpen] = useState(false);
+  
+  const [isLiveCalcOpen, setIsLiveCalcOpen] = useState(false);
+  const [liveData, setLiveData] = useState({
+    amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
+    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
+  });
+
+  const [calYear, setCalYear] = useState(selectedYear);
+  const [calMonth, setCalMonth] = useState(selectedMonth);
+
+  const [splitQueue, setSplitQueue] = useState([]);
+  const [recoveryShift, setRecoveryShift] = useState(() => {
+    const saved = localStorage.getItem('hyunaRecoveryShift');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [expandedDailyDates, setExpandedDailyDates] = useState({});
+  const toggleDailyDate = (date, e) => {
+    e.stopPropagation(); 
+    setExpandedDailyDates(prev => ({ ...prev, [date]: !prev[date] }));
+  };
+
+  useEffect(() => {
+    setCalYear(selectedYear);
+    setCalMonth(selectedMonth);
+  }, [selectedYear, selectedMonth]);
+  
+  const [selectedShiftDetail, setSelectedShiftDetail] = useState(null);
+  const [selectedWeeklySummary, setSelectedWeeklySummary] = useState(null);
+  const [selectedDailySummary, setSelectedDailySummary] = useState(null);
+
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [editingDeliveryShift, setEditingDeliveryShift] = useState(null);
+  
+  const emptyForm = { date: todayStr, startTime: '', endTime: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' };
+  const [deliveryFormData, setDeliveryFormData] = useState(emptyForm);
+
+  const getTodaySaved = (earner, platform, targetDate) => {
+    let amt = 0, cnt = 0;
+    (dailyDeliveries || []).forEach(d => {
+       if (d.date === targetDate && d.earner === earner && d.platform === platform) {
+           amt += (d.amount || 0); cnt += (d.count || 0);
+       }
+    });
+    return { amt, cnt };
+  };
+
+  const liveMetrics = useMemo(() => {
+    const inputAmt = (parseInt(liveData.amountHyunaBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountHyunaCoupang.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonCoupang.replace(/,/g, ''))||0);
+    const inputCnt = (parseInt(liveData.countHyunaBaemin)||0) + (parseInt(liveData.countHyunaCoupang)||0) + (parseInt(liveData.countJunghoonBaemin)||0) + (parseInt(liveData.countJunghoonCoupang)||0);
+
+    let savedAmt = 0, savedCnt = 0;
+    if (timerActive && trackingStartTime) {
+        const dObj = new Date(trackingStartTime);
+        const utc = dObj.getTime() + (dObj.getTimezoneOffset() * 60000);
+        const kstTime = new Date(utc + (9 * 3600000));
+        const dateStr = `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
+
+        const savedHB = getTodaySaved('현아', '배민', dateStr);
+        const savedHC = getTodaySaved('현아', '쿠팡', dateStr);
+        const savedJB = getTodaySaved('정훈', '배민', dateStr);
+        const savedJC = getTodaySaved('정훈', '쿠팡', dateStr);
+
+        if (liveData.amountHyunaBaemin) { savedAmt += savedHB.amt; savedCnt += savedHB.cnt; }
+        if (liveData.amountHyunaCoupang) { savedAmt += savedHC.amt; savedCnt += savedHC.cnt; }
+        if (liveData.amountJunghoonBaemin) { savedAmt += savedJB.amt; savedCnt += savedJB.cnt; }
+        if (liveData.amountJunghoonCoupang) { savedAmt += savedJC.amt; savedCnt += savedJC.cnt; }
+    }
+
+    const currentShiftAmt = Math.max(0, inputAmt - savedAmt);
+    const currentShiftCnt = Math.max(0, inputCnt - savedCnt);
+
+    const activeMinutes = Math.floor(elapsedSeconds / 60); const hours = activeMinutes / 60;
+    return { 
+       totalAmt: currentShiftAmt, 
+       totalCnt: currentShiftCnt, 
+       avg: currentShiftCnt > 0 ? Math.round(currentShiftAmt / currentShiftCnt) : 0, 
+       hourly: hours > 0 ? Math.round(currentShiftAmt / hours) : 0,
+       deductedAmt: savedAmt
+    };
+  }, [liveData, elapsedSeconds, timerActive, trackingStartTime, dailyDeliveries]);
+
+  const filteredDailyDeliveries = useMemo(() => {
+    let data = dailyDeliveries || [];
+    if (deliveryDateRange.start || deliveryDateRange.end) {
+      if (deliveryDateRange.start) data = data.filter(d => typeof d?.date === 'string' && d.date >= deliveryDateRange.start);
+      if (deliveryDateRange.end) data = data.filter(d => typeof d?.date === 'string' && d.date <= deliveryDateRange.end);
+    } else data = data.filter(d => typeof d?.date === 'string' && d.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
+    return data;
+  }, [dailyDeliveries, calYear, calMonth, deliveryDateRange]);
+
+  const deliveryFilteredTotal = filteredDailyDeliveries.reduce((a,b) => a + (b.amount||0), 0);
+  const deliveryFilteredCount = filteredDailyDeliveries.reduce((a,b) => a + (b.count||0), 0);
+  const deliveryAvgPerDelivery = deliveryFilteredCount > 0 ? Math.round(deliveryFilteredTotal / deliveryFilteredCount) : 0;
+  const filteredHyunaItems = filteredDailyDeliveries.filter(d => d.earner === '현아');
+  const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
+
+  const dailyShifts = useMemo(() => {
+    const shiftsByDate = {};
+    filteredDailyDeliveries.forEach(d => {
+        if(!d.date) return;
+        if(!shiftsByDate[d.date]) shiftsByDate[d.date] = {};
+        const shiftKey = (d.startTime && d.endTime) ? `${d.startTime}-${d.endTime}` : `no-time-${d.id}`;
+        if(!shiftsByDate[d.date][shiftKey]) { shiftsByDate[d.date][shiftKey] = { id: shiftKey, date: d.date, startTime: d.startTime, endTime: d.endTime, items: [], totalAmt: 0, totalCnt: 0 }; }
+        shiftsByDate[d.date][shiftKey].items.push(d);
+        shiftsByDate[d.date][shiftKey].totalAmt += (d.amount || 0);
+        shiftsByDate[d.date][shiftKey].totalCnt += (d.count || 0);
+    });
+    const result = {};
+    Object.keys(shiftsByDate).sort((a,b)=>new Date(b)-new Date(a)).forEach(date => {
+        result[date] = Object.values(shiftsByDate[date]).sort((a,b) => (b.startTime||'').localeCompare(a.startTime||''));
+    });
+    return result;
+  }, [filteredDailyDeliveries]);
+
+  const dailyDates = Object.keys(dailyShifts);
+  const clearedPaydays = userSettings.clearedPaydays || [];
+
+  const pendingByPayday = useMemo(() => {
+    const groups = {};
+    (dailyDeliveries || []).forEach(d => {
+      const pd = getPaydayStr(d.date);
+      if (!pd || pd < '2026-05-01' || clearedPaydays.includes(pd)) return; 
+      if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
+      groups[pd].total += (d.amount || 0);
+      if (d.earner === '현아') groups[pd].hyuna += (d.amount || 0);
+      if (d.earner === '정훈') groups[pd].junghoon += (d.amount || 0);
+      groups[pd].items.push(d);
+    });
+    return groups;
+  }, [dailyDeliveries, clearedPaydays]);
+
+  const upcomingPaydays = Object.keys(pendingByPayday).sort();
+  const paydayGroups = useMemo(() => {
+    const groups = {};
+    (dailyDeliveries || []).forEach(d => {
+      const pd = getPaydayStr(d.date);
+      if (!pd) return; 
+      if (!groups[pd]) groups[pd] = { total: 0, hyuna: 0, junghoon: 0, items: [] };
+      groups[pd].total += (d.amount||0);
+      if (d.earner === '현아') groups[pd].hyuna += (d.amount||0);
+      if (d.earner === '정훈') groups[pd].junghoon += (d.amount||0);
+      groups[pd].items.push(d);
+    });
+    return groups;
+  }, [dailyDeliveries]);
+
+  const pastPaydays = Object.keys(paydayGroups).filter(pd => clearedPaydays.includes(pd) || pd < '2026-05-01').sort((a,b) => b.localeCompare(a));
+
+  const getGroupMetrics = (items) => {
+    let totalMins = 0; const byDate = {};
+    items.forEach(d => { if(!d.date) return; if(!byDate[d.date]) byDate[d.date] = []; byDate[d.date].push(d); });
+    Object.values(byDate).forEach(dayItems => {
+      let intervals = [];
+      dayItems.forEach(d => {
+        if(d.startTime && d.endTime && typeof d.startTime === 'string' && typeof d.endTime === 'string') {
+          let [sh, sm] = d.startTime.split(':').map(Number); let [eh, em] = d.endTime.split(':').map(Number);
+          let start = sh * 60 + sm; let end = eh * 60 + em;
+          if (end <= start) end += 1440; 
+          intervals.push({start, end});
+        }
+      });
+      intervals.sort((a,b) => a.start - b.start); let merged = [];
+      if (intervals.length > 0) {
+        let current = {...intervals[0]};
+        for(let i=1; i<intervals.length; i++) {
+          if (intervals[i].start <= current.end) current.end = Math.max(current.end, intervals[i].end);
+          else { merged.push(current); current = {...intervals[i]}; }
+        }
+        merged.push(current);
+      }
+      totalMins += merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+    });
+    const totalAmt = items.reduce((acc, curr) => acc + (curr.amount || 0), 0); const totalCnt = items.reduce((acc, curr) => acc + (curr.count || 0), 0);
+    let hours = Math.floor(totalMins / 60); let mins = totalMins % 60;
+    return { durationStr: totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-', totalCnt, totalAmt, perDelivery: totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0, hourlyRate: totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0 };
+  };
+
+  const monthlyMetrics = useMemo(() => getGroupMetrics(filteredDailyDeliveries), [filteredDailyDeliveries]);
+  const yearlyItems = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))), [dailyDeliveries, selectedYear]);
+  const yearlyMetrics = useMemo(() => getGroupMetrics(yearlyItems), [yearlyItems]);
+  const yearlyHyunaItems = useMemo(() => yearlyItems.filter(d => d.earner === '현아'), [yearlyItems]);
+  const yearlyJunghoonItems = useMemo(() => yearlyItems.filter(d => d.earner === '정훈'), [yearlyItems]);
+  const yearlyHyunaAmt = yearlyHyunaItems.reduce((a,b)=>a+(b.amount||0), 0);
+  const yearlyJunghoonAmt = yearlyJunghoonItems.reduce((a,b)=>a+(b.amount||0), 0);
+
+  const handleClearPayday = async (pd) => { if (!user) return; const newCleared = [...clearedPaydays, pd]; if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
+  const handleUndoClearPayday = async (pd) => { if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return; const newCleared = clearedPaydays.filter(p => p !== pd); if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
+
+  const handleDeliverySubmit = async (e) => {
+    e.preventDefault(); if (!user) return;
+    const timestamp = new Date().toISOString(); const adds = [];
+
+    const createAdd = (inputAmtStr, inputCntStr, earner, platform) => {
+      const inputAmt = parseInt(String(inputAmtStr||0).replace(/,/g, ''), 10) || 0;
+      const inputCnt = parseInt(String(inputCntStr||0).replace(/,/g, ''), 10) || 0;
+      if(inputAmt === 0 && inputCnt === 0) return;
+      
+      let finalAmt = inputAmt, finalCnt = inputCnt;
+      
+      if (!editingDeliveryShift) {
+         const saved = getTodaySaved(earner, platform, deliveryFormData.date);
+         finalAmt = Math.max(0, inputAmt - saved.amt);
+         finalCnt = Math.max(0, inputCnt - saved.cnt);
+      }
+      
+      if(finalAmt > 0 || finalCnt > 0) {
+         adds.push({ date: deliveryFormData.date, earner, platform, amount: finalAmt, count: finalCnt, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime, updatedAt: timestamp, updatedBy: currentUser });
+      }
+    };
+
+    createAdd(deliveryFormData.amountJunghoonBaemin, deliveryFormData.countJunghoonBaemin, '정훈', '배민');
+    createAdd(deliveryFormData.amountJunghoonCoupang, deliveryFormData.countJunghoonCoupang, '정훈', '쿠팡');
+    createAdd(deliveryFormData.amountHyunaBaemin, deliveryFormData.countHyunaBaemin, '현아', '배민');
+    createAdd(deliveryFormData.amountHyunaCoupang, deliveryFormData.countHyunaCoupang, '현아', '쿠팡');
+
+    if (adds.length > 0) {
+      if (editingDeliveryShift) {
+        if (isFirebaseEnabled) {
+          for(const item of editingDeliveryShift.items) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id)); }
+          for(const newDel of adds) { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel); }
+        }
+      } else {
+        if (isFirebaseEnabled) { for(const newDel of adds) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), newDel); }
+      }
+    }
+    
+    if (splitQueue.length > 0) {
+       const nextShift = splitQueue[0];
+       setDeliveryFormData({
+           ...emptyForm,
+           date: nextShift.date,
+           startTime: nextShift.startTime,
+           endTime: nextShift.endTime
+       });
+       setSplitQueue(splitQueue.slice(1));
+    } else {
+       localStorage.removeItem('hyunaRecoveryShift');
+       setRecoveryShift(null);
+       setIsDeliveryModalOpen(false); 
+       setEditingDeliveryShift(null);
+       setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); 
+       setIsLiveCalcOpen(false);
+    }
+  };
+
+  const openEditShiftForm = (shift) => {
+    const form = { ...emptyForm, date: shift.date, startTime: shift.startTime || '', endTime: shift.endTime || '' };
+    shift.items.forEach(d => {
+       const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
+       const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
+       form[`amount${earnerEng}${platformEng}`] = String(d.amount || '');
+       form[`count${earnerEng}${platformEng}`] = String(d.count || '');
+    });
+    setDeliveryFormData(form); setEditingDeliveryShift(shift); setSelectedShiftDetail(null); setIsDeliveryModalOpen(true); 
+  };
+
+  const deleteShift = async (shift) => {
+    if(!window.confirm('이 시간대의 기록을 통째로 모두 삭제하시겠습니까?')) return;
+    if (isFirebaseEnabled && user) { for(const item of shift.items) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id)); } }
+    setSelectedShiftDetail(null);
+  };
+
+  const handleCloseDeliveryModal = () => {
+     if (window.confirm("창을 닫으시면 마감 기록이 날아갑니다. 정말 닫으시겠습니까?\n(타이머를 오래 켰던 경우 메인 화면에 임시 보관됩니다)")) {
+         setIsDeliveryModalOpen(false);
+         if (!editingDeliveryShift && deliveryFormData.startTime) {
+             const recoveryData = { formData: deliveryFormData, splitQueue: splitQueue };
+             localStorage.setItem('hyunaRecoveryShift', JSON.stringify(recoveryData));
+             setRecoveryShift(recoveryData);
+         }
+     }
+  };
+
+  const NetDiffInfo = ({ earner, platform, inputAmt, inputCnt, date }) => {
+     if (editingDeliveryShift) return null;
+     const saved = getTodaySaved(earner, platform, date);
+     if (saved.amt === 0 && saved.cnt === 0) return null;
+     
+     const netAmt = Math.max(0, (parseInt(String(inputAmt).replace(/,/g,''))||0) - saved.amt);
+     return (
+         <div className="text-[11px] text-blue-600 ml-[60px] font-black flex items-center gap-1 mt-1 pb-1 tracking-tight">
+             <span className="opacity-80">↳ 누적 {formatLargeMoney(saved.amt)} ➔</span> <span className="text-rose-600 font-black">실적: +{formatLargeMoney(netAmt)}</span>
+         </div>
+     )
+  };
+
+  return (
+    <div className="flex flex-col gap-2 pb-8 pt-1 animate-in fade-in duration-500 text-slate-800 bg-white min-h-screen">
+      
+      {recoveryShift && !timerActive && (
+         <div className="bg-red-50 border border-red-200 rounded-2xl p-3 shadow-sm flex flex-col gap-2 animate-in slide-in-from-top-2 mx-1">
+            <div className="flex items-center gap-2">
+               <AlertCircle size={16} className="text-red-600" />
+               <span className="text-xs font-black text-red-700">저장 안 된 마감 기록이 있습니다!</span>
+            </div>
+            <div className="flex gap-2 justify-end">
+                <button onClick={() => {
+                    if(window.confirm('임시 기록을 영구 삭제하시겠습니까?')) {
+                        localStorage.removeItem('hyunaRecoveryShift'); setRecoveryShift(null);
+                    }
+                }} className="bg-white text-red-500 border border-red-200 text-[10px] px-3 py-1.5 rounded-lg font-bold shadow-sm active:scale-95">삭제</button>
+                <button onClick={() => {
+                    setDeliveryFormData(recoveryShift.formData);
+                    setSplitQueue(recoveryShift.splitQueue || []);
+                    setIsDeliveryModalOpen(true);
+                }} className="bg-red-600 text-white text-xs px-4 py-1.5 rounded-lg font-black shadow-md active:scale-95">마감 이어쓰기 🚀</button>
+            </div>
+         </div>
+      )}
+
+      {/* 프리미엄 타이머 카드 */}
+      <div className={`mx-1 rounded-[2rem] p-5 shadow-lg transition-all duration-700 ${timerActive ? 'bg-gradient-to-br from-blue-600 to-indigo-800 border-none ring-4 ring-blue-100 shadow-[0_10px_20px_rgba(37,99,235,0.3)]' : 'bg-white border border-slate-200 shadow-sm'}`}>
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-3 ml-1">
+            <div className={`p-3 rounded-2xl ${timerActive ? 'bg-white/20 text-white animate-pulse shadow-inner' : 'bg-slate-100 text-slate-400'}`}>
+               <Timer size={24} />
+            </div>
+            <div>
+              <div className={`text-[11px] font-black flex items-center gap-1.5 mb-0.5 ${timerActive ? 'text-blue-100' : 'text-slate-400'}`}>
+                실시간 기록 {timerActive && <span className="inline-block w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse shadow-sm"></span>}
+              </div>
+              <div className={`text-[36px] font-black tracking-tighter leading-none ${timerActive ? 'text-white drop-shadow-md' : 'text-slate-300'}`}>
+                 {timerActive ? `${Math.floor(elapsedSeconds/3600).toString().padStart(2,'0')}:${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}:${String(elapsedSeconds%60).padStart(2,'0')}` : '00:00:00'}
+              </div>
+            </div>
+          </div>
+          <button onClick={() => { 
+            if(timerActive) {
+              if(!window.confirm("운행을 마감하시겠습니까?")) return;
+              const endObj = new Date();
+              const startObj = new Date(trackingStartTime);
+              const startDateStr = getKSTDateStrFromDate(startObj);
+              const endDateStr = getKSTDateStrFromDate(endObj);
+              
+              if (startDateStr !== endDateStr) {
+                  setDeliveryFormData({ ...emptyForm, date: startDateStr, startTime: formatTimeStr(startObj), endTime: '23:59' });
+                  setSplitQueue([{ date: endDateStr, startTime: '00:00', endTime: formatTimeStr(endObj) }]);
+              } else {
+                  setDeliveryFormData({ ...emptyForm, date: startDateStr, startTime: formatTimeStr(startObj), endTime: formatTimeStr(endObj) });
+                  setSplitQueue([]);
+              }
+              setEditingDeliveryShift(null); handleEndDelivery();
+              setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); setIsLiveCalcOpen(false);
+              setIsDeliveryModalOpen(true);
+            } else {
+              setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); setIsLiveCalcOpen(false); handleStartDelivery();
+            }
+          }} className={`px-5 py-3.5 rounded-[1.2rem] font-black text-sm shadow-md transition-all active:scale-95 ${timerActive ? 'bg-white text-blue-700 hover:bg-blue-50' : 'bg-blue-600 text-white border border-blue-700'}`}>
+            {timerActive ? '운행 종료' : '배달 시작'}
+          </button>
+        </div>
+
+        {timerActive && (
+          <div className="mb-1 mt-4">
+            <div className="flex gap-2 w-full">
+               {trackingStartTime && (
+                  <div className="bg-white/10 border border-white/20 text-white rounded-xl px-3 flex items-center justify-center shadow-sm text-[12px] font-bold shrink-0 tracking-tight">
+                     <Clock size={12} className="mr-1 text-blue-200"/> {new Date(trackingStartTime).getHours().toString().padStart(2,'0')}:{new Date(trackingStartTime).getMinutes().toString().padStart(2,'0')} 시작
+                  </div>
+               )}
+               <button onClick={() => setIsLiveCalcOpen(!isLiveCalcOpen)} className="flex-1 bg-white/20 border border-white/30 rounded-xl p-2.5 flex justify-center items-center gap-1.5 shadow-sm text-xs font-black text-white active:bg-white/30 transition-colors">
+                 📊 중간 정산 계산기 {isLiveCalcOpen ? '▲' : '▼'}
+               </button>
+            </div>
+            
+            {isLiveCalcOpen && (
+               <div className="bg-white rounded-2xl p-4 mt-2 border border-slate-200 shadow-xl animate-in slide-in-from-top-2 text-slate-800">
+                  <div className="grid grid-cols-3 gap-2 mb-3 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-inner relative">
+                     {liveMetrics.deductedAmt > 0 && <div className="absolute -top-2 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border border-rose-700">이전 누적액 차감됨</div>}
+                     <div className="text-center"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">이번 타임 수익 ({liveMetrics.totalCnt}건)</div><div className="text-sm font-black text-blue-600">{formatLargeMoney(liveMetrics.totalAmt)}원</div></div>
+                     <div className="text-center border-x border-slate-200"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">평균 단가</div><div className="text-sm font-black text-slate-800">{formatLargeMoney(liveMetrics.avg)}원</div></div>
+                     <div className="text-center"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border-2 border-[#2ac1bc]/40 shadow-sm mb-2">
+                     <div className="font-black text-[#1f938f] text-[12px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 배달의민족 (앱 누적 총액 입력)</div>
+                     <div className="space-y-2">
+                        <div className="flex gap-1.5 items-center w-full min-w-0">
+                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-[#1f938f] border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">정훈</span>
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonBaemin ? formatLargeMoney(liveData.amountJunghoonBaemin) : ''} onChange={e => setLiveData({...liveData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonBaemin} onChange={e => setLiveData({...liveData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
+                        </div>
+                        <div className="flex gap-1.5 items-center w-full min-w-0">
+                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-[#1f938f] border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">현아</span>
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaBaemin ? formatLargeMoney(liveData.amountHyunaBaemin) : ''} onChange={e => setLiveData({...liveData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaBaemin} onChange={e => setLiveData({...liveData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-300 shadow-sm">
+                     <div className="font-black text-slate-800 text-[12px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠 (앱 누적 총액 입력)</div>
+                     <div className="space-y-2">
+                        <div className="flex gap-1.5 items-center w-full min-w-0">
+                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">정훈</span>
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonCoupang ? formatLargeMoney(liveData.amountJunghoonCoupang) : ''} onChange={e => setLiveData({...liveData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonCoupang} onChange={e => setLiveData({...liveData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
+                        </div>
+                        <div className="flex gap-1.5 items-center w-full min-w-0">
+                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">현아</span>
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaCoupang ? formatLargeMoney(liveData.amountHyunaCoupang) : ''} onChange={e => setLiveData({...liveData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaCoupang} onChange={e => setLiveData({...liveData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
+                        </div>
+                     </div>
+                  </div>
+                  <div className="mt-3 text-[10px] text-center text-slate-400 font-bold">운행 종료 시 위 데이터는 자동으로 지워집니다 🧹</div>
+               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="mb-1 mx-1">
+        {isYearlySummaryOpen ? (
+          <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsYearlySummaryOpen(false)}>
+            <Bike className="absolute -right-2 -bottom-2 w-32 h-32 opacity-10 rotate-12" fill="white" />
+            <div className="flex justify-between items-end mb-4 relative z-10 cursor-pointer">
+              <div>
+                <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300">
+                   <ChevronUp size={16}/> {selectedYear}년 누적 배달 수익
+                </div>
+                <div className="text-[34px] font-black tracking-tighter leading-none mt-1">{formatLargeMoney(yearlyMetrics.totalAmt)}<span className="text-lg ml-1 opacity-90 font-bold">원</span></div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] font-bold flex flex-col items-end gap-1">
+                   <span className="text-white">총 <span className="font-black">{formatLargeMoney(yearlyMetrics.totalCnt)}</span>건</span>
+                   <span className="text-white">평단 <span className="font-black">{formatLargeMoney(yearlyMetrics.perDelivery)}</span>원</span>
+                   <span className="text-blue-300 mt-1 bg-blue-900/40 px-2 py-0.5 rounded border border-blue-800/50 shadow-inner">시급 {formatLargeMoney(yearlyMetrics.hourlyRate)}원</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 mt-3 relative z-10">
+               <div className="bg-white/10 rounded-xl p-2.5 flex flex-col gap-1 border border-white/20 shadow-sm">
+                 <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">정훈</span><span className="text-[13px] font-black text-white">{formatLargeMoney(yearlyJunghoonAmt)}원</span></div>
+                 <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">현아</span><span className="text-[13px] font-black text-white">{formatLargeMoney(yearlyHyunaAmt)}원</span></div>
+               </div>
+               <div className="bg-white/10 rounded-xl p-2.5 flex flex-col gap-1 border border-white/20 shadow-sm">
+                 <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-[#4cd1cc]">배민</span><span className="text-[13px] font-black text-white">{formatLargeMoney(yearlyItems.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0))}원</span></div>
+                 <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">쿠팡</span><span className="text-[13px] font-black text-white">{formatLargeMoney(yearlyItems.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0))}원</span></div>
+               </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 shadow-sm flex justify-between items-center cursor-pointer text-slate-700 hover:bg-slate-100 transition-colors" onClick={() => setIsYearlySummaryOpen(true)}>
+             <span className="text-sm font-black flex items-center gap-1.5">🗓️ {selectedYear}년 누적 수익 확인</span>
+             <ChevronDownSquare size={18} className="text-slate-400" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 mb-1 mx-1">
+        <button onClick={() => { setIsDeliverySummaryOpen(!isDeliverySummaryOpen); setIsPendingSummaryOpen(false); setIsYearlySummaryOpen(false); }} className={`flex-1 py-3.5 rounded-2xl border text-[13px] font-black transition-colors shadow-sm flex justify-center items-center gap-1.5 ${isDeliverySummaryOpen ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>
+           🏍️ {calMonth}월 수익 확인 {isDeliverySummaryOpen ? '∧' : '∨'}
+        </button>
+        <button onClick={() => { setIsPendingSummaryOpen(!isPendingSummaryOpen); setIsDeliverySummaryOpen(false); setIsYearlySummaryOpen(false); }} className={`flex-1 py-3.5 rounded-2xl border text-[13px] font-black transition-colors shadow-sm flex justify-center items-center gap-1.5 ${isPendingSummaryOpen ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}>
+           💰 정산 예정금 {isPendingSummaryOpen ? '∧' : '∨'}
+        </button>
+      </div>
+
+      <div className="mx-1">
+        {/* 💡 [V5.16] 월 수익 박스 총 근무시간 복구 및 다이내믹 게이지 초압축 */}
+        {isDeliverySummaryOpen && (() => {
+            const baeminTotal = filteredDailyDeliveries.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0);
+            const coupangTotal = filteredDailyDeliveries.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0);
+
+            return (
+              <div className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-[2rem] p-5 text-white shadow-lg relative overflow-hidden mb-2 animate-in slide-in-from-top-2" onClick={() => setIsDeliverySummaryOpen(false)}>
+                <Bike className="absolute -right-2 -bottom-2 w-32 h-32 opacity-10 rotate-12" fill="white" />
+                
+                <div className="flex flex-col mb-4 relative z-10 cursor-pointer">
+                    <div className="text-[11px] font-black opacity-90 mb-1 flex items-center gap-1">
+                       <ChevronUp size={14}/> {(deliveryDateRange.start || deliveryDateRange.end) ? '지정 기간 수익' : `${calMonth}월 수익 현황`}
+                    </div>
+                    <div className="flex justify-between items-end">
+                       <div className="text-[32px] font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-base ml-1 opacity-80 font-bold">원</span></div>
+                       {/* 💡 [V5.16] 총 근무시간(durationStr) 복구 및 배치 */}
+                       <div className="flex flex-col items-end gap-1 text-[10px] font-bold opacity-90 pb-1">
+                          <span className="flex gap-2"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span></span>
+                          <span className="text-blue-200">{monthlyMetrics.durationStr} 근무</span>
+                       </div>
+                    </div>
+                </div>
+                
+                {(userSettings.deliveryGoals?.[currentMonthKey] || 0) > 0 && !deliveryDateRange.start && !deliveryDateRange.end && (() => {
+                   const goal = userSettings.deliveryGoals[currentMonthKey];
+                   const pct = Math.min(100, (deliveryFilteredTotal / goal) * 100);
+                   
+                   const today = new Date();
+                   let remainingDays = 0;
+                   if (calYear === today.getFullYear() && calMonth === (today.getMonth() + 1)) {
+                       const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+                       remainingDays = daysInMonth - today.getDate();
+                   } else if (today.getFullYear() < calYear || (today.getFullYear() === calYear && (today.getMonth() + 1) < calMonth)) {
+                       remainingDays = new Date(calYear, calMonth, 0).getDate();
+                   }
+
+                   const timeRatio = remainingDays > 0 ? ((new Date(calYear, calMonth, 0).getDate() - remainingDays) / new Date(calYear, calMonth, 0).getDate()) * 100 : 100;
+                   const remainingAmt = Math.max(0, goal - deliveryFilteredTotal);
+                   const dailyReq = remainingDays > 0 ? Math.ceil(remainingAmt / remainingDays) : 0;
+
+                   return (
+                     <div className="mb-4 relative z-10">
+                       {/* 💡 [V5.16] 목표 게이지 글씨를 정중앙에 절대 배치 */}
+                       <div className="w-full bg-slate-800 rounded-full h-[24px] relative overflow-hidden shadow-inner border border-white/10">
+                           <div className="bg-blue-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(96,165,250,0.5)]" style={{width: `${pct}%`}}></div>
+                           <div className="absolute inset-0 flex items-center justify-center text-[11px] font-black text-white drop-shadow-md">
+                               목표 {formatLargeMoney(goal)}원 | {pct.toFixed(1)}% 달성
+                           </div>
+                           <div className="absolute top-0 bottom-0 w-[2px] bg-rose-400 z-20 shadow-[0_0_5px_rgba(251,113,133,1)]" style={{left: `${timeRatio}%`}}></div>
+                       </div>
+                       {remainingDays > 0 && remainingAmt > 0 && (
+                           <div className="mt-1.5 text-[11px] font-bold text-slate-300 tracking-tight text-center">
+                               🎯 남은 목표: {formatLargeMoney(remainingAmt)}원 (하루 평균 <span className="text-rose-300 font-black">{formatLargeMoney(dailyReq)}</span>원 필요)
+                           </div>
+                       )}
+                     </div>
+                   );
+                })()}
+
+                <div className="grid grid-cols-2 gap-2 relative z-10">
+                   <div className="bg-white/10 rounded-xl p-2.5 flex flex-col gap-1 border border-white/20 shadow-sm">
+                     <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">정훈</span><span className="text-[13px] font-black text-white">{formatLargeMoney(filteredJunghoonItems.reduce((a,b)=>a+(b.amount||0),0))}원</span></div>
+                     <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">현아</span><span className="text-[13px] font-black text-white">{formatLargeMoney(filteredHyunaItems.reduce((a,b)=>a+(b.amount||0),0))}원</span></div>
+                   </div>
+                   <div className="bg-white/10 rounded-xl p-2.5 flex flex-col gap-1 border border-white/20 shadow-sm">
+                     <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-[#4cd1cc]">배민</span><span className="text-[13px] font-black text-white">{formatLargeMoney(baeminTotal)}원</span></div>
+                     <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-slate-300">쿠팡</span><span className="text-[13px] font-black text-white">{formatLargeMoney(coupangTotal)}원</span></div>
+                   </div>
+                </div>
+              </div>
+            );
+        })()}
+      </div>
+
+      {isPendingSummaryOpen && (() => {
+        const upcomingToDisplay = upcomingPaydays.slice(0, 2);
+        return (
+            <div className="grid grid-cols-2 gap-2 mb-2 animate-in slide-in-from-top-2 mx-1">
+              {upcomingToDisplay.length === 0 ? (
+                <div className="col-span-2 bg-slate-50 rounded-2xl p-5 shadow-sm border border-slate-200 text-center text-slate-500 text-sm font-black">입금 대기 중인 정산금이 없습니다.</div>
+              ) : (
+                upcomingToDisplay.map((pd, idx) => {
+                  const group = pendingByPayday[pd];
+                  const metrics = getGroupMetrics(group.items);
+                  const isSingle = upcomingToDisplay.length === 1;
+                  
+                  const baeminTot = group.items.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0);
+                  const coupangTot = group.items.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0);
+
+                  return (
+                    <div key={pd} onClick={() => setSelectedWeeklySummary(pd)} className={`rounded-[2rem] p-5 shadow-lg border bg-gradient-to-br from-slate-600 to-slate-700 border-slate-500 flex flex-col justify-between cursor-pointer active:scale-95 transition-transform text-white relative overflow-hidden ${isSingle ? 'col-span-2' : 'col-span-2'}`}>
+                      <Bike className="absolute -right-2 -bottom-2 w-32 h-32 opacity-10 rotate-12" fill="white" />
+                      
+                      <div className="flex flex-col mb-4 relative z-10">
+                          <div className="text-[11px] font-black opacity-90 mb-1 flex items-center gap-1">
+                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shadow-sm border ${idx === 0 ? 'bg-blue-600 text-white border-blue-700' : 'bg-slate-500 text-white border-slate-600'}`}>{idx === 0 ? '이번주' : '다음주'}</span>
+                             <span className="text-slate-200">{pd.slice(5).replace('-','/')} 정산예정</span>
+                          </div>
+                          <div className="flex justify-between items-end">
+                             <div className={`text-[32px] font-black tracking-tighter leading-none mt-1`}>{formatLargeMoney(group.total)}<span className="text-base font-bold ml-1 opacity-80">원</span></div>
+                             {/* 💡 [V5.16] 총 근무시간 복구! */}
+                             <div className="flex flex-col items-end gap-1 text-[10px] font-bold opacity-90 pb-1">
+                                <span className="flex gap-2"><span>총 {formatLargeMoney(metrics.totalCnt)}건</span><span>평단 {formatLargeMoney(metrics.perDelivery)}원</span></span>
+                                <span className="text-blue-200">{metrics.durationStr} 근무</span>
+                             </div>
+                          </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 relative z-10">
+                         <div className="bg-white/10 rounded-xl p-2 flex flex-col justify-center border border-white/20 shadow-sm">
+                           <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-[#4cd1cc]">배민</span><span className="text-[12px] font-black text-white">{formatLargeMoney(baeminTot)}원</span></div>
+                         </div>
+                         <div className="bg-white/10 rounded-xl p-2 flex flex-col justify-center border border-white/20 shadow-sm">
+                           <div className="flex justify-between items-center"><span className="text-[10px] font-bold text-slate-300">쿠팡</span><span className="text-[12px] font-black text-white">{formatLargeMoney(coupangTot)}원</span></div>
+                         </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+        );
+      })()}
+
+      <div className="flex items-center gap-2 mt-2 mx-1">
+        <div className="flex bg-white p-1 rounded-2xl flex-1 shadow-sm border border-slate-200"><button onClick={() => setDeliverySubTab('daily')} className={`flex-1 py-3 rounded-[1rem] text-[13px] font-black transition-all ${deliverySubTab==='daily'?'bg-blue-600 text-white shadow-md':'text-slate-500 hover:bg-slate-50'}`}>상세내역</button><button onClick={() => setDeliverySubTab('calendar')} className={`flex-1 py-3 rounded-[1rem] text-[13px] font-black transition-all ${deliverySubTab==='calendar'?'bg-blue-600 text-white shadow-md':'text-slate-500 hover:bg-slate-50'}`}>달력</button><button onClick={() => setDeliverySubTab('weekly')} className={`flex-1 py-3 rounded-[1rem] text-[13px] font-black transition-all ${deliverySubTab==='weekly'?'bg-blue-600 text-white shadow-md':'text-slate-500 hover:bg-slate-50'}`}>주차별</button></div>
+        <button onClick={() => setShowDeliveryFilters(!showDeliveryFilters)} className={`p-3.5 rounded-2xl transition-colors shadow-sm border ${showDeliveryFilters ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}><Filter size={20} /></button>
+      </div>
+
+      {showDeliveryFilters && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 animate-in slide-in-from-top-2 mx-1 mt-2">
+          <div className="flex items-center gap-2"><input type="date" value={deliveryDateRange.start} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, start: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[44px] text-sm font-black outline-none border border-slate-200 focus:border-blue-500 text-slate-800" /><span className="text-slate-400 font-black">~</span><input type="date" value={deliveryDateRange.end} onChange={(e) => setDeliveryDateRange({...deliveryDateRange, end: e.target.value})} className="flex-1 bg-slate-50 rounded-xl px-2 h-[44px] text-sm font-black outline-none border border-slate-200 focus:border-blue-500 text-slate-800" /></div>
+          <button onClick={() => setDeliveryDateRange({start:'', end:''})} className="w-full mt-3 bg-slate-100 border border-slate-200 text-slate-600 py-3 rounded-xl font-black text-sm flex justify-center items-center gap-1.5 active:bg-slate-200 transition-colors"><RefreshCw size={14}/> 초기화</button>
+        </div>
+      )}
+
+      {deliverySubTab === 'calendar' && (() => {
+        const firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+        const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+        const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
+        const dataByDate = {};
+        
+        (dailyDeliveries || []).forEach(d => { 
+           if(d.date && d.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`)) { 
+               if(!dataByDate[d.date]) dataByDate[d.date] = { amt: 0 }; 
+               dataByDate[d.date].amt += (d.amount||0); 
+           } 
+        });
+
+        return (
+          <div className="bg-white rounded-[2rem] p-4 shadow-sm border border-blue-200 animate-in slide-in-from-bottom-2 mt-3 mx-1">
+             <div className="flex justify-between items-center px-3 mb-4 mt-1">
+                <button onClick={() => { if(calMonth===1){setCalMonth(12); setCalYear(calYear-1);} else setCalMonth(calMonth-1); }} className="p-2 bg-slate-50 text-blue-600 rounded-xl border border-slate-200 shadow-sm active:scale-95"><ChevronLeft size={18}/></button>
+                <span className="font-black text-slate-800 text-[17px]">{calYear}년 {calMonth}월</span>
+                <button onClick={() => { if(calMonth===12){setCalMonth(1); setCalYear(calYear+1);} else setCalMonth(calMonth+1); }} className="p-2 bg-slate-50 text-blue-600 rounded-xl border border-slate-200 shadow-sm active:scale-95"><ChevronRight size={18}/></button>
+             </div>
+
+             <div className="grid grid-cols-7 gap-1 text-center mb-2">{['일','월','화','수','목','금','토'].map((d,i) => <div key={d} className={`text-[11px] font-black ${i===0?'text-red-500':i===6?'text-blue-500':'text-slate-500'}`}>{d}</div>)}</div>
+             <div className="grid grid-cols-7 gap-1">
+               {days.map((d, i) => {
+                 if(!d) return <div key={`empty-${i}`} className="h-[65px] bg-slate-50 rounded-xl border border-slate-100"></div>;
+                 const dateStr = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                 const dayData = dataByDate[dateStr] || { amt: 0 };
+                 const isToday = dateStr === todayStr;
+                 
+                 const holidayName = getHolidayName(dateStr);
+                 const isCustomHoliday = customHolidays.includes(dateStr);
+                 const dayIndex = (i % 7);
+                 const isRed = dayIndex === 0 || holidayName || isCustomHoliday;
+                 const isBlue = dayIndex === 6 && !holidayName && !isCustomHoliday;
+                 const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-slate-800';
+
+                 return (
+                   <div key={`day-${i}`} onClick={() => { if(dayData.amt > 0) setSelectedDailySummary(dateStr); }} className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-center ${dayData.amt>0?'border-blue-300 bg-blue-50/80 shadow-sm cursor-pointer active:scale-95 transition-transform':'border-slate-200 bg-white'} ${isToday ? 'ring-2 ring-blue-500 ring-offset-1 z-10 shadow-md' : ''}`}>
+                     <span className={`text-[13px] font-black mb-1 ${dayColor}`}>{d}</span>
+                     {dayData.amt > 0 && <span className="text-[10px] font-black text-blue-600 w-full text-center truncate tracking-tighter">{formatCompactMoney(dayData.amt).replace('+','')}</span>}
+                   </div>
+                 )
+               })}
+             </div>
+          </div>
+        );
+      })()}
+
+      {deliverySubTab === 'weekly' && (
+        <div className="space-y-3 animate-in slide-in-from-right duration-300 mt-3 mx-1">
+          {pastPaydays.map(pDate => {
+             const group = paydayGroups[pDate];
+             const metrics = getGroupMetrics(group.items);
+             
+             const baeminTot = group.items.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0);
+             const coupangTot = group.items.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0);
+             const etcTot = group.total - baeminTot - coupangTot;
+
+             return (
+               <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[1.5rem] py-5 px-5 shadow-sm border border-slate-200 cursor-pointer active:scale-95 transition-transform">
+                 <div className="flex justify-between items-end mb-1">
+                    <div className="flex items-center gap-2">
+                       <span className="font-black text-slate-800 text-lg tracking-tight">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</span>
+                       <span className="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-lg font-bold">{pDate.slice(5).replace('-', '/')} 정산완료</span>
+                    </div>
+                    <div className="text-[20px] font-black text-slate-700 leading-none tracking-tighter">{formatLargeMoney(group.total)}원</div>
+                 </div>
+                 
+                 <div className="text-[11px] font-bold text-slate-500 mt-1.5 mb-3 flex justify-end gap-3">
+                   <span className="text-[#1f938f]">배민 {formatLargeMoney(baeminTot)}</span>
+                   <span className="text-slate-600">쿠팡 {formatLargeMoney(coupangTot)}</span>
+                   {etcTot > 0 && <span className="text-slate-400">기타 {formatLargeMoney(etcTot)}</span>}
+                 </div>
+
+                 <div className="flex justify-between items-center text-[12px] text-slate-500 font-bold bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-inner">
+                    <span className="flex items-center gap-1.5"><Timer size={14} className="text-slate-400"/>{metrics.durationStr || '-'}</span>
+                    <span className="flex items-center gap-1.5"><Bike size={14} className="text-slate-400"/>총 <span className="font-black text-slate-800">{metrics.totalCnt}</span>건</span>
+                    <span className="flex items-center gap-1.5 text-blue-600"><Coins size={14} className="text-blue-500"/>시급 <span className="font-black">{formatLargeMoney(metrics.hourlyRate)}</span>원</span>
+                 </div>
+               </div>
+             )
+          })}
+        </div>
+      )}
+
+      {deliverySubTab === 'daily' && (
+        <div className="space-y-3 animate-in slide-in-from-left duration-300 mt-3 mx-1">
+          {dailyDates.map(date => {
+            const shiftList = dailyShifts[date] || [];
+            const allItemsForDay = shiftList.flatMap(s => s.items);
+            const dayMetrics = calcDailyMetrics(allItemsForDay);
+            
+            const dateObj = new Date(date);
+            const dayIndex = dateObj.getDay();
+            const dayName = ['일','월','화','수','목','금','토'][dayIndex];
+            
+            const dateColorClass = (dayIndex === 0) ? 'text-red-500' : dayIndex === 6 ? 'text-blue-600' : 'text-slate-900';
+
+            return (
+              <div key={date} className="bg-white rounded-[1.5rem] shadow-sm border border-slate-200 overflow-hidden">
+                 
+                 {/* 💡 [V5.16] 일자별 요약 박스 초강력 다이어트 & 재배치 */}
+                 <div className="p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setSelectedDailySummary(date)}>
+                     <div className="flex justify-between items-end mb-1.5">
+                        <div className={`text-[15px] font-black text-slate-800 tracking-tight ${dateColorClass}`}>
+                            {date.slice(5).replace('-','/')} ({dayName})
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[12px] font-black text-slate-500">총 {dayMetrics.totalCnt}건</span>
+                            <span className="text-[18px] font-black text-blue-600 leading-none">{formatLargeMoney(dayMetrics.totalAmt)}원</span>
+                        </div>
+                     </div>
+                     <div className="flex justify-between items-center mt-2.5">
+                        <div className="text-[12px] font-black text-slate-500 flex items-center gap-1">
+                            <Clock size={12} className="text-slate-400"/> {dayMetrics.durationStr}
+                        </div>
+                        <div className="flex gap-1.5 items-center">
+                            <span className="bg-slate-50 text-[10px] font-bold text-slate-500 px-2 py-1 rounded border border-slate-200 shadow-sm">평단 {formatLargeMoney(dayMetrics.perDelivery)}</span>
+                            {dayMetrics.hourlyRate > 0 && <span className="bg-blue-50 text-[10px] font-bold text-blue-600 px-2 py-1 rounded border border-blue-200 shadow-sm">시급 {formatLargeMoney(dayMetrics.hourlyRate)}</span>}
+                        </div>
+                     </div>
+                 </div>
+
+                 <div className="border-t border-slate-100 bg-slate-50">
+                    <button onClick={(e) => toggleDailyDate(date, e)} className="w-full py-3 flex justify-center items-center gap-1 text-[12px] font-black text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 transition-colors active:bg-slate-100">
+                       {expandedDailyDates[date] ? <>▲ 회차별 상세 닫기</> : <>▼ 회차별 상세 보기</>}
+                    </button>
+                 </div>
+
+                 {/* 💡 [V5.16] 회차별 상세 박스: 사진과 100% 동일한 픽셀 복사 & bg-slate-100 적용 */}
+                 {expandedDailyDates[date] && (
+                     <div className="px-4 pb-4 space-y-2.5 bg-slate-50 animate-in slide-in-from-top-2 duration-300">
+                      {shiftList.map((shift, index) => {
+                        const shiftOrder = shiftList.length - index;
+                        let shiftDurationStr = '';
+                        let shiftHourlyRate = 0;
+                        if (shift.startTime && shift.endTime) {
+                            let [sh, sm] = shift.startTime.split(':').map(Number);
+                            let [eh, em] = shift.endTime.split(':').map(Number);
+                            let startMins = sh * 60 + sm;
+                            let endMins = eh * 60 + em;
+                            if (endMins <= startMins) endMins += 1440;
+                            let totalMins = endMins - startMins;
+                            let h = Math.floor(totalMins / 60);
+                            let m = totalMins % 60;
+                            shiftDurationStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                            shiftHourlyRate = totalMins > 0 ? Math.round(shift.totalAmt / (totalMins / 60)) : 0;
+                        }
+                        
+                        const platforms = Array.from(new Set(shift.items.map(item => item.platform)));
+
+                        return (
+                          <div key={shift.id} onClick={(e) => { e.stopPropagation(); setSelectedShiftDetail(shift); }} className="flex justify-between items-center bg-slate-100 p-3.5 rounded-2xl hover:bg-slate-200 transition-colors border border-slate-200 cursor-pointer active:scale-95 shadow-sm mt-2">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                  <div className="flex flex-col items-center justify-center shrink-0 w-[42px] gap-1">
+                                      <span className="text-[11px] font-black text-slate-600 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm leading-none">{shiftOrder}차</span>
+                                      {shiftDurationStr && <span className="text-[10px] font-bold text-slate-400 tracking-tighter leading-none">({shiftDurationStr})</span>}
+                                  </div>
+                                  <div className="w-[46px] h-[46px] rounded-xl flex flex-col items-center justify-center text-white shrink-0 bg-blue-500 shadow-md">
+                                      <div className="text-[20px] font-black leading-none">{shift.totalCnt}</div>
+                                      <div className="text-[10px] font-bold opacity-90 mt-0.5 leading-none">건</div>
+                                  </div>
+                                  <div className="pl-1 flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                                      <div className="font-black text-[15px] text-slate-800 shrink-0 tracking-tight leading-none">
+                                         {shift.startTime && shift.endTime ? `${shift.startTime}~${shift.endTime}` : '시간 미지정'}
+                                      </div>
+                                      <div className="flex gap-1 items-center flex-wrap">
+                                         {platforms.map(p => (
+                                            <span key={p} className={`text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm leading-none ${p === '배민' ? 'bg-[#2ac1bc] text-white border border-[#1f938f]' : 'bg-[#111111] text-white border border-black'}`}>
+                                               {p}
+                                            </span>
+                                         ))}
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className="flex flex-col items-end shrink-0 pl-1 gap-1.5">
+                                 <div className="font-black text-[18px] text-slate-900 leading-none tracking-tighter">{formatLargeMoney(shift.totalAmt)}원</div>
+                                 {shiftHourlyRate > 0 && <div className="text-[10px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-100 shadow-sm flex items-center gap-0.5 leading-none"><span className="text-yellow-400">💡</span>시급 {formatLargeMoney(shiftHourlyRate)}원</div>}
+                              </div>
+                          </div>
+                        );
+                      })}
+                     </div>
+                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedShiftDetail && (
+         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-[80] p-0 overflow-y-auto no-scrollbar">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedShiftDetail(null))}
+              className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 relative border-t-8 border-blue-600"
+            >
+               <div className="w-14 h-1.5 bg-slate-300 rounded-full mx-auto mb-6 shrink-0"></div>
+               <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-black text-slate-900 flex items-center gap-1.5"><Bike size={22} className="text-blue-600"/> 근무 타임 상세</h3>
+                  <button onClick={() => setSelectedShiftDetail(null)} className="text-slate-500 p-2 bg-slate-100 rounded-full active:scale-95 border border-slate-200"><X size={20}/></button>
+               </div>
+               
+               <div className="mb-6">
+                  <div className="text-sm font-bold text-slate-500 mb-1 flex items-center gap-1.5"><CalendarCheck size={14}/> {selectedShiftDetail.date}</div>
+                  <div className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">
+                     {selectedShiftDetail.startTime && selectedShiftDetail.endTime ? `${selectedShiftDetail.startTime} ~ ${selectedShiftDetail.endTime}` : '시간 미지정 기록'}
+                  </div>
+                  
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 mb-6 shadow-inner">
+                     {selectedShiftDetail.items.map(item => (
+                        <div key={item.id} className="flex justify-between items-center">
+                           <div className="flex items-center gap-2.5">
+                              <span className={`text-[12px] font-black px-2 py-1 rounded text-white shadow-sm border ${item.platform === '배민' ? 'bg-[#2ac1bc] border-[#1f938f]' : 'bg-[#111111] border-black'}`}>{item.platform}</span>
+                              <span className="font-black text-base text-slate-800">{item.earner}</span>
+                              <span className="text-[12px] font-bold text-slate-500 ml-1">({item.count}건)</span>
+                           </div>
+                           <div className="font-black text-slate-900 text-xl tracking-tight">{formatLargeMoney(item.amount)}원</div>
+                        </div>
+                     ))}
+                  </div>
+
+                  {(() => {
+                      const shiftStart = selectedShiftDetail.startTime;
+                      const shiftEnd = selectedShiftDetail.endTime;
+                      let durationStr = '-';
+                      let hourlyRate = 0;
+                      if (shiftStart && shiftEnd) {
+                          let [sh, sm] = shiftStart.split(':').map(Number);
+                          let [eh, em] = shiftEnd.split(':').map(Number);
+                          let startMins = sh * 60 + sm;
+                          let endMins = eh * 60 + em;
+                          if (endMins <= startMins) endMins += 1440;
+                          let totalMins = endMins - startMins;
+                          let h = Math.floor(totalMins / 60);
+                          let m = totalMins % 60;
+                          durationStr = `${h > 0 ? h+'시간 ' : ''}${m > 0 ? m+'분' : ''}`.trim();
+                          hourlyRate = totalMins > 0 ? Math.round(selectedShiftDetail.totalAmt / (totalMins / 60)) : 0;
+                      }
+                      let avgAmt = selectedShiftDetail.totalCnt > 0 ? Math.round(selectedShiftDetail.totalAmt / selectedShiftDetail.totalCnt) : 0;
+
+                      return (
+                         <div className="bg-blue-50/80 rounded-3xl p-5 border border-blue-200 shadow-sm">
+                            <div className="grid grid-cols-2 gap-y-5 gap-x-5">
+                               <div>
+                                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><Bike size={12}/>총 배달 건수</div>
+                                  <div className="text-xl font-black text-slate-900">{selectedShiftDetail.totalCnt}건</div>
+                               </div>
+                               <div>
+                                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><Coins size={12}/>평균 단가</div>
+                                  <div className="text-xl font-black text-slate-900">{formatLargeMoney(avgAmt)}원</div>
+                               </div>
+                               <div>
+                                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><Clock size={12}/>근무 시간</div>
+                                  <div className="text-xl font-black text-slate-900">{durationStr}</div>
+                               </div>
+                               <div>
+                                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><Timer size={12}/>시간당 시급</div>
+                                  <div className="text-xl font-black text-blue-600">{formatLargeMoney(hourlyRate)}원</div>
+                               </div>
+                            </div>
+                            <div className="border-t border-blue-200/60 pt-5 mt-5 flex justify-between items-end">
+                               <div className="text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-1">총 정산 금액</div>
+                               <div className="text-4xl font-black tracking-tighter text-blue-600 leading-none">
+                                  {formatLargeMoney(selectedShiftDetail.totalAmt)}<span className="text-lg text-slate-800 font-bold ml-1">원</span>
+                               </div>
+                            </div>
+                         </div>
+                      );
+                  })()}
+               </div>
+
+               <div className="grid grid-cols-2 gap-3 pt-5 border-t border-slate-200">
+                  <button onClick={() => openEditShiftForm(selectedShiftDetail)} className="py-4 bg-slate-50 border border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-slate-700 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={18}/> 타임 전체 수정</button>
+                  <button onClick={() => deleteShift(selectedShiftDetail)} className="py-4 bg-slate-50 border border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-700 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={18}/> 삭제</button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {selectedDailySummary && (() => {
+          const dayItems = (dailyDeliveries || []).filter(d => d.date === selectedDailySummary);
+          const metrics = calcDailyMetrics(dayItems);
+          
+          const baeminTot = dayItems.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0);
+          const coupangTot = dayItems.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0);
+          const etcTot = metrics.totalAmt - baeminTot - coupangTot;
+
+          const junghoonTot = dayItems.filter(d=>d.earner==='정훈').reduce((a,b)=>a+(b.amount||0),0);
+          const hyunaTot = dayItems.filter(d=>d.earner==='현아').reduce((a,b)=>a+(b.amount||0),0);
+
+          return (
+             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
+                <div 
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedDailySummary(null))}
+                  className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden border-t-8 border-blue-600"
+                >
+                   <div className="w-14 h-1.5 bg-slate-300 rounded-full mx-auto mb-6 shrink-0"></div>
+                   <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
+                      <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2"><Target className="text-blue-600" size={28}/> {selectedDailySummary.slice(5).replace('-','/')} 일일 요약</h2>
+                      <button onClick={() => setSelectedDailySummary(null)} className="bg-slate-100 text-slate-500 p-2.5 rounded-full active:scale-95 border border-slate-200"><X size={22}/></button>
+                   </div>
+
+                   <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[2.5rem] p-7 text-white shadow-xl relative overflow-hidden border border-slate-600">
+                       <Bike className="absolute -right-4 -bottom-4 w-36 h-36 opacity-10 rotate-12" fill="white" />
+                       <div className="relative z-10">
+                           <div className="text-slate-300 text-[12px] font-bold mb-1.5 tracking-widest uppercase">오늘 총 정산 금액</div>
+                           <div className="text-[40px] font-black tracking-tighter mb-6 text-white leading-none">{formatLargeMoney(metrics.totalAmt)}<span className="text-xl font-bold opacity-80 ml-1">원</span></div>
+                           
+                           <div className="grid grid-cols-2 gap-5 gap-y-7 border-t border-white/10 pt-6">
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">총 배달 건수</div>
+                                 <div className="text-2xl font-black text-white">{formatLargeMoney(metrics.totalCnt)}건</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
+                                 <div className="text-2xl font-black text-white">{formatLargeMoney(metrics.perDelivery)}원</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">총 근무 시간</div>
+                                 <div className="text-2xl font-black text-white">{metrics.durationStr || '-'}</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
+                                 <div className="text-2xl font-black text-blue-400">{formatLargeMoney(metrics.hourlyRate || 0)}원</div>
+                              </div>
+                           </div>
+
+                           <div className="bg-white/10 rounded-2xl p-4 mt-7 flex flex-col gap-2.5 shadow-sm border border-white/10 relative z-10">
+                              <div className="flex divide-x divide-white/20">
+                                <div className="flex-1 px-2 flex justify-between items-center"><span className="text-[12px] font-bold text-slate-300">정훈</span><span className="text-base font-black text-white">{formatLargeMoney(junghoonTot)}원</span></div>
+                                <div className="flex-1 px-2 flex justify-between items-center"><span className="text-[12px] font-bold text-slate-300">현아</span><span className="text-base font-black text-white">{formatLargeMoney(hyunaTot)}원</span></div>
+                              </div>
+                              <div className="w-full h-px bg-white/10"></div>
+                              <div className="flex divide-x divide-white/20">
+                                <div className="flex-1 px-2 flex justify-between items-center"><span className="text-[12px] font-bold text-[#4cd1cc]">배민</span><span className="text-base font-black text-white">{formatLargeMoney(baeminTot)}원</span></div>
+                                <div className="flex-1 px-2 flex justify-between items-center"><span className="text-[12px] font-bold text-slate-300">쿠팡</span><span className="text-base font-black text-white">{formatLargeMoney(coupangTot)}원</span></div>
+                              </div>
+                              {etcTot > 0 && (
+                                  <div className="text-right text-[11px] text-slate-400 font-bold mt-1 pr-2">기타 통합수익: {formatLargeMoney(etcTot)}원</div>
+                              )}
+                           </div>
+                       </div>
+                   </div>
+                </div>
+             </div>
+          );
+      })()}
+
+      {selectedWeeklySummary && (() => {
+          const pd = selectedWeeklySummary;
+          const isCleared = clearedPaydays.includes(pd);
+          const isPaydayReached = todayStr >= pd;
+          const items = pendingByPayday[pd]?.items || paydayGroups[pd]?.items || [];
+          const metrics = getGroupMetrics(items);
+          
+          const baeminTot = items.filter(d=>d.platform==='배민').reduce((a,b)=>a+(b.amount||0),0);
+          const coupangTot = items.filter(d=>d.platform==='쿠팡').reduce((a,b)=>a+(b.amount||0),0);
+          const etcTot = metrics.totalAmt - baeminTot - coupangTot;
+
+          const title = `${pd.slice(5).replace('-','/')} 입금 ${isCleared ? '완료' : isPaydayReached ? '확정 대기중' : '예정'}`;
+          const isWeekly = true; 
+
+          return (
+             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-[70] p-0">
+                <div 
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedWeeklySummary(null))}
+                  className="bg-white w-full max-w-md rounded-t-[3rem] p-6 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col relative overflow-hidden border-t-8 border-blue-600"
+                >
+                   <div className="w-14 h-1.5 bg-slate-300 rounded-full mx-auto mb-6 shrink-0"></div>
+                   <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
+                      <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2"><Target className="text-blue-600" size={28}/> {title}</h2>
+                      <button onClick={() => setSelectedWeeklySummary(null)} className="bg-slate-100 text-slate-500 p-2.5 rounded-full active:scale-95 border border-slate-200"><X size={22}/></button>
+                   </div>
+
+                   <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[2.5rem] p-7 text-white shadow-xl relative overflow-hidden border border-slate-600">
+                       <Bike className="absolute -right-4 -bottom-4 w-36 h-36 opacity-10 rotate-12" fill="white" />
+                       <div className="relative z-10">
+                           <div className="text-slate-300 text-[12px] font-bold mb-1.5 tracking-widest uppercase">총 정산 금액</div>
+                           <div className="text-[40px] font-black tracking-tighter mb-6 text-white leading-none">{formatLargeMoney(metrics.totalAmt)}<span className="text-xl font-bold opacity-80 ml-1">원</span></div>
+                           
+                           <div className="grid grid-cols-2 gap-5 gap-y-7 border-t border-white/10 pt-6">
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">배달 건수</div>
+                                 <div className="text-2xl font-black text-white">{formatLargeMoney(metrics.totalCnt)}건</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">근무 시간</div>
+                                 <div className="text-2xl font-black text-white">{metrics.durationStr}</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">평균 단가</div>
+                                 <div className="text-2xl font-black text-white">{formatLargeMoney(metrics.perDelivery)}원</div>
+                              </div>
+                              <div>
+                                 <div className="text-[11px] text-slate-400 font-bold mb-1 uppercase tracking-widest">평균 시급</div>
+                                 <div className="text-2xl font-black text-blue-400">{formatLargeMoney(metrics.hourlyRate || 0)}원</div>
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-2 gap-5 mt-7 pt-6 border-t border-white/10">
+                              <div><div className="text-[11px] text-[#4cd1cc] font-bold mb-0.5">배민 수익</div><div className="text-xl font-black text-white">{formatLargeMoney(baeminTot)}원</div></div>
+                              <div><div className="text-[11px] text-slate-300 font-bold mb-0.5">쿠팡 수익</div><div className="text-xl font-black text-white">{formatLargeMoney(coupangTot)}원</div></div>
+                           </div>
+                           {etcTot > 0 && (
+                               <div className="mt-3 text-[11px] text-slate-400 font-bold text-right">기타(통합) 수익: {formatLargeMoney(etcTot)}원</div>
+                           )}
+                       </div>
+                   </div>
+
+                   {isWeekly && (
+                      <div className="mt-6 pt-4 border-t border-slate-200">
+                         {!isCleared ? (
+                            <button 
+                               onClick={() => handleClearPayday(pd)} 
+                               disabled={!isPaydayReached}
+                               className={`w-full py-4 rounded-[1.5rem] font-black text-lg transition-all flex items-center justify-center gap-2 ${isPaydayReached ? 'bg-blue-600 text-white shadow-lg active:scale-95' : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'}`}
+                            >
+                               {isPaydayReached ? '💰 주차별 보관함으로 이동 (입금 완료)' : '금요일부터 입금 확정이 가능합니다 ⏳'}
+                            </button>
+                         ) : (
+                            <button 
+                               onClick={() => handleUndoClearPayday(pd)} 
+                               className="w-full py-4 rounded-[1.5rem] bg-slate-50 border border-slate-300 text-slate-700 font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-1.5 shadow-sm"
+                            >
+                               <RefreshCw size={18}/> 다시 대기열로 되돌리기 (실수 방지)
+                            </button>
+                         )}
+                      </div>
+                   )}
+                </div>
+             </div>
+          );
+      })()}
+
+      <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-[0_0_15px_rgba(37,99,235,0.6)] flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-600"><Plus size={28}/></button>
+
+      {isDeliveryModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={(e) => handleTouchEnd(e, handleCloseDeliveryModal)}
+            className="bg-slate-50 w-full max-w-md rounded-t-[3rem] p-5 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-600 flex flex-col max-h-[90vh]"
+          >
+            <div className="w-14 h-1.5 bg-slate-300 rounded-full mx-auto mb-4 shrink-0"></div>
+            <div className="flex justify-between items-center mb-4 shrink-0"><h2 className="text-xl font-black text-slate-900">{editingDeliveryShift ? '근무 기록 수정 🏍️' : splitQueue.length > 0 ? '이전 시간 정산 기록 🏍️' : '배달 최종 마감 🏍️'}</h2><button onClick={handleCloseDeliveryModal} className="bg-white text-slate-500 p-2 rounded-full border border-slate-300 shadow-sm"><X size={20}/></button></div>
+            
+            <form onSubmit={handleDeliverySubmit} className="space-y-3.5 overflow-y-auto no-scrollbar pb-2">
+              
+              <div className="grid grid-cols-3 gap-2 pb-3 border-b border-slate-300 w-full">
+                <div className="bg-white rounded-xl p-1.5 border-2 border-slate-300 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mb-0.5 ml-1"><CalendarIcon size={10} className="text-blue-600"/>날짜</label>
+                  <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[26px] font-black text-xs outline-none text-slate-800" />
+                </div>
+                <div className="bg-white rounded-xl p-1.5 border-2 border-slate-300 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-blue-600"/>시작</label>
+                  <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-transparent px-1 h-[26px] font-black text-xs outline-none text-slate-800" />
+                </div>
+                <div className="bg-white rounded-xl p-1.5 border-2 border-slate-300 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-500 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-blue-600"/>종료</label>
+                  <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-transparent px-1 h-[26px] font-black text-xs outline-none text-slate-800" />
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-2xl border-2 border-[#2ac1bc]/60 shadow-sm">
+                <div className="font-black text-[#1f938f] text-[13px] mb-2.5 flex items-center gap-1.5"><Bike size={14}/> 배달의민족 (배민)</div>
+                <div className="space-y-2.5">
+                  <div className="flex flex-col gap-1">
+                     <div className="flex gap-1.5 items-center w-full min-w-0">
+                        <span className="w-[60px] shrink-0 text-lg font-black bg-[#2ac1bc]/10 text-[#1f938f] border-2 border-slate-500 rounded-xl text-center flex items-center justify-center h-[50px] shadow-sm">정훈</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-lg font-black bg-white rounded-xl px-3 h-[50px] outline-none border-2 border-slate-500 focus:border-[#2ac1bc] shadow-inner text-slate-900" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-lg font-black bg-white rounded-xl px-1 h-[50px] text-center outline-none border-2 border-slate-500 focus:border-[#2ac1bc] shadow-inner text-slate-900" />
+                     </div>
+                     <NetDiffInfo earner="정훈" platform="배민" inputAmt={deliveryFormData.amountJunghoonBaemin} inputCnt={deliveryFormData.countJunghoonBaemin} date={deliveryFormData.date} />
+                  </div>
+                  <div className="w-full border-t border-[#2ac1bc]/20"></div>
+                  <div className="flex flex-col gap-1">
+                     <div className="flex gap-1.5 items-center w-full min-w-0">
+                        <span className="w-[60px] shrink-0 text-lg font-black bg-[#2ac1bc]/10 text-[#1f938f] border-2 border-slate-500 rounded-xl text-center flex items-center justify-center h-[50px] shadow-sm">현아</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-lg font-black bg-white rounded-xl px-3 h-[50px] outline-none border-2 border-slate-500 focus:border-[#2ac1bc] shadow-inner text-slate-900" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-lg font-black bg-white rounded-xl px-1 h-[50px] text-center outline-none border-2 border-slate-500 focus:border-[#2ac1bc] shadow-inner text-slate-900" />
+                     </div>
+                     <NetDiffInfo earner="현아" platform="배민" inputAmt={deliveryFormData.amountHyunaBaemin} inputCnt={deliveryFormData.countHyunaBaemin} date={deliveryFormData.date} />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-300 shadow-sm">
+                <div className="font-black text-slate-800 text-[13px] mb-2.5 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠</div>
+                <div className="space-y-2.5">
+                   <div className="flex flex-col gap-1">
+                     <div className="flex gap-1.5 items-center w-full min-w-0">
+                        <span className="w-[60px] shrink-0 text-lg font-black bg-slate-100 text-slate-800 border-2 border-slate-500 rounded-xl text-center flex items-center justify-center h-[50px] shadow-sm">정훈</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-lg font-black bg-white rounded-xl px-3 h-[50px] outline-none border-2 border-slate-500 focus:border-blue-600 shadow-inner text-slate-900" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-lg font-black bg-white rounded-xl px-1 h-[50px] text-center outline-none border-2 border-slate-500 focus:border-blue-600 shadow-inner text-slate-900" />
+                     </div>
+                     <NetDiffInfo earner="정훈" platform="쿠팡" inputAmt={deliveryFormData.amountJunghoonCoupang} inputCnt={deliveryFormData.countJunghoonCoupang} date={deliveryFormData.date} />
+                  </div>
+                  <div className="w-full border-t border-slate-200"></div>
+                  <div className="flex flex-col gap-1">
+                     <div className="flex gap-1.5 items-center w-full min-w-0">
+                        <span className="w-[60px] shrink-0 text-lg font-black bg-slate-100 text-slate-800 border-2 border-slate-500 rounded-xl text-center flex items-center justify-center h-[50px] shadow-sm">현아</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-lg font-black bg-white rounded-xl px-3 h-[50px] outline-none border-2 border-slate-500 focus:border-blue-600 shadow-inner text-slate-900" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-lg font-black bg-white rounded-xl px-1 h-[50px] text-center outline-none border-2 border-slate-500 focus:border-blue-600 shadow-inner text-slate-900" />
+                     </div>
+                     <NetDiffInfo earner="현아" platform="쿠팡" inputAmt={deliveryFormData.amountHyunaCoupang} inputCnt={deliveryFormData.countHyunaCoupang} date={deliveryFormData.date} />
+                  </div>
+                </div>
+              </div>
+              
+              <button type="submit" disabled={!(deliveryFormData.amountHyunaBaemin || deliveryFormData.amountHyunaCoupang || deliveryFormData.amountJunghoonBaemin || deliveryFormData.amountJunghoonCoupang)} className="w-full shrink-0 h-[56px] flex items-center justify-center whitespace-nowrap bg-blue-600 mt-2 rounded-2xl text-white font-black text-lg active:scale-95 shadow-xl border border-blue-700 disabled:opacity-50">
+                {editingDeliveryShift ? '수정 완료 🚀' : splitQueue.length > 0 ? '이전 타임 저장하고 다음 쓰기 🚀' : '최종 마감 저장 🚀'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}                                                                   
         
 // ==========================================
 // 7. ASSETS TAB COMPONENT
