@@ -2745,10 +2745,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
+  
+  // 💡 [V5.4] 폼 기본값 (UI에서 숨겨지더라도 시스템상 '가족', '가족일정'으로 기본 세팅 유지)
   const [eventFormData, setEventFormData] = useState({ 
     date: todayStr, endDate: '', title: '', type: '가족일정', isImportant: false, 
     participant: '가족', isYearly: false, calendarType: 'solar' 
   });
+  
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false);
   const [messageFormData, setMessageFormData] = useState({ text: '' });
   const [replyingTo, setReplyingTo] = useState(null);
@@ -2767,12 +2770,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [continuousCursorDateStr, setContinuousCursorDateStr] = useState('');
   const dutyTimelineRef = useRef(null); 
   
-  // 💡 [V5.1] 중요일정 전체보기 모달 상태
   const [isAllImportantEventsModalOpen, setIsAllImportantEventsModalOpen] = useState(false);
 
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   
-  // 💡 [V5.1] 10일 이내의 중요일정만 (메인 카드용)
   const topImportantEvents = useMemo(() => {
     return (events || [])
       .filter(e => {
@@ -2791,7 +2792,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       .slice(0, 3);
   }, [events, todayStr]);
 
-  // 💡 [V5.1] 오늘 이후의 '모든' 중요일정 (팝업용)
   const allFutureImportantEvents = useMemo(() => {
     return (events || [])
       .filter(e => e.isImportant && e.date && (e.endDate || e.date) >= todayStr)
@@ -2802,6 +2802,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const timelineEventsList = useMemo(() => familyEventsList.filter(e => (e.endDate || e.date) >= todayStr), [familyEventsList, todayStr]);
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
+  
   const getSmartIcon = (title, type) => {
     const t = title || '';
     if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
@@ -2816,6 +2817,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     if (type === '회식') return '🍻';
     return '⭐'; 
   };
+
   useEffect(() => {
     if(isDutyBatchModalOpen) {
       setContinuousCursorDateStr(`${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}-01`);
@@ -2824,6 +2826,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       setBatchDuties(current);
     }
   }, [dutyBatchYear, dutyBatchMonth, isDutyBatchModalOpen, events]);
+
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     if (!eventFormData.title.trim() || !user) return;
@@ -2841,6 +2844,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsEventModalOpen(false); setEditingEventId(null); setSelectedEventDetail(null);
   };
+
   const deleteEvent = async (id) => {
     if(!window.confirm('일정을 삭제하시겠습니까?')) return;
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
@@ -2861,6 +2865,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData({ text: '' });
   };
+
   const handleAddReplySubmit = async (msgId) => {
     if (!replyText.trim() || !user) return;
     const msg = messages.find(m => m.id === msgId);
@@ -2871,6 +2876,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages(messages.map(m => m.id === msgId ? { ...m, replies: updatedReplies, isoUpdate: new Date().toISOString() } : m));
     setReplyText(''); setReplyingTo(null);
   };
+
   const handleCheckMessage = async (id) => {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
@@ -2882,6 +2888,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
     }
   };
+
   const handleQuickDutyUpdate = async (dateStr, newDuty) => {
     if (!user) return;
     const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
@@ -2907,8 +2914,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       }
     }
     if (changed) {
-      const msgText = `- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ?
-      existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}`;
+      const msgText = `- ${parseInt(dateStr.slice(5,7))}월 ${parseInt(dateStr.slice(8,10))}일: ${existingEvent ? existingEvent.title : 'OFF'} ➔ ${newDuty === 'DELETE' ? '삭제됨' : newDuty}`;
       const d = new Date(); 
       let hh = d.getHours();
       const ampm = hh >= 12 ? '오후' : '오전';
@@ -2926,6 +2932,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setContinuousCursorDateStr(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}-01`);
     setIsDutyBatchModalOpen(true);
   };
+
   const handleContinuousStamp = (duty) => {
     if (duty === 'BACK') {
        const d = new Date(continuousCursorDateStr);
@@ -2958,6 +2965,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
   };
+
   const toggleCustomHoliday = async (dateStr) => {
      if (!user) return;
      let newHolidays = [...customHolidays];
@@ -3052,7 +3060,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       </div>
 
-      {/* 💡 [V5.1] 중요일정 D-10 표시 카드 및 전체보기 버튼 */}
       {allFutureImportantEvents.length > 0 && (
         <div className="bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl p-5 text-white shadow-md relative overflow-hidden">
           <Star className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
@@ -3080,7 +3087,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         </div>
       )}
 
-      {/* 💡 [V5.1] 중요일정 전체보기 팝업 모달 */}
       {isAllImportantEventsModalOpen && (
          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex justify-center items-end p-0 overflow-hidden">
             <div 
@@ -3356,7 +3362,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
       <button onClick={() => { setEventFormData({ date: todayStr, endDate: todayStr, title: '', type: '가족일정', isImportant: false, participant: '가족', isYearly: false, calendarType: 'solar' }); setEditingEventId(null); setIsEventModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 일정 등록 모달 */}
+      {/* 💡 [V5.5] 대폭 압축된 일정 등록/수정 모달창 */}
       {isEventModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[60] overflow-y-auto no-scrollbar p-0">
           <div 
@@ -3367,8 +3373,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
             <div className="flex justify-between items-center mb-5 shrink-0"><h2 className="text-2xl font-black text-gray-900">{editingEventId ? '일정 수정 🌿' : '새 일정 등록 🌿'}</h2><button onClick={() => setIsEventModalOpen(false)} className="bg-pink-50 text-pink-500 p-2.5 rounded-2xl border"><X size={20}/></button></div>
+            
             <form onSubmit={handleEventSubmit} className="space-y-4 overflow-y-auto no-scrollbar flex-1 pb-4">
               
+              {/* 1. 날짜 설정 */}
               <div className="flex gap-3 w-full">
                 <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
                    <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">시작 날짜</label>
@@ -3380,54 +3388,50 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                 </div>
               </div>
 
-              <div className="flex gap-3 w-full">
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">참석자</label>
-                   <select value={eventFormData.participant || '가족'} onChange={e => setEventFormData({...eventFormData, participant: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none appearance-none">
-                      <option value="가족">👨‍👩‍👦 가족 전체</option>
-                      <option value="현아">👩 현아 약속</option>
-                      <option value="정훈">🧑 정훈 약속</option>
-                   </select>
-                </div>
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-2xl p-2.5 border border-gray-200 shadow-sm">
-                   <label className="text-[10px] font-black text-gray-400 ml-1 block mb-0.5">분류</label>
-                   <select value={eventFormData.type} onChange={e => setEventFormData({...eventFormData, type: e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none appearance-none">
-                      <option value="가족일정">가족일정</option>
-                      <option value="회식">회식</option>
-                      <option value="기타">기타</option>
-                   </select>
-                </div>
+              {/* 2. 타이틀 (내용) 입력 - 동선 최우선 배치 */}
+              <div>
+                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label>
+                 <input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 결혼기념일, 휴가" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border focus:border-pink-300" />
               </div>
 
-              <div className="bg-red-50 p-3 rounded-2xl border border-red-100 flex items-center justify-between mt-2">
-                <div>
-                   <div className="text-sm font-black text-red-600 flex items-center gap-1">🔴 달력에 빨간 날로 표시</div>
-                   <div className="text-[9px] text-red-500 font-bold mt-0.5">우리가족 임시휴무, 연차 등 쉬는 날!</div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                   <input type="checkbox" className="sr-only peer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
-                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+              {/* 3. 옵션 초압축 통합 블록 */}
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm space-y-4 mt-2">
+                
+                {/* 3-1. 빨간날 지정 */}
+                <label className="flex items-center gap-3 cursor-pointer group">
+                   <input type="checkbox" className="w-5 h-5 accent-red-500 rounded border-gray-300 cursor-pointer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
+                   <div>
+                      <div className="text-sm font-black text-gray-800 group-hover:text-red-500 transition-colors flex items-center gap-1">🔴 달력에 빨간 날로 표시</div>
+                      <div className="text-[9px] text-gray-400 font-bold mt-0.5">우리가족 임시휴무, 연차 등 쉬는 날</div>
+                   </div>
                 </label>
-              </div>
 
-              <div><label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">일정 내용</label><input type="text" value={eventFormData.title} onChange={e=>setEventFormData({...eventFormData, title:e.target.value})} placeholder="예: 어머님 생신, 팀 회식" className="w-full bg-gray-50 rounded-xl px-4 h-[48px] text-base font-black outline-none border" /></div>
-              
-              <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100 flex items-center justify-between">
-                <div><div className="text-sm font-black text-blue-700 flex items-center gap-1"><Repeat size={14}/> 매년 반복 등록</div></div>
-                <div className="flex items-center gap-2">
-                  {eventFormData.isYearly && (
-                    <select value={eventFormData.calendarType || 'solar'} onChange={e => setEventFormData({...eventFormData, calendarType: e.target.value})} className="text-[10px] font-bold bg-white text-blue-600 px-2 py-1 rounded border border-blue-200 outline-none">
-                      <option value="solar">양력</option>
-                      <option value="lunar">음력</option>
-                    </select>
-                  )}
-                  <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isYearly} onChange={e => setEventFormData({...eventFormData, isYearly: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                <div className="h-px bg-gray-200 w-full"></div>
+
+                {/* 3-2. 매년 반복 */}
+                <div className="flex items-center justify-between">
+                   <label className="flex items-center gap-3 cursor-pointer group">
+                     <input type="checkbox" className="w-5 h-5 accent-blue-500 rounded border-gray-300 cursor-pointer" checked={eventFormData.isYearly} onChange={e => setEventFormData({...eventFormData, isYearly: e.target.checked})} />
+                     <span className="text-sm font-black text-gray-800 group-hover:text-blue-500 transition-colors flex items-center gap-1">🔄 매년 반복 등록</span>
+                   </label>
+                   {eventFormData.isYearly && (
+                     <select value={eventFormData.calendarType || 'solar'} onChange={e => setEventFormData({...eventFormData, calendarType: e.target.value})} className="text-[10px] font-bold bg-white text-blue-600 px-2.5 py-1.5 rounded-lg border border-blue-200 outline-none shadow-sm cursor-pointer">
+                       <option value="solar">양력</option>
+                       <option value="lunar">음력</option>
+                     </select>
+                   )}
                 </div>
-              </div>
 
-              <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100 flex items-center justify-between mt-2">
-                <div><div className="text-sm font-black text-amber-700 flex items-center gap-1"><Star size={14} className="fill-amber-400 text-amber-400"/> 중요 일정 (D-Day)</div><div className="text-[9px] text-amber-600 font-bold mt-0.5">상단 브리핑 카드에 남은 날짜가 자동 계산됩니다.</div></div>
-                <label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" className="sr-only peer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} /><div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-400"></div></label>
+                <div className="h-px bg-gray-200 w-full"></div>
+
+                {/* 3-3. D-Day 지정 */}
+                <label className="flex items-center gap-3 cursor-pointer group">
+                   <input type="checkbox" className="w-5 h-5 accent-amber-500 rounded border-gray-300 cursor-pointer" checked={eventFormData.isImportant} onChange={e => setEventFormData({...eventFormData, isImportant: e.target.checked})} />
+                   <div>
+                      <div className="text-sm font-black text-gray-800 group-hover:text-amber-500 transition-colors flex items-center gap-1">⭐ 중요 일정 (D-Day 표출)</div>
+                      <div className="text-[9px] text-gray-400 font-bold mt-0.5">달력 상단 브리핑 카드에 노출됩니다.</div>
+                   </div>
+                </label>
               </div>
               
               <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-pink-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border border-pink-600">{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
@@ -3918,8 +3922,5 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }
-
-
-
 
         
