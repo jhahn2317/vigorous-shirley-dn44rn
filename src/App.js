@@ -620,20 +620,34 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
 
+  // 💡 [V5.3] 시공간 분리 스마트 엔진 (5월 1일 기준 회계 법칙 변경)
+  const isActualExpense = (t) => {
+    if (t.type !== '지출') return false;
+    if (!t.date) return false;
+    
+    // 2026년 5월 1일 이전: (과거 보호막)
+    if (t.date < '2026-05-01') {
+      return !t.isFromSavings; // 저축은 지출 포함, 비상금 출금은 지출 제외
+    }
+    
+    // 2026년 5월 1일 이후: (새로운 정석 회계)
+    return t.category !== '저축'; // 저축은 지출 제외, 비상금 출금(지역화폐 등)은 지출 포함
+  };
+
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
-    expense: filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0), 
-    net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a, b) => a + (b.amount||0), 0) 
+    expense: filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0), 
+    net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
 
   const reviewData = useMemo(() => ({
-    expense: Object.entries(filteredLedger.filter(t => t.type === '지출').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    expense: Object.entries(filteredLedger.filter(isActualExpense).reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
   }), [filteredLedger]);
 
   const financialSummary = useMemo(() => {
     const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
-    const rawExpense = monthRawLedger.filter(t => t.type === '지출' && !t.isFromSavings).reduce((a,b)=>a+(b.amount||0),0);
+    const rawExpense = monthRawLedger.filter(isActualExpense).reduce((a,b)=>a+(b.amount||0),0);
     const sumPrincipal = monthRawLedger.filter(t => (t.category||'').includes('대출상환') || (t.category||'').includes('대출원금') || (t.category||'').includes('원금상환')).reduce((a,b)=>a+(b.amount||0),0);
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
@@ -919,7 +933,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         const days = Array(firstDay).fill(null).concat(Array.from({length:daysInMonth}, (_,i)=>i+1));
         const dataByDate = {};
         const calLedger = (ledger || []).filter(t => typeof t?.date === 'string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
-        calLedger.forEach(t => { if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; if(t.type === '수입') dataByDate[t.date].inc += t.amount; if(t.type === '지출' && !t.isFromSavings) dataByDate[t.date].exp += t.amount; });
+        calLedger.forEach(t => { 
+           if(!dataByDate[t.date]) dataByDate[t.date] = { inc: 0, exp: 0 }; 
+           if(t.type === '수입') dataByDate[t.date].inc += t.amount; 
+           if(isActualExpense(t)) dataByDate[t.date].exp += t.amount; 
+        });
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-bottom-2 mt-1">
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
@@ -1036,11 +1054,16 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                           <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                           <div className="truncate pr-2">
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
-                            <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
+                            <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
+                               {t.note || t.category} 
+                               {/* 💡 [V5.3] 금고출금 뱃지 UI */}
+                               {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 금고출금</span>}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                          <span className={`font-black text-base ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                          {/* 💡 [V5.3] 진짜 지출이 아닌 것(저축 등)은 회색 취소선으로 분리 표시 */}
+                          <span className={`font-black text-base flex-shrink-0 pl-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       </div>
                     </div>
@@ -1081,10 +1104,14 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                              <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                              <div className="truncate">
                                <div className="text-[10px] font-bold text-gray-500">{t.category}</div>
-                               <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">{t.note || t.category} {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 예금사용</span>}</div>
+                               <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
+                                  {t.note || t.category} 
+                                  {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 금고출금</span>}
+                               </div>
                              </div>
                           </div>
-                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : t.isFromSavings ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                          {/* 💡 [V5.3] 달력 리스트뷰에서도 취소선 적용 */}
+                          <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       ))
                   ) : (
@@ -1113,7 +1140,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
             
                <div className="mb-6">
                   <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarIcon size={12}/> {selectedLedgerDetail.date}</div>
-                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">{selectedLedgerDetail.note || selectedLedgerDetail.category} {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 예금사용</span>}</div>
+                  <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">
+                     {selectedLedgerDetail.note || selectedLedgerDetail.category} 
+                     {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 금고출금</span>}
+                  </div>
                   <div className="text-[11px] font-bold text-gray-500 mb-5 px-2.5 py-1 bg-gray-100 inline-block rounded-lg shadow-inner">{selectedLedgerDetail.category}</div>
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">{selectedLedgerDetail.type} 금액</div>
@@ -1245,11 +1275,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                 </div>
               )}
 
+              {/* 💡 [V5.3] 금고 출금 레이블 직관적으로 수정 */}
               {!editingLedgerId && formData.type === '지출' && formData.category !== '저축' && depositAssets.length > 0 && (
                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 animate-in slide-in-from-top-2">
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                        <input type="checkbox" checked={formData.isFromSavings} onChange={e => setFormData({...formData, isFromSavings: e.target.checked, linkedAssetId: e.target.checked ? (depositAssets[0]?.id || '') : ''})} className="w-4 h-4 text-indigo-500 rounded border-gray-300" />
-                       <div className="text-xs font-black text-gray-800 flex items-center gap-1"><Building2 size={14} className="text-indigo-500"/> 금고 돈 쓰기 (생활비 제외)</div>
+                       <div className="text-xs font-black text-gray-800 flex items-center gap-1"><Building2 size={14} className="text-indigo-500"/> 금고/비상금에서 출금 (지출 반영)</div>
                     </label>
                     {formData.isFromSavings && (
                       <div className="grid grid-cols-2 gap-2">
