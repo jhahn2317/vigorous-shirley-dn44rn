@@ -549,6 +549,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   
   const [selectedLedgerDetail, setSelectedLedgerDetail] = useState(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  
+  // 💡 [V5.4] 리포트 전체보기 및 카테고리 상세 팝업을 위한 상태
+  const [isExpenseExpanded, setIsExpenseExpanded] = useState(false);
+  const [isIncomeExpanded, setIsIncomeExpanded] = useState(false);
+  const [selectedReportCategory, setSelectedReportCategory] = useState(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLedgerId, setEditingLedgerId] = useState(null);
   const [isCustomCategory, setIsCustomCategory] = useState(false);
@@ -620,18 +626,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
 
-  // 💡 [V5.3] 시공간 분리 스마트 엔진 (5월 1일 기준 회계 법칙 변경)
   const isActualExpense = (t) => {
     if (t.type !== '지출') return false;
     if (!t.date) return false;
-    
-    // 2026년 5월 1일 이전: (과거 보호막)
-    if (t.date < '2026-05-01') {
-      return !t.isFromSavings; // 저축은 지출 포함, 비상금 출금은 지출 제외
-    }
-    
-    // 2026년 5월 1일 이후: (새로운 정석 회계)
-    return t.category !== '저축'; // 저축은 지출 제외, 비상금 출금(지역화폐 등)은 지출 포함
+    if (t.date < '2026-05-01') return !t.isFromSavings;
+    return t.category !== '저축'; 
   };
 
   const ledgerSummary = useMemo(() => ({ 
@@ -640,9 +639,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
 
+  // 💡 [V5.4] slice(0, 5) 제거: 전체 데이터를 가지고 있게끔 수정
   const reviewData = useMemo(() => ({
-    expense: Object.entries(filteredLedger.filter(isActualExpense).reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
-    income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    expense: Object.entries(filteredLedger.filter(isActualExpense).reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
+    income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
   }), [filteredLedger]);
 
   const financialSummary = useMemo(() => {
@@ -976,33 +976,62 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         );
       })()}
 
+      {/* 💡 [V5.4] 리포트 UI 드릴다운 (접기/펴기 + 카테고리 상세 모달 연결) */}
       {ledgerSubTab === 'review' && (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 mt-1">
           {reviewData.expense.length > 0 && (
             <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-100">
-              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 TOP 5</span></h3>
+              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💸 지출 {isExpenseExpanded ? '전체' : 'TOP 5'}</span></h3>
               <div className="space-y-3">
-                 {reviewData.expense.map(([cat, amt], idx) => (
-                  <div key={cat}>
-                    <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black">{formatMoney(amt)}원</div></div>
+                 {(isExpenseExpanded ? reviewData.expense : reviewData.expense.slice(0, 5)).map(([cat, amt], idx) => (
+                  <div key={cat} onClick={() => setSelectedReportCategory({type: '지출', category: cat})} className="cursor-pointer group active:scale-[0.98] transition-transform p-1.5 -mx-1.5 rounded-xl hover:bg-rose-50">
+                    <div className="flex justify-between items-end mb-1">
+                       <div className="flex items-center gap-1.5">
+                          <span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`}>{idx + 1}</span>
+                          <span className="text-xs font-bold text-gray-700 group-hover:text-rose-600 transition-colors">{cat}</span>
+                       </div>
+                       <div className="flex items-center gap-1">
+                          <div className="text-xs font-black text-gray-800">{formatMoney(amt)}원</div>
+                          <ChevronRight size={14} className="text-gray-300 group-hover:text-rose-400"/>
+                       </div>
+                    </div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.expense) * 100}%` }}></div></div>
                   </div>
                 ))}
               </div>
+              {reviewData.expense.length > 5 && (
+                 <button onClick={() => setIsExpenseExpanded(!isExpenseExpanded)} className="w-full mt-3 bg-rose-50 text-rose-500 font-bold text-[11px] py-2 rounded-xl border border-rose-100 flex items-center justify-center gap-1 active:scale-95 transition-transform">
+                    {isExpenseExpanded ? '접기 ▲' : `전체 카테고리 보기 (${reviewData.expense.length}개) ▼`}
+                 </button>
+              )}
             </div>
           )}
    
         {reviewData.income.length > 0 && (
             <div className="bg-white rounded-3xl p-5 shadow-md border border-blue-100">
-              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💰 수입 TOP 5</span></h3>
+              <h3 className="text-sm font-black text-gray-800 mb-4 flex justify-between"><span>💰 수입 {isIncomeExpanded ? '전체' : 'TOP 5'}</span></h3>
               <div className="space-y-3">
-                {reviewData.income.map(([cat, amt], idx) => (
-                  <div key={cat}>
-                    <div className="flex justify-between items-end mb-1"><div className="flex items-center gap-1.5"><span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`}>{idx + 1}</span><span className="text-xs font-bold">{cat}</span></div><div className="text-xs font-black text-blue-600">{formatMoney(amt)}원</div></div>
+                {(isIncomeExpanded ? reviewData.income : reviewData.income.slice(0, 5)).map(([cat, amt], idx) => (
+                  <div key={cat} onClick={() => setSelectedReportCategory({type: '수입', category: cat})} className="cursor-pointer group active:scale-[0.98] transition-transform p-1.5 -mx-1.5 rounded-xl hover:bg-blue-50">
+                    <div className="flex justify-between items-end mb-1">
+                       <div className="flex items-center gap-1.5">
+                          <span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`}>{idx + 1}</span>
+                          <span className="text-xs font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{cat}</span>
+                       </div>
+                       <div className="flex items-center gap-1">
+                          <div className="text-xs font-black text-blue-600">{formatMoney(amt)}원</div>
+                          <ChevronRight size={14} className="text-gray-300 group-hover:text-blue-400"/>
+                       </div>
+                    </div>
                     <div className="w-full bg-gray-100 rounded-full h-1.5"><div className={`h-full rounded-full ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`} style={{ width: `${(amt / ledgerSummary.income) * 100}%` }}></div></div>
                   </div>
                 ))}
               </div>
+              {reviewData.income.length > 5 && (
+                 <button onClick={() => setIsIncomeExpanded(!isIncomeExpanded)} className="w-full mt-3 bg-blue-50 text-blue-500 font-bold text-[11px] py-2 rounded-xl border border-blue-100 flex items-center justify-center gap-1 active:scale-95 transition-transform">
+                    {isIncomeExpanded ? '접기 ▲' : `전체 카테고리 보기 (${reviewData.income.length}개) ▼`}
+                 </button>
+              )}
             </div>
           )}
         </div>
@@ -1056,13 +1085,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
                             <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
                                {t.note || t.category} 
-                               {/* 💡 [V5.3] 금고출금 뱃지 UI */}
                                {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 금고출금</span>}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
-                          {/* 💡 [V5.3] 진짜 지출이 아닌 것(저축 등)은 회색 취소선으로 분리 표시 */}
                           <span className={`font-black text-base flex-shrink-0 pl-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       </div>
@@ -1077,6 +1104,61 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
       {/* 가계부 플로팅 버튼 */}
       <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
+
+      {/* 💡 [V5.4] 카테고리 리포트 상세 내역 팝업 모달 */}
+      {selectedReportCategory && (() => {
+         const isIncome = selectedReportCategory.type === '수입';
+         // 선택된 카테고리의 이번 달 내역 긁어와서 최신순 정렬
+         const catItems = filteredLedger.filter(t => t.type === selectedReportCategory.type && t.category === selectedReportCategory.category).sort((a,b) => b.date.localeCompare(a.date));
+         const totalAmt = catItems.reduce((a,b) => a + (b.amount||0), 0);
+         
+         return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[75] overflow-hidden p-0">
+              <div 
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={(e) => handleTouchEnd(e, () => setSelectedReportCategory(null))}
+                className={`bg-white w-full max-w-md rounded-t-[2.5rem] p-6 pb-8 shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[85vh] border-t-8 ${isIncome ? 'border-blue-500' : 'border-rose-500'}`}
+              >
+                 <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
+                 <div className="flex justify-between items-start mb-4 shrink-0">
+                    <div>
+                      <div className={`text-[10px] font-bold mb-1 flex items-center gap-1 ${isIncome ? 'text-blue-500' : 'text-rose-500'}`}>
+                         {getCategoryIcon(selectedReportCategory.category, selectedReportCategory.type)} {calMonth}월 {selectedReportCategory.category} 상세내역
+                      </div>
+                      <h2 className="text-2xl font-black text-gray-800 flex items-center gap-2">
+                         {formatLargeMoney(totalAmt)}원 <span className="text-sm font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-lg border border-gray-200">총 {catItems.length}건</span>
+                      </h2>
+                    </div>
+                    <button onClick={() => setSelectedReportCategory(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
+                 </div>
+                 
+                 <div className="overflow-y-auto no-scrollbar space-y-2.5 flex-1 pb-4 border-t border-gray-100 pt-4">
+                    {catItems.map(t => (
+                      <div key={t.id} onClick={() => {
+                          // 상세 창을 누르면, 기존의 selectedLedgerDetail 팝업을 상위에 띄워버림 (수정/삭제 연동)
+                          setSelectedLedgerDetail(t);
+                      }} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-gray-100 transition-colors active:scale-95">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                           <div className={`p-2.5 rounded-xl shadow-sm shrink-0 ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>
+                              {getCategoryIcon(t.category, t.type)}
+                           </div>
+                           <div className="truncate">
+                             <div className="text-[10px] font-bold text-gray-500">{t.date.replace(/-/g, '.')}</div>
+                             <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
+                               {t.note || t.category}
+                               {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 금고출금</span>}
+                             </div>
+                           </div>
+                        </div>
+                        <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+            </div>
+         );
+      })()}
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
       {selectedCalendarDate && (() => {
@@ -1110,7 +1192,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                                </div>
                              </div>
                           </div>
-                          {/* 💡 [V5.3] 달력 리스트뷰에서도 취소선 적용 */}
                           <span className={`font-black text-base shrink-0 ml-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
                       ))
@@ -1275,7 +1356,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                 </div>
               )}
 
-              {/* 💡 [V5.3] 금고 출금 레이블 직관적으로 수정 */}
               {!editingLedgerId && formData.type === '지출' && formData.category !== '저축' && depositAssets.length > 0 && (
                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 animate-in slide-in-from-top-2">
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
@@ -1375,7 +1455,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     </div>
   );
 }
-
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
