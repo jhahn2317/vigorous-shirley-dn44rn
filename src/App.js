@@ -1354,6 +1354,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [showDeliveryFilters, setShowDeliveryFilters] = useState(false);
   
   const [isDeliverySummaryOpen, setIsDeliverySummaryOpen] = useState(false);
+  // 💡 [V5.2] 연간 누적 수익 팝업 상태 추가
+  const [isYearlySummaryOpen, setIsYearlySummaryOpen] = useState(false);
   
   const [isLiveCalcOpen, setIsLiveCalcOpen] = useState(false);
   const [liveData, setLiveData] = useState({
@@ -1406,7 +1408,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const deliveryAvgPerDelivery = deliveryFilteredCount > 0 ? Math.round(deliveryFilteredTotal / deliveryFilteredCount) : 0;
   const filteredHyunaItems = filteredDailyDeliveries.filter(d => d.earner === '현아');
   const filteredJunghoonItems = filteredDailyDeliveries.filter(d => d.earner === '정훈');
-  const deliveryYearlyTotal = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))).reduce((a,b) => a + (b.amount||0), 0), [dailyDeliveries, selectedYear]);
 
   const dailyShifts = useMemo(() => {
     const shiftsByDate = {};
@@ -1488,6 +1489,16 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     let hours = Math.floor(totalMins / 60); let mins = totalMins % 60;
     return { durationStr: totalMins > 0 ? `${hours > 0 ? hours+'시간 ' : ''}${mins > 0 ? mins+'분' : ''}`.trim() : '-', totalCnt, totalAmt, perDelivery: totalCnt > 0 ? Math.round(totalAmt / totalCnt) : 0, hourlyRate: totalMins > 0 ? Math.round(totalAmt / (totalMins / 60)) : 0 };
   };
+
+  // 💡 [V5.2] 연간 누적 데이터를 위한 독립된 계산 영역
+  const yearlyItems = useMemo(() => (dailyDeliveries || []).filter(d => typeof d?.date === 'string' && d.date.startsWith(String(selectedYear))), [dailyDeliveries, selectedYear]);
+  const yearlyMetrics = useMemo(() => getGroupMetrics(yearlyItems), [yearlyItems]);
+  const yearlyHyunaItems = useMemo(() => yearlyItems.filter(d => d.earner === '현아'), [yearlyItems]);
+  const yearlyJunghoonItems = useMemo(() => yearlyItems.filter(d => d.earner === '정훈'), [yearlyItems]);
+  const yearlyHyunaAmt = yearlyHyunaItems.reduce((a,b)=>a+(b.amount||0), 0);
+  const yearlyHyunaCnt = yearlyHyunaItems.reduce((a,b)=>a+(b.count||0), 0);
+  const yearlyJunghoonAmt = yearlyJunghoonItems.reduce((a,b)=>a+(b.amount||0), 0);
+  const yearlyJunghoonCnt = yearlyJunghoonItems.reduce((a,b)=>a+(b.count||0), 0);
 
   const handleClearPayday = async (pd) => { if (!user) return; const newCleared = [...clearedPaydays, pd]; if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
   const handleUndoClearPayday = async (pd) => { if (!user || !window.confirm('이 정산 내역을 다시 대기열로 되돌리시겠습니까?')) return; const newCleared = clearedPaydays.filter(p => p !== pd); if (isFirebaseEnabled) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), { ...userSettings, clearedPaydays: newCleared }); } setSelectedWeeklySummary(null); };
@@ -1687,7 +1698,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                      <div className="text-center"><div className="text-[9px] font-bold text-gray-400 mb-0.5">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
                   </div>
 
-                  {/* 💡 [수정됨] 금액 / 건수 나란히 나오는 UI 복구 (중간 정산기) */}
                   <div className="space-y-2 mb-3">
                     <div className="flex gap-2 items-center">
                        <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
@@ -1729,6 +1739,41 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         )}
       </div>
 
+      {/* 💡 [V5.2] 연간 누적 수익 접기/펴기 영역 (차분한 Slate 톤 적용) */}
+      <div className="mb-1">
+        {isYearlySummaryOpen ? (
+          <div className="bg-slate-700 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsYearlySummaryOpen(false)}>
+            <Bike className="absolute -right-2 -bottom-2 w-24 h-24 opacity-10 rotate-12" fill="white" />
+            <div className="flex justify-between items-end mb-3 relative z-10 cursor-pointer">
+              <div>
+                <div className="text-[11px] font-bold opacity-80 mb-0.5 flex items-center gap-1">
+                   <ChevronUp size={14}/> {selectedYear}년 누적 배달 수익
+                </div>
+                <div className="text-3xl font-black tracking-tighter leading-none mt-1">{formatLargeMoney(yearlyMetrics.totalAmt)}<span className="text-base ml-1 opacity-80 font-bold">원</span></div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] font-bold opacity-90 flex flex-col items-end">
+                   <span>총 {formatLargeMoney(yearlyMetrics.totalCnt)}건</span>
+                   <span>평단 {formatLargeMoney(yearlyMetrics.perDelivery)}원</span>
+                   <span className="text-emerald-300 mt-0.5">시급 {formatLargeMoney(yearlyMetrics.hourlyRate)}원</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex bg-slate-800/80 rounded-xl p-3 mt-3 divide-x divide-slate-600 relative z-10 shadow-inner border border-slate-600">
+              <div className="flex-1 px-3"><div className="text-[10px] opacity-70 mb-1 flex justify-between font-bold">정훈 <span>{formatLargeMoney(yearlyJunghoonCnt)}건</span></div><div className="text-sm font-black">{formatLargeMoney(yearlyJunghoonAmt)}원</div></div>
+              <div className="flex-1 px-3"><div className="text-[10px] opacity-70 mb-1 flex justify-between font-bold">현아 <span>{formatLargeMoney(yearlyHyunaCnt)}건</span></div><div className="text-sm font-black">{formatLargeMoney(yearlyHyunaAmt)}원</div></div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-100 border border-slate-200 rounded-[1rem] p-3 shadow-sm flex justify-between items-center cursor-pointer text-slate-500 hover:bg-slate-200 transition-colors" onClick={() => setIsYearlySummaryOpen(true)}>
+             <span className="text-xs font-black flex items-center gap-1.5">🗓️ {selectedYear}년 누적 수익 확인</span>
+             <ChevronDownSquare size={16} />
+          </div>
+        )}
+      </div>
+
+      {/* 2. 월간 수익 접기/펴기 영역 */}
       <div>
         {isDeliverySummaryOpen ? (
           <div className="bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-4 text-white shadow-md relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsDeliverySummaryOpen(false)}>
@@ -1741,7 +1786,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="text-4xl font-black tracking-tighter leading-none mt-1">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-lg ml-1 opacity-80 font-bold">원</span></div>
               </div>
               <div className="text-right">
-                <div className="text-[9px] bg-white/20 px-2 py-1 rounded font-bold mb-1.5 inline-block">{selectedYear}년 누적: {formatLargeMoney(deliveryYearlyTotal)}원</div>
                 <div className="text-[10px] font-bold opacity-90 flex flex-col items-end"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span></div>
               </div>
             </div>
@@ -1856,14 +1900,29 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         );
       })()}
 
+      {/* 💡 [V5.2] 주차별 보관함 UI 초압축 최적화 (높이 유지하면서 데이터 3배 넣기) */}
       {deliverySubTab === 'weekly' && (
         <div className="space-y-3 animate-in slide-in-from-right duration-300 mt-1">
-          {pastPaydays.map(pDate => (
-            <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[2rem] p-5 shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
-              <div><div className="text-xs text-gray-400 font-bold mb-1.5">{pDate.slice(5).replace('-', '/')} 입금완료 (보관됨)</div><div className="font-black text-gray-800 text-base">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</div></div>
-              <div className="text-right"><div className="text-xl font-black text-slate-400 line-through decoration-slate-300">{formatLargeMoney(paydayGroups[pDate].total)}원</div></div>
-            </div>
-          ))}
+          {pastPaydays.map(pDate => {
+             const group = paydayGroups[pDate];
+             const metrics = getGroupMetrics(group.items);
+             return (
+               <div key={pDate} onClick={() => setSelectedWeeklySummary(pDate)} className="bg-white rounded-[1.5rem] py-3 px-4 shadow-sm border border-slate-200 cursor-pointer active:scale-95 transition-transform">
+                 <div className="flex justify-between items-end mb-2">
+                    <div className="flex items-center gap-2">
+                       <span className="font-black text-gray-800 text-sm">{parseInt(pDate.slice(5,7))}월 {getWeekOfMonth(pDate)}주차</span>
+                       <span className="text-[9px] text-gray-400 font-bold">{pDate.slice(5).replace('-', '/')} 정산완료</span>
+                    </div>
+                    <div className="text-lg font-black text-slate-400 line-through decoration-slate-300 leading-none">{formatLargeMoney(group.total)}원</div>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-1.5 rounded-lg border border-gray-100">
+                    <span className="flex items-center gap-1"><Timer size={10} className="text-gray-400"/>{metrics.durationStr || '-'}</span>
+                    <span className="flex items-center gap-1"><Bike size={10} className="text-gray-400"/>총 {metrics.totalCnt}건</span>
+                    <span className="flex items-center gap-1 text-blue-500"><Coins size={10} className="text-blue-400"/>시급 {formatLargeMoney(metrics.hourlyRate)}원</span>
+                 </div>
+               </div>
+             )
+          })}
         </div>
       )}
 
@@ -2086,6 +2145,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
+            // 💡 [V5.0] X 버튼 대신 화면 밖 터치 시에도 증발 방지 로직 적용
             onTouchEnd={(e) => handleTouchEnd(e, handleCloseDeliveryModal)}
             className="bg-white w-full max-w-md rounded-t-[3rem] p-7 pb-12 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-blue-500 flex flex-col max-h-[90vh]"
           >
@@ -2118,19 +2178,23 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
                 <div className="font-black text-blue-700 mb-2 flex items-center gap-1.5">🧑 정훈 수익</div>
                 <div className="space-y-2">
-                  <div className="flex gap-2 items-center flex-wrap">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        </div>
                      </div>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
                      <NetDiffInfo earner="정훈" platform="배민" inputAmt={deliveryFormData.amountJunghoonBaemin} inputCnt={deliveryFormData.countJunghoonBaemin} date={deliveryFormData.date} />
                   </div>
                   <div className="w-full border-t border-blue-100 my-1"></div>
-                  <div className="flex gap-2 items-center flex-wrap">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-blue-200 focus:border-blue-400" />
+                        </div>
                      </div>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-blue-200 focus:border-blue-400" />
                      <NetDiffInfo earner="정훈" platform="쿠팡" inputAmt={deliveryFormData.amountJunghoonCoupang} inputCnt={deliveryFormData.countJunghoonCoupang} date={deliveryFormData.date} />
@@ -2141,19 +2205,23 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mb-3">
                 <div className="font-black text-slate-700 mb-2 flex items-center gap-1.5">👩 현아 수익</div>
                 <div className="space-y-2">
-                   <div className="flex gap-2 items-center flex-wrap">
+                   <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#2ac1bc] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">배민</span>
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        </div>
                      </div>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
                      <NetDiffInfo earner="현아" platform="배민" inputAmt={deliveryFormData.amountHyunaBaemin} inputCnt={deliveryFormData.countHyunaBaemin} date={deliveryFormData.date} />
                   </div>
                   <div className="w-full border-t border-slate-200 my-1"></div>
-                  <div className="flex gap-2 items-center flex-wrap">
+                  <div className="grid grid-cols-2 gap-2 items-center">
                      <span className="text-[11px] font-bold bg-[#111111] text-white px-2 py-1.5 rounded w-10 text-center shrink-0">쿠팡</span>
-                     <div className="flex-1 relative">
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                     <div className="flex-1 relative col-span-2 flex items-center gap-2">
+                        <div className="flex-1 relative">
+                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="정산 금액" className="w-full text-base font-black bg-white rounded-xl px-3 h-[44px] outline-none border border-slate-200 focus:border-blue-400" />
+                        </div>
                      </div>
                      <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="w-[70px] shrink-0 text-base font-black bg-white rounded-xl px-2 h-[44px] text-center outline-none border border-slate-200 focus:border-blue-400" />
                      <NetDiffInfo earner="현아" platform="쿠팡" inputAmt={deliveryFormData.amountHyunaCoupang} inputCnt={deliveryFormData.countHyunaCoupang} date={deliveryFormData.date} />
