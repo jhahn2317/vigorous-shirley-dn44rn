@@ -2979,6 +2979,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
+// ==========================================
 // 8. FAMILY CALENDAR COMPONENT 
 // ==========================================
 function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab, customHolidays, updateSettings, userSettings }) {
@@ -2997,12 +2998,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState(null);
   
-  // 💡 [V5.4] 폼 기본값 (UI에서 숨겨지더라도 시스템상 '가족', '가족일정'으로 기본 세팅 유지)
   const [eventFormData, setEventFormData] = useState({ 
     date: todayStr, endDate: '', title: '', type: '가족일정', isImportant: false, 
     participant: '가족', isYearly: false, calendarType: 'solar' 
   });
-  
   const [isMessageHistoryOpen, setIsMessageHistoryOpen] = useState(false);
   const [messageFormData, setMessageFormData] = useState({ text: '' });
   const [replyingTo, setReplyingTo] = useState(null);
@@ -3023,6 +3022,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   
   const [isAllImportantEventsModalOpen, setIsAllImportantEventsModalOpen] = useState(false);
 
+  // 💡 [V5.21] 타임라인 과거/미래 토글 상태 추가 ('future'가 기본값)
+  const [timelineMode, setTimelineMode] = useState('future');
+
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
   
   const topImportantEvents = useMemo(() => {
@@ -3034,6 +3036,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         
         const today = new Date(todayStr);
         const target = new Date(e.date);
+        
         if(isNaN(target.getTime())) return false;
         
         const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -3050,7 +3053,18 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   }, [events, todayStr]);
 
   const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
-  const timelineEventsList = useMemo(() => familyEventsList.filter(e => (e.endDate || e.date) >= todayStr), [familyEventsList, todayStr]);
+  
+  // 💡 [V5.21] 타임라인 이벤트 리스트 (미래/과거 모드에 따른 필터 및 정렬)
+  const timelineEventsList = useMemo(() => {
+    if (timelineMode === 'future') {
+      // 미래 일정: 오늘 이후, 오름차순 (가까운 내일부터)
+      return familyEventsList.filter(e => (e.endDate || e.date) >= todayStr);
+    } else {
+      // 과거 일정: 오늘 이전, 내림차순 (가까운 어제부터 역순으로 정렬)
+      return familyEventsList.filter(e => (e.endDate || e.date) < todayStr).reverse();
+    }
+  }, [familyEventsList, todayStr, timelineMode]);
+
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   
@@ -3233,7 +3247,11 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       
       {/* 한줄톡 */}
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
-         <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center"><span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span><button onClick={() => setIsMessageHistoryOpen(true)} className="text-gray-400 font-bold border-b border-gray-300 pb-0.5 active:text-pink-500">과거 보관소</button></h3>
+         <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center">
+            <span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span>
+            {/* 💡 [V5.21] 과거 보관소 버튼 네이밍 직관적으로 변경 */}
+            <button onClick={() => setIsMessageHistoryOpen(true)} className="text-pink-400 font-bold border-b border-pink-300 pb-0.5 active:text-pink-600 transition-colors">📮 지난 톡 꺼내보기</button>
+         </h3>
          
          <div className="space-y-3 mb-4">
             {activeMessages.map(m => {
@@ -3266,11 +3284,15 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    {replyingTo === m.id ? (
                      <div className="mt-3 flex gap-1.5 bg-gray-50 p-1.5 rounded-2xl border"><input type="text" value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`${currentUser}(으)로 답글...`} className="flex-1 bg-white text-sm font-bold rounded-xl px-3 py-2 outline-none border" /><button onClick={() => handleAddReplySubmit(m.id)} className="bg-gray-800 text-white px-3 rounded-xl text-xs font-black active:scale-95">등록</button><button onClick={() => { setReplyingTo(null); setReplyText(''); }} className="bg-white text-gray-500 px-2 rounded-xl border"><X size={14}/></button></div>
                    ) : (
-                     <div className="flex justify-end gap-1.5 mt-3 pt-3 border-t border-gray-50"><button onClick={() => setReplyingTo(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border flex items-center gap-1"><MessageSquareHeart size={14}/> 답글</button><button onClick={() => handleCheckMessage(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border flex items-center gap-1"><CheckCircle2 size={14}/> 보관함</button></div>
+                     <div className="flex justify-end gap-1.5 mt-3 pt-3 border-t border-gray-50">
+                        <button onClick={() => setReplyingTo(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border flex items-center gap-1 hover:bg-gray-100 transition-colors"><MessageSquareHeart size={14}/> 답글</button>
+                        {/* 💡 [V5.21] 아내분 맞춤형 보관함 네이밍 변경 */}
+                        <button onClick={() => handleCheckMessage(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 px-3 py-1.5 rounded-lg border flex items-center gap-1 transition-colors"><CheckCircle2 size={14}/> 💌 다 읽었어!</button>
+                     </div>
                    )}
                 </div>
               )
-           })}
+            })}
          </div>
 
          <div className="flex gap-2 relative mt-2 w-full">
@@ -3321,7 +3343,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           <div className="space-y-1.5 relative z-10">
             {topImportantEvents.length > 0 ? (
                topImportantEvents.map(e => (
-                 <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-transform">
+                  <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-transform">
                    <div className="flex items-center gap-2.5 truncate">
                      <div className="bg-white text-pink-600 px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm"><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
                      <div className="font-bold text-base truncate">{e.title}</div>
@@ -3329,7 +3351,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    <div className="bg-amber-400 text-amber-900 px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 shadow-sm border border-amber-300">
                      {getDDay(e.date)}
                    </div>
-                 </div>
+                  </div>
                ))
             ) : (
                <div className="text-center py-2 text-[10px] font-bold text-white/80 bg-black/10 rounded-xl">D-10 이내에 예정된 일정이 없습니다.</div>
@@ -3353,10 +3375,10 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                </div>
                <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-10 border-t border-gray-100 pt-4">
                   {allFutureImportantEvents.map(e => (
-                      <div key={e.id} onClick={() => { setIsAllImportantEventsModalOpen(false); setSelectedEventDetail(e); }} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
+                     <div key={e.id} onClick={() => { setIsAllImportantEventsModalOpen(false); setSelectedEventDetail(e); }} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
                            <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
-                          <div className="truncate">
+                           <div className="truncate">
                             <div className="flex items-center gap-1 mb-0.5">
                                <span className="text-[10px] font-bold text-gray-500">{e.date.replace(/-/g, '.')}</span>
                             </div>
@@ -3366,7 +3388,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                         <div className="bg-amber-100 text-amber-600 px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 shadow-sm border border-amber-200">
                            {getDDay(e.date)}
                         </div>
-                      </div>
+                     </div>
                   ))}
                </div>
             </div>
@@ -3382,10 +3404,16 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200 animate-in slide-in-from-left duration-300 mt-1">
           <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
           
+          {/* 💡 [V5.21] 타임라인 시간 여행 토글 스위치 (과거/미래) */}
+          <div className="flex bg-gray-50 p-1.5 rounded-2xl mb-5 shadow-inner border border-gray-200">
+             <button onClick={() => setTimelineMode('future')} className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${timelineMode==='future'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500 hover:bg-gray-100'}`}>✨ 함께 걸어갈 길</button>
+             <button onClick={() => setTimelineMode('past')} className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${timelineMode==='past'?'bg-white text-blue-600 shadow-sm border border-blue-200':'text-gray-500 hover:bg-gray-100'}`}>👣 우리가 걸어온 길</button>
+          </div>
+
           <div id="timeline-scroll-area" className="max-h-[500px] overflow-y-auto no-scrollbar relative rounded-xl bg-gray-50/30 p-2">
              <div className="space-y-0 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent pb-10">
                
-               {timelineEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">다가오는 일정이 없습니다.</div>}
+               {timelineEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">{timelineMode === 'future' ? '다가오는 일정이 없습니다. 🌿' : '지난 일정이 없습니다. 🍃'}</div>}
                
                {timelineEventsList.map((e, i, arr) => {
                  const isTodayEvent = e.date <= todayStr && (e.endDate || e.date) >= todayStr;
@@ -3462,6 +3490,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
               count++;
           }
         });
+
         return (
           <div className="bg-white rounded-[2rem] p-4 shadow-md border border-pink-100 animate-in slide-in-from-right mt-1">
              <div className="flex justify-between items-center px-3 mb-4 mt-1">
@@ -3485,6 +3514,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  const isRed = dayIndex === 0 || holidayName || isCustomHoliday;
                  const isBlue = dayIndex === 6 && !holidayName && !isCustomHoliday;
                  const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-gray-600';
+
                  return (
                    <div key={`day-${i}`} 
                      onClick={() => { 
@@ -3529,7 +3559,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
                   <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
-                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '. ')}
+                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '.')}
                   </h2>
                   <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
                </div>
@@ -3778,7 +3808,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        const dateStr = `${dutyBatchYear}-${String(dutyBatchMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                        const duty = batchDuties[dateStr];
                        let cellClass = duty === 'DAY' ? 'text-blue-600 border-blue-200 bg-blue-50' : duty === 'EVE' ? 'text-orange-600 border-orange-200 bg-orange-50' : duty === 'OFF' ? 'text-pink-600 border-pink-200 bg-pink-50' : 'text-gray-400 border-gray-100 bg-white';
-                       
                        const isToday = dateStr === todayStr;
                        const isCursor = dutyBatchMode === 'continuous' && isDutyBatchEditMode && dateStr === continuousCursorDateStr;
                        if (isCursor) cellClass += ` border-2 border-gray-800 ring-4 ring-gray-200 z-10 scale-110 shadow-md`;
@@ -3828,7 +3857,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  </div>
                )}
             </div>
-         </div>
+        </div>
       )}
     </div>
   );
