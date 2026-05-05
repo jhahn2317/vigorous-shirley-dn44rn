@@ -1482,11 +1482,12 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const [isPendingSummaryOpen, setIsPendingSummaryOpen] = useState(true);
   const [isYearlySummaryOpen, setIsYearlySummaryOpen] = useState(false);
   
-  const [isLiveCalcOpen, setIsLiveCalcOpen] = useState(false);
-  const [liveData, setLiveData] = useState({
-    amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', 
-    amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' 
-  });
+  // 💡 [V5.27] 심폐소생술(탈출구) 팝업 상태 추가
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // 💡 [V5.30] 회차 통합 모드 상태 추가
+  const [mergeModeDate, setMergeModeDate] = useState(null);
+  const [selectedShiftsToMerge, setSelectedShiftsToMerge] = useState([]);
 
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
@@ -1528,41 +1529,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     });
     return { amt, cnt };
   };
-
-  const liveMetrics = useMemo(() => {
-    const inputAmt = (parseInt(liveData.amountHyunaBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountHyunaCoupang.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonBaemin.replace(/,/g, ''))||0) + (parseInt(liveData.amountJunghoonCoupang.replace(/,/g, ''))||0);
-    const inputCnt = (parseInt(liveData.countHyunaBaemin)||0) + (parseInt(liveData.countHyunaCoupang)||0) + (parseInt(liveData.countJunghoonBaemin)||0) + (parseInt(liveData.countJunghoonCoupang)||0);
-
-    let savedAmt = 0, savedCnt = 0;
-    if (timerActive && trackingStartTime) {
-        const dObj = new Date(trackingStartTime);
-        const utc = dObj.getTime() + (dObj.getTimezoneOffset() * 60000);
-        const kstTime = new Date(utc + (9 * 3600000));
-        const dateStr = `${kstTime.getFullYear()}-${String(kstTime.getMonth() + 1).padStart(2, '0')}-${String(kstTime.getDate()).padStart(2, '0')}`;
-
-        const savedHB = getTodaySaved('현아', '배민', dateStr);
-        const savedHC = getTodaySaved('현아', '쿠팡', dateStr);
-        const savedJB = getTodaySaved('정훈', '배민', dateStr);
-        const savedJC = getTodaySaved('정훈', '쿠팡', dateStr);
-
-        if (liveData.amountHyunaBaemin) { savedAmt += savedHB.amt; savedCnt += savedHB.cnt; }
-        if (liveData.amountHyunaCoupang) { savedAmt += savedHC.amt; savedCnt += savedHC.cnt; }
-        if (liveData.amountJunghoonBaemin) { savedAmt += savedJB.amt; savedCnt += savedJB.cnt; }
-        if (liveData.amountJunghoonCoupang) { savedAmt += savedJC.amt; savedCnt += savedJC.cnt; }
-    }
-
-    const currentShiftAmt = Math.max(0, inputAmt - savedAmt);
-    const currentShiftCnt = Math.max(0, inputCnt - savedCnt);
-
-    const activeMinutes = Math.floor(elapsedSeconds / 60); const hours = activeMinutes / 60;
-    return { 
-       totalAmt: currentShiftAmt, 
-       totalCnt: currentShiftCnt, 
-       avg: currentShiftCnt > 0 ? Math.round(currentShiftAmt / currentShiftCnt) : 0, 
-       hourly: hours > 0 ? Math.round(currentShiftAmt / hours) : 0,
-       deductedAmt: savedAmt
-    };
-  }, [liveData, elapsedSeconds, timerActive, trackingStartTime, dailyDeliveries]);
 
   const filteredDailyDeliveries = useMemo(() => {
     let data = dailyDeliveries || [];
@@ -1675,6 +1641,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     e.preventDefault(); if (!user) return;
     const timestamp = new Date().toISOString(); const adds = [];
 
+    // 💡 [V5.27] 진짜 마감을 할 때만 타이머를 죽입니다!
+    if (!editingDeliveryShift && timerActive) {
+        handleEndDelivery();
+    }
+
     const createAdd = (inputAmtStr, inputCntStr, earner, platform) => {
       const inputAmt = parseInt(String(inputAmtStr||0).replace(/,/g, ''), 10) || 0;
       const inputCnt = parseInt(String(inputCntStr||0).replace(/,/g, ''), 10) || 0;
@@ -1719,14 +1690,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
        setRecoveryShift(null);
        setIsDeliveryModalOpen(false); 
        setEditingDeliveryShift(null);
-       setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); 
-       setIsLiveCalcOpen(false);
     }
   };
 
   const openEditShiftForm = (shift) => {
     const form = { ...emptyForm, date: shift.date, startTime: shift.startTime || '', endTime: shift.endTime || '' };
-    
     const platforms = ['배민', '쿠팡'];
     const earners = ['정훈', '현아'];
     
@@ -1766,13 +1734,89 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     setSelectedShiftDetail(null);
   };
 
+  // 💡 [V5.30] 회차 통합 마스터 로직
+  const handleToggleMergeShift = (shiftId) => {
+      setSelectedShiftsToMerge(prev => prev.includes(shiftId) ? prev.filter(id => id !== shiftId) : [...prev, shiftId]);
+  };
+
+  const executeShiftMerge = async (date) => {
+      if (selectedShiftsToMerge.length < 2) {
+          alert("통합할 회차를 2개 이상 선택해주세요!");
+          return;
+      }
+      if (!window.confirm(`선택한 ${selectedShiftsToMerge.length}개의 회차를 하나로 완벽하게 통합하시겠습니까?\n(시작~종료 시간이 자동으로 합쳐집니다)`)) return;
+
+      const shifts = dailyShifts[date].filter(s => selectedShiftsToMerge.includes(s.id));
+      let allItems = [];
+      shifts.forEach(s => allItems.push(...s.items));
+
+      // 1. 가장 빠른 시작 시간과 가장 늦은 종료 시간 찾기
+      let minStart = "23:59";
+      let maxEnd = "00:00";
+      allItems.forEach(item => {
+          if (item.startTime && item.startTime < minStart) minStart = item.startTime;
+          if (item.endTime && item.endTime > maxEnd) maxEnd = item.endTime;
+      });
+      if (minStart === "23:59") minStart = "";
+      if (maxEnd === "00:00") maxEnd = "";
+
+      // 2. 일꾼 + 플랫폼별로 건수/금액 완벽 병합 (데이터 뭉치기)
+      const aggregated = {};
+      allItems.forEach(item => {
+          const key = `${item.earner}-${item.platform}`;
+          if (!aggregated[key]) {
+              aggregated[key] = { earner: item.earner, platform: item.platform, amount: 0, count: 0 };
+          }
+          aggregated[key].amount += (item.amount || 0);
+          aggregated[key].count += (item.count || 0);
+      });
+
+      // 3. DB 트랜잭션 (기존 조각들 삭제 후 거대한 1개의 회차로 재탄생!)
+      const timestamp = new Date().toISOString();
+      if (isFirebaseEnabled && user) {
+          // 기존 쪼개진 데이터 폭파
+          for (const item of allItems) {
+              await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'delivery', item.id));
+          }
+          // 하나로 합쳐진 거대한 데이터 생성
+          for (const val of Object.values(aggregated)) {
+              if (val.amount > 0 || val.count > 0) {
+                  await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'delivery'), {
+                      date: date,
+                      earner: val.earner,
+                      platform: val.platform,
+                      amount: val.amount,
+                      count: val.count,
+                      startTime: minStart,
+                      endTime: maxEnd,
+                      updatedAt: timestamp,
+                      updatedBy: currentUser
+                  });
+              }
+          }
+      }
+      
+      setMergeModeDate(null);
+      setSelectedShiftsToMerge([]);
+      alert("✨ 성공적으로 회차 통합이 완료되었습니다!");
+  };
+
+  // 💡 [V5.27] 투트랙 심플 탈출구 & 심폐소생술 적용
   const handleCloseDeliveryModal = () => {
-     if (window.confirm("창을 닫으시면 마감 기록이 날아갑니다. 정말 닫으시겠습니까?\n(타이머를 오래 켰던 경우 메인 화면에 임시 보관됩니다)")) {
-         setIsDeliveryModalOpen(false);
-         if (!editingDeliveryShift && deliveryFormData.startTime) {
-             const recoveryData = { formData: deliveryFormData, splitQueue: splitQueue };
-             localStorage.setItem('hyunaRecoveryShift', JSON.stringify(recoveryData));
-             setRecoveryShift(recoveryData);
+     if (editingDeliveryShift) {
+         if(window.confirm("수정 중인 내용을 취소하시겠습니까?")) setIsDeliveryModalOpen(false);
+     } else if (timerActive) {
+         // 타이머가 돌고 있는 라이브 세션일 때는 2지선다 팝업 띄움!
+         setShowCloseConfirm(true);
+     } else {
+         // 일반 임시보관 닫기
+         if (window.confirm("창을 닫으시겠습니까?\n(임시 보관함에 유지됩니다)")) {
+             setIsDeliveryModalOpen(false);
+             if (deliveryFormData.startTime) {
+                 const recoveryData = { formData: deliveryFormData, splitQueue: splitQueue };
+                 localStorage.setItem('hyunaRecoveryShift', JSON.stringify(recoveryData));
+                 setRecoveryShift(recoveryData);
+             }
          }
      }
   };
@@ -1793,7 +1837,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     <div className="flex flex-col gap-2 pb-8 pt-1 animate-in fade-in duration-500 text-slate-800 bg-white min-h-screen">
       
       {recoveryShift && !timerActive && (
-         <div className="bg-red-50 border border-red-200 rounded-2xl p-3 shadow-sm flex flex-col gap-2 animate-in slide-in-from-top-2 mx-1">
+         <div className="bg-red-50 border border-red-200 rounded-2xl p-3 shadow-sm flex flex-col gap-2 animate-in slide-in-from-top-2 mx-1 mt-2">
             <div className="flex items-center gap-2">
                <AlertCircle size={16} className="text-red-600" />
                <span className="text-xs font-black text-red-700">저장 안 된 마감 기록이 있습니다!</span>
@@ -1813,25 +1857,29 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
          </div>
       )}
 
-      {/* 프리미엄 타이머 카드 */}
-      <div className={`mx-1 rounded-[2rem] p-5 shadow-lg transition-all duration-700 ${timerActive ? 'bg-gradient-to-br from-blue-600 to-indigo-800 ring-4 ring-blue-100 shadow-[0_10px_20px_rgba(37,99,235,0.3)]' : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-md'}`}>
-        <div className="flex justify-between items-center mb-3">
+      {/* 💡 [V5.27] 프리미엄 타이머 카드 - 뚱뚱이 다이어트 완료 */}
+      <div className={`mx-1 rounded-[2rem] p-5 shadow-lg transition-all duration-700 mt-2 ${timerActive ? 'bg-gradient-to-br from-blue-600 to-indigo-800 ring-4 ring-blue-100 shadow-[0_10px_20px_rgba(37,99,235,0.3)]' : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-md'}`}>
+        <div className="flex justify-between items-center">
           <div className="flex items-center gap-3 ml-1">
             <div className={`p-3 rounded-2xl ${timerActive ? 'bg-white/20 text-white animate-pulse shadow-inner' : 'bg-slate-700 text-slate-300 shadow-inner'}`}>
                <Timer size={24} />
             </div>
             <div>
-              <div className={`text-[11px] font-black flex items-center gap-1.5 mb-0.5 ${timerActive ? 'text-blue-100' : 'text-slate-200'}`}>
-                실시간 기록 {timerActive && <span className="inline-block w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse shadow-sm"></span>}
+              <div className={`text-[11px] font-black flex items-center mb-0.5 ${timerActive ? 'text-blue-100' : 'text-slate-200'}`}>
+                실시간 기록 {timerActive && <span className="inline-block w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse shadow-sm ml-1.5"></span>}
+                {trackingStartTime && timerActive && (
+                   <span className="ml-2 text-[10px] text-blue-100 font-bold bg-white/10 px-1.5 py-0.5 rounded shadow-sm border border-blue-300/30 tracking-tighter">
+                      {new Date(trackingStartTime).getHours().toString().padStart(2,'0')}:{new Date(trackingStartTime).getMinutes().toString().padStart(2,'0')} 시작
+                   </span>
+                )}
               </div>
-              <div className={`text-[28px] font-black tracking-tighter leading-none text-white drop-shadow-md`}>
+              <div className={`text-[32px] font-black tracking-tighter leading-none text-white drop-shadow-md`}>
                  {timerActive ? `${Math.floor(elapsedSeconds/3600).toString().padStart(2,'0')}:${String(Math.floor((elapsedSeconds%3600)/60)).padStart(2,'0')}:${String(elapsedSeconds%60).padStart(2,'0')}` : '00:00:00'}
               </div>
             </div>
           </div>
           <button onClick={() => { 
             if(timerActive) {
-              if(!window.confirm("운행을 마감하시겠습니까?")) return;
               const endObj = new Date();
               const startObj = new Date(trackingStartTime);
               const startDateStr = getKSTDateStrFromDate(startObj);
@@ -1844,75 +1892,15 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                   setDeliveryFormData({ ...emptyForm, date: startDateStr, startTime: formatTimeStr(startObj), endTime: formatTimeStr(endObj) });
                   setSplitQueue([]);
               }
-              setEditingDeliveryShift(null); handleEndDelivery();
-              setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); setIsLiveCalcOpen(false);
+              setEditingDeliveryShift(null); 
               setIsDeliveryModalOpen(true);
             } else {
-              setLiveData({amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: ''}); setIsLiveCalcOpen(false); handleStartDelivery();
+              handleStartDelivery();
             }
           }} className={`px-5 py-3.5 rounded-[1.2rem] font-black text-sm shadow-md transition-all active:scale-95 ${timerActive ? 'bg-white text-blue-700 hover:bg-blue-50' : 'bg-white/20 text-white border border-white/20 hover:bg-white/30'}`}>
             {timerActive ? '운행 종료' : '배달 시작'}
           </button>
         </div>
-
-        {timerActive && (
-          <div className="mb-1 mt-4">
-            <div className="flex gap-2 w-full">
-               {trackingStartTime && (
-                  <div className="bg-white/10 border border-white/20 text-white rounded-xl px-3 flex items-center justify-center shadow-sm text-[12px] font-bold shrink-0 tracking-tight">
-                     <Clock size={12} className="mr-1 text-blue-200"/> {new Date(trackingStartTime).getHours().toString().padStart(2,'0')}:{new Date(trackingStartTime).getMinutes().toString().padStart(2,'0')} 시작
-                  </div>
-               )}
-               <button onClick={() => setIsLiveCalcOpen(!isLiveCalcOpen)} className="flex-1 bg-white/20 border border-white/30 rounded-xl p-2.5 flex justify-center items-center gap-1.5 shadow-sm text-xs font-black text-white active:bg-white/30 transition-colors">
-                 📊 중간 정산 계산기 {isLiveCalcOpen ? '▲' : '▼'}
-               </button>
-            </div>
-            
-            {isLiveCalcOpen && (
-               <div className="bg-white rounded-2xl p-4 mt-2 border border-slate-200 shadow-xl animate-in slide-in-from-top-2 text-slate-800">
-                  <div className="grid grid-cols-3 gap-2 mb-3 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-inner relative">
-                     {liveMetrics.deductedAmt > 0 && <div className="absolute -top-2 -right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm border border-rose-700">이전 누적액 차감됨</div>}
-                     <div className="text-center"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">이번 타임 수익 ({liveMetrics.totalCnt}건)</div><div className="text-sm font-black text-blue-600">{formatLargeMoney(liveMetrics.totalAmt)}원</div></div>
-                     <div className="text-center border-x border-slate-200"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">평균 단가</div><div className="text-sm font-black text-slate-800">{formatLargeMoney(liveMetrics.avg)}원</div></div>
-                     <div className="text-center"><div className="text-[10px] font-black text-slate-500 mb-0.5 tracking-tight">현재 시급</div><div className="text-sm font-black text-emerald-600">{formatLargeMoney(liveMetrics.hourly)}원</div></div>
-                  </div>
-
-                  <div className="bg-white p-3.5 rounded-2xl border-2 border-[#2ac1bc]/40 shadow-sm mb-2">
-                     <div className="font-black text-[#1f938f] text-[12px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 배달의민족 (앱 누적 총액 입력)</div>
-                     <div className="space-y-2">
-                        <div className="flex gap-1.5 items-center w-full min-w-0">
-                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-[#1f938f] border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">정훈</span>
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonBaemin ? formatLargeMoney(liveData.amountJunghoonBaemin) : ''} onChange={e => setLiveData({...liveData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonBaemin} onChange={e => setLiveData({...liveData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
-                        </div>
-                        <div className="flex gap-1.5 items-center w-full min-w-0">
-                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-[#1f938f] border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">현아</span>
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaBaemin ? formatLargeMoney(liveData.amountHyunaBaemin) : ''} onChange={e => setLiveData({...liveData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaBaemin} onChange={e => setLiveData({...liveData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-[#2ac1bc] shadow-inner text-slate-800" />
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="bg-white p-3.5 rounded-2xl border-2 border-slate-300 shadow-sm">
-                     <div className="font-black text-slate-800 text-[12px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠 (앱 누적 총액 입력)</div>
-                     <div className="space-y-2">
-                        <div className="flex gap-1.5 items-center w-full min-w-0">
-                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">정훈</span>
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountJunghoonCoupang ? formatLargeMoney(liveData.amountJunghoonCoupang) : ''} onChange={e => setLiveData({...liveData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countJunghoonCoupang} onChange={e => setLiveData({...liveData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
-                        </div>
-                        <div className="flex gap-1.5 items-center w-full min-w-0">
-                           <span className="w-[50px] shrink-0 text-[11px] font-black bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-center flex items-center justify-center h-[38px] shadow-sm">현아</span>
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.amountHyunaCoupang ? formatLargeMoney(liveData.amountHyunaCoupang) : ''} onChange={e => setLiveData({...liveData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-sm font-black bg-white rounded-lg px-2 h-[38px] outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
-                           <input type="text" inputMode="numeric" pattern="[0-9,]*" value={liveData.countHyunaCoupang} onChange={e => setLiveData({...liveData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-sm font-black bg-white rounded-lg px-1 h-[38px] text-center outline-none border border-slate-300 focus:border-blue-600 shadow-inner text-slate-800" />
-                        </div>
-                     </div>
-                  </div>
-                  <div className="mt-3 text-[10px] text-center text-slate-400 font-bold">운행 종료 시 위 데이터는 자동으로 지워집니다 🧹</div>
-               </div>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="mb-1 mx-1">
@@ -1920,7 +1908,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
           <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsYearlySummaryOpen(false)}>
             <Bike className="absolute -right-2 -bottom-2 w-32 h-32 opacity-10 rotate-12" fill="white" />
             
-            {/* 💡 [V5.26] 좌우 영역 찌그러짐 방지 & 칼각 다이어트 적용 */}
             <div className="flex justify-between items-end mb-4 relative z-10 cursor-pointer gap-2">
               <div className="flex-1 min-w-0">
                 <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300 whitespace-nowrap">
@@ -2019,9 +2006,17 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                            </div>
                            <div className="absolute top-0 bottom-0 w-[2px] bg-rose-400 z-20 shadow-[0_0_5px_rgba(251,113,133,1)]" style={{left: `${timeRatio}%`}}></div>
                        </div>
-                       {remainingDays > 0 && remainingAmt > 0 && (
-                           <div className="mt-1.5 text-[11px] font-bold text-blue-100 tracking-tight text-center">
-                               🎯 남은 목표: {formatLargeMoney(remainingAmt)}원 (하루 평균 <span className="text-rose-300 font-black">{formatLargeMoney(dailyReq)}</span>원 필요)
+                       
+                       {/* 💡 [V5.27] 만수르 보너스 타임 렌더링 로직 */}
+                       {remainingAmt > 0 ? (
+                           remainingDays > 0 && (
+                               <div className="mt-1.5 text-[11px] font-bold text-blue-100 tracking-tight text-center">
+                                   🎯 남은 목표: {formatLargeMoney(remainingAmt)}원 (하루 평균 <span className="text-rose-300 font-black">{formatLargeMoney(dailyReq)}</span>원 필요)
+                               </div>
+                           )
+                       ) : (
+                           <div className="mt-2 text-[12px] font-black text-amber-300 tracking-tight text-center animate-pulse drop-shadow-md">
+                               🎉 보너스 타임! 목표보다 <span className="text-white bg-rose-500/90 px-1.5 py-0.5 rounded border border-rose-400 mx-0.5">+{formatLargeMoney(deliveryFilteredTotal - goal)}</span>원 더 벌었어요 🚀
                            </div>
                        )}
                      </div>
@@ -2228,10 +2223,23 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                      </div>
                  </div>
 
-                 <div className="border-t border-slate-100 bg-slate-50">
-                    <button onClick={(e) => toggleDailyDate(date, e)} className="w-full py-3 flex justify-center items-center gap-1 text-[12px] font-black text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 transition-colors active:bg-slate-100">
+                 {/* 💡 [V5.30] 회차 통합하기 버튼 추가 UI */}
+                 <div className="border-t border-slate-100 bg-slate-50 flex justify-between items-center pr-3">
+                    <button onClick={(e) => toggleDailyDate(date, e)} className="flex-1 py-3 flex justify-center items-center gap-1 text-[12px] font-black text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 transition-colors active:bg-slate-100">
                        {expandedDailyDates[date] ? <>▲ 회차별 상세 닫기</> : <>▼ 회차별 상세 보기</>}
                     </button>
+                    {expandedDailyDates[date] && shiftList.length > 1 && (
+                       <div className="shrink-0">
+                           {mergeModeDate === date ? (
+                               <div className="flex gap-1.5 animate-in fade-in">
+                                   <button onClick={() => {setMergeModeDate(null); setSelectedShiftsToMerge([]);}} className="px-2.5 py-1.5 bg-gray-200 text-gray-700 text-[10px] font-black rounded-lg active:scale-95">취소</button>
+                                   <button onClick={() => executeShiftMerge(date)} className="px-2.5 py-1.5 bg-blue-600 text-white text-[10px] font-black rounded-lg shadow-sm active:scale-95">통합 실행</button>
+                               </div>
+                           ) : (
+                               <button onClick={() => {setMergeModeDate(date); setSelectedShiftsToMerge([]);}} className="px-2.5 py-1.5 bg-slate-200 text-slate-700 text-[10px] font-black rounded-lg shadow-sm active:scale-95 flex items-center gap-1 animate-in fade-in">🔗 회차 통합</button>
+                           )}
+                       </div>
+                    )}
                  </div>
 
                  {expandedDailyDates[date] && (
@@ -2254,24 +2262,46 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                         }
                         
                         const platforms = Array.from(new Set(shift.items.map(item => item.platform)));
+                        
+                        // 💡 [V5.30] 통합 모드일 때만 체크박스 띄움
+                        const isMergeActive = mergeModeDate === date;
+                        const isSelectedForMerge = selectedShiftsToMerge.includes(shift.id);
 
                         return (
-                          <div key={shift.id} onClick={(e) => { e.stopPropagation(); setSelectedShiftDetail(shift); }} className="flex justify-between items-center bg-gradient-to-br from-slate-500 to-indigo-600 p-3 rounded-2xl border border-white/10 cursor-pointer active:scale-95 shadow-sm mt-2 text-white transition-all hover:from-slate-600 hover:to-indigo-700">
+                          <div key={shift.id} onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  if (isMergeActive) {
+                                      handleToggleMergeShift(shift.id);
+                                  } else {
+                                      setSelectedShiftDetail(shift); 
+                                  }
+                              }} 
+                              className={`flex justify-between items-center p-3 rounded-2xl border cursor-pointer active:scale-95 shadow-sm mt-2 transition-all ${isMergeActive ? (isSelectedForMerge ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-300' : 'bg-white border-slate-300 grayscale opacity-60') : 'bg-gradient-to-br from-slate-500 to-indigo-600 border-white/10 text-white hover:from-slate-600 hover:to-indigo-700'}`}>
+                              
+                              {/* 통합 모드 체크박스 */}
+                              {isMergeActive && (
+                                  <div className="mr-3 shrink-0 flex items-center justify-center">
+                                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelectedForMerge ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'}`}>
+                                          {isSelectedForMerge && <CheckCircle2 size={14} className="text-white"/>}
+                                      </div>
+                                  </div>
+                              )}
+
                               <div className="flex items-center gap-2 overflow-hidden">
                                   <div className="flex flex-col items-center justify-center shrink-0 w-[36px] gap-0.5">
-                                      <span className="text-[11px] font-black text-white bg-white/20 px-1.5 py-0.5 rounded border border-white/20 shadow-sm leading-none">{shiftOrder}차</span>
-                                      {shiftDurationStr && <span className="text-[9px] font-bold text-indigo-100 tracking-tighter leading-none">({shiftDurationStr})</span>}
+                                      <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border shadow-sm leading-none ${isMergeActive ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white/20 text-white border-white/20'}`}>{shiftOrder}차</span>
+                                      {shiftDurationStr && <span className={`text-[9px] font-bold tracking-tighter leading-none ${isMergeActive ? 'text-slate-500' : 'text-indigo-100'}`}>({shiftDurationStr})</span>}
                                   </div>
-                                  <div className="w-[38px] h-[38px] rounded-xl flex items-center justify-center text-white shrink-0 bg-white/20 border border-white/20 shadow-sm">
+                                  <div className={`w-[38px] h-[38px] rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${isMergeActive ? 'bg-blue-100 text-blue-600 border-blue-200' : 'bg-white/20 text-white border-white/20'}`}>
                                       <div className="text-[18px] font-black leading-none">{shift.totalCnt}</div>
                                   </div>
                                   <div className="pl-1 flex-1 min-w-0 flex flex-col justify-center gap-1">
-                                      <div className="font-bold text-[13px] text-white shrink-0 tracking-tight leading-none">
+                                      <div className={`font-bold text-[13px] shrink-0 tracking-tight leading-none ${isMergeActive ? 'text-slate-800' : 'text-white'}`}>
                                          {shift.startTime && shift.endTime ? `${shift.startTime}~${shift.endTime}` : '시간 미지정'}
                                       </div>
                                       <div className="flex gap-1 items-center flex-wrap">
                                          {platforms.map(p => (
-                                            <span key={p} className={`text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm leading-none ${p === '배민' ? 'bg-[#2ac1bc]/80 text-white border border-[#2ac1bc]/50' : 'bg-slate-800/50 text-white border border-slate-600'}`}>
+                                            <span key={p} className={`text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm leading-none ${isMergeActive ? (p === '배민' ? 'bg-[#2ac1bc]/20 text-[#1f938f] border-[#2ac1bc]/30' : 'bg-slate-200 text-slate-600 border-slate-300') : (p === '배민' ? 'bg-[#2ac1bc]/80 text-white border-[#2ac1bc]/50' : 'bg-slate-800/50 text-white border-slate-600')}`}>
                                                {p}
                                             </span>
                                          ))}
@@ -2279,8 +2309,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                                   </div>
                               </div>
                               <div className="flex flex-col items-end shrink-0 pl-1 gap-1">
-                                 <div className="font-black text-[16px] text-white leading-none tracking-tighter">{formatLargeMoney(shift.totalAmt)}원</div>
-                                 {shiftHourlyRate > 0 && <div className="text-[10px] font-black text-indigo-100 bg-white/10 px-1.5 py-0.5 rounded border border-white/20 shadow-sm flex items-center gap-0.5 leading-none"><span className="text-yellow-300">💡</span>시급 {formatLargeMoney(shiftHourlyRate)}원</div>}
+                                 <div className={`font-black text-[16px] leading-none tracking-tighter ${isMergeActive ? 'text-blue-600' : 'text-white'}`}>{formatLargeMoney(shift.totalAmt)}원</div>
+                                 {shiftHourlyRate > 0 && <div className={`text-[10px] font-black px-1.5 py-0.5 rounded border shadow-sm flex items-center gap-0.5 leading-none ${isMergeActive ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-indigo-100 bg-white/10 border-white/20'}`}><span className="text-amber-400">💡</span>시급 {formatLargeMoney(shiftHourlyRate)}원</div>}
                               </div>
                           </div>
                         );
@@ -2545,7 +2575,37 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-[0_0_15px_rgba(37,99,235,0.6)] flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-600"><Plus size={28}/></button>
 
-      {/* 💡 [V5.25] 트렌디 화이트 & 소프트 UI 팝업 (퓨어 화이트 배경 적용) */}
+      {/* 💡 [V5.27] 심폐소생술: 마감 취소 모달 */}
+      {showCloseConfirm && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in">
+             <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in zoom-in-95 relative overflow-hidden border border-gray-100">
+                <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32}/></div>
+                    <h3 className="text-xl font-black text-slate-900 mb-2">마감 기록을 닫으시겠습니까?</h3>
+                    <p className="text-[12px] font-bold text-slate-500">배달을 아직 진행 중이시라면 타이머를 살려둘 수 있습니다.</p>
+                </div>
+                <div className="space-y-2">
+                    <button onClick={() => { setShowCloseConfirm(false); setIsDeliveryModalOpen(false); }} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 py-3.5 rounded-[1.2rem] font-black text-sm transition-colors border border-blue-200">
+                        🏃‍♂️ 앗, 아직 배달 중! (타이머 계속 째깍째깍)
+                    </button>
+                    <button onClick={() => {
+                        setShowCloseConfirm(false);
+                        setIsDeliveryModalOpen(false);
+                        handleEndDelivery(); // 타이머 즉시 사살
+                        if (deliveryFormData.startTime) {
+                            const recoveryData = { formData: deliveryFormData, splitQueue: splitQueue };
+                            localStorage.setItem('hyunaRecoveryShift', JSON.stringify(recoveryData));
+                            setRecoveryShift(recoveryData);
+                        }
+                    }} className="w-full bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 py-3.5 rounded-[1.2rem] font-black text-sm transition-colors border border-slate-200 hover:border-rose-200">
+                        💾 바빠서 나중에 적을래 (임시 보관)
+                    </button>
+                    <button onClick={() => setShowCloseConfirm(false)} className="w-full bg-white text-slate-400 py-3 rounded-[1.2rem] font-black text-[11px] underline">취소하고 다시 마감 화면으로</button>
+                </div>
+             </div>
+          </div>
+      )}
+
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
@@ -2577,7 +2637,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
 
-              {/* 💡 배민 박스 (1% 오프화이트 + 네온 포커스 입력창) */}
               <div className="bg-white p-4 rounded-[1.2rem] shadow-sm border border-slate-200 mt-2">
                 <div className="font-black text-[#1f938f] text-[13px] mb-3 flex items-center gap-1.5"><Bike size={14}/> 배달의민족</div>
                 <div className="space-y-3">
@@ -2601,7 +2660,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
               
-              {/* 💡 쿠팡 박스 */}
               <div className="bg-white p-4 rounded-[1.2rem] shadow-sm border border-slate-200">
                 <div className="font-black text-blue-600 text-[13px] mb-3 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠</div>
                 <div className="space-y-3">
@@ -2634,8 +2692,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       )}
     </div>
   );
-}
-                                                                         
+}                                                     
         
 // ==========================================
 // 7. ASSETS TAB COMPONENT
