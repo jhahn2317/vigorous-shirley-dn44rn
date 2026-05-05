@@ -2979,7 +2979,6 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 }
 
 // ==========================================
-// ==========================================
 // 8. FAMILY CALENDAR COMPONENT 
 // ==========================================
 function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab, customHolidays, updateSettings, userSettings }) {
@@ -3054,16 +3053,28 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
   const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
   
-  // 💡 [V5.21] 타임라인 이벤트 리스트 (미래/과거 모드에 따른 필터 및 정렬)
+  // 💡 [V5.22] 타임라인 역스크롤 마법
   const timelineEventsList = useMemo(() => {
     if (timelineMode === 'future') {
-      // 미래 일정: 오늘 이후, 오름차순 (가까운 내일부터)
       return familyEventsList.filter(e => (e.endDate || e.date) >= todayStr);
     } else {
-      // 과거 일정: 오늘 이전, 내림차순 (가까운 어제부터 역순으로 정렬)
-      return familyEventsList.filter(e => (e.endDate || e.date) < todayStr).reverse();
+      // 과거 일정: 오름차순 유지 (오래된 게 위로, 최근이 아래로 배치됨)
+      return familyEventsList.filter(e => (e.endDate || e.date) < todayStr);
     }
   }, [familyEventsList, todayStr, timelineMode]);
+
+  // 💡 [V5.22] 과거 타임라인 진입 시 스크롤 맨 밑바닥으로 자동 이동시키는 마법
+  useEffect(() => {
+    if (calendarSubTab === 'timeline' && timelineMode === 'past') {
+      const timer = setTimeout(() => {
+        const el = document.getElementById('timeline-scroll-area');
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [calendarSubTab, timelineMode, timelineEventsList.length]);
 
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
@@ -3249,7 +3260,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       <div className="bg-pink-50/80 rounded-3xl p-5 border border-pink-200/60 shadow-sm relative">
          <h3 className="text-xs font-black text-pink-500 mb-3 flex justify-between items-center">
             <span className="flex items-center gap-1"><MessageSquareHeart size={14}/> 현아&정훈 한줄톡 💌</span>
-            {/* 💡 [V5.21] 과거 보관소 버튼 네이밍 직관적으로 변경 */}
             <button onClick={() => setIsMessageHistoryOpen(true)} className="text-pink-400 font-bold border-b border-pink-300 pb-0.5 active:text-pink-600 transition-colors">📮 지난 톡 꺼내보기</button>
          </h3>
          
@@ -3286,7 +3296,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    ) : (
                      <div className="flex justify-end gap-1.5 mt-3 pt-3 border-t border-gray-50">
                         <button onClick={() => setReplyingTo(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border flex items-center gap-1 hover:bg-gray-100 transition-colors"><MessageSquareHeart size={14}/> 답글</button>
-                        {/* 💡 [V5.21] 아내분 맞춤형 보관함 네이밍 변경 */}
                         <button onClick={() => handleCheckMessage(m.id)} className="text-[11px] font-black text-gray-500 bg-gray-50 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 px-3 py-1.5 rounded-lg border flex items-center gap-1 transition-colors"><CheckCircle2 size={14}/> 💌 다 읽었어!</button>
                      </div>
                    )}
@@ -3404,7 +3413,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
         <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-gray-200 animate-in slide-in-from-left duration-300 mt-1">
           <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5 mb-4"><CalendarDays size={16} className="text-pink-500"/> 가족 일정 타임라인</h3>
           
-          {/* 💡 [V5.21] 타임라인 시간 여행 토글 스위치 (과거/미래) */}
           <div className="flex bg-gray-50 p-1.5 rounded-2xl mb-5 shadow-inner border border-gray-200">
              <button onClick={() => setTimelineMode('future')} className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${timelineMode==='future'?'bg-white text-pink-600 shadow-sm border border-pink-200':'text-gray-500 hover:bg-gray-100'}`}>✨ 함께 걸어갈 길</button>
              <button onClick={() => setTimelineMode('past')} className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${timelineMode==='past'?'bg-white text-blue-600 shadow-sm border border-blue-200':'text-gray-500 hover:bg-gray-100'}`}>👣 우리가 걸어온 길</button>
@@ -3416,10 +3424,13 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                {timelineEventsList.length === 0 && <div className="text-center text-gray-400 py-10 font-bold text-sm">{timelineMode === 'future' ? '다가오는 일정이 없습니다. 🌿' : '지난 일정이 없습니다. 🍃'}</div>}
                
                {timelineEventsList.map((e, i, arr) => {
-                 const isTodayEvent = e.date <= todayStr && (e.endDate || e.date) >= todayStr;
+                 const isTodayEvent = timelineMode === 'future' && e.date <= todayStr && (e.endDate || e.date) >= todayStr;
+                 // 💡 [V5.22] 과거 모드일 때 가장 마지막(최근) 아이템 식별
+                 const isMostRecentPast = timelineMode === 'past' && i === arr.length - 1;
+                 const isHighlighted = isTodayEvent || isMostRecentPast;
                  
                  return (
-                   <div key={e.id} id={isTodayEvent ? 'timeline-today' : undefined}>
+                   <div key={e.id} id={isHighlighted ? 'timeline-highlight' : undefined}>
                      {(i === 0 || e.date?.slice(0,7) !== arr[i-1].date?.slice(0,7)) && (
                        <div className="relative flex items-center justify-center py-4">
                          <div className="bg-gray-100 text-gray-500 text-[10px] font-black px-3 py-1 rounded-full z-10 border shadow-sm">
@@ -3428,19 +3439,21 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                        </div>
                      )}
                      
-                     <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isTodayEvent ? 'scale-[1.02] z-20' : ''}`}>
+                     <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isHighlighted ? 'scale-[1.02] z-20' : ''}`}>
                        
-                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-2 ring-pink-400 ring-offset-1 shadow-sm' : 'bg-white'}`}>
-                         {isTodayEvent ? <Clock size={18} className="animate-pulse" /> : <span className="text-[18px]">{getSmartIcon(e.title, e.type)}</span>}
+                       {/* 💡 [V5.22] 하이라이트 링 색상 변경 */}
+                       <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-2 ring-pink-400 ring-offset-1 shadow-sm' : isMostRecentPast ? 'bg-blue-500 text-white ring-2 ring-blue-400 ring-offset-1 shadow-sm' : 'bg-white'}`}>
+                         {isHighlighted ? <Clock size={18} className="animate-pulse" /> : <span className="text-[18px]">{getSmartIcon(e.title, e.type)}</span>}
                        </div>
                        
-                       <div onClick={() => setSelectedEventDetail(e)} className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors cursor-pointer active:scale-95 ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : 'bg-white border-gray-100 hover:bg-gray-50'}`}>
+                       <div onClick={() => setSelectedEventDetail(e)} className={`w-[calc(100%-3rem)] md:w-[calc(50%-2.5rem)] p-3.5 rounded-2xl border shadow-sm ml-3 transition-colors cursor-pointer active:scale-95 ${isTodayEvent ? 'bg-pink-50 border-pink-200 shadow-pink-100' : isMostRecentPast ? 'bg-blue-50 border-blue-200 shadow-blue-100' : 'bg-white border-gray-100 hover:bg-gray-50'}`}>
                          <div className="flex justify-between items-start mb-1.5">
                            <div className="flex flex-col gap-0.5">
-                             <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : 'text-gray-400'}`}>
+                             <span className={`text-[10px] font-black ${isTodayEvent ? 'text-pink-600' : isMostRecentPast ? 'text-blue-600' : 'text-gray-400'}`}>
                                {parseInt(e.date.slice(5,7))}/{parseInt(e.date.slice(8,10))} 
                                {e.endDate && e.endDate !== e.date ? ` ~ ${parseInt(e.endDate.slice(5,7))}/${parseInt(e.endDate.slice(8,10))}` : ` (${['일','월','화','수','목','금','토'][new Date(e.date).getDay()]})`}
                                {isTodayEvent && " ✨ 오늘"}
+                               {isMostRecentPast && " ⏳ 가장 최근"}
                              </span>
                              <div className="flex items-center mt-0.5">
                                <span className="text-[9px] bg-white border text-gray-500 px-1.5 py-0.5 rounded font-bold shadow-sm inline-block w-max flex items-center gap-1">
@@ -3451,12 +3464,12 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                            </div>
                            
                            <div className="flex gap-1 shrink-0 ml-2">
-                             <span className={`text-[10px] font-black px-2 py-1 rounded-lg border shadow-sm ${isTodayEvent ? 'text-white bg-pink-500 border-pink-600' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
+                             <span className={`text-[10px] font-black px-2 py-1 rounded-lg border shadow-sm ${isTodayEvent ? 'text-white bg-pink-500 border-pink-600' : isMostRecentPast ? 'text-white bg-blue-500 border-blue-600' : 'text-amber-600 bg-amber-50 border-amber-200'}`}>
                                 {getDDay(e.date)}
                              </span>
                            </div>
                          </div>
-                         <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : 'text-gray-800'}`}>
+                         <div className={`font-bold text-base flex items-center gap-1.5 mt-1.5 ${isTodayEvent ? 'text-pink-700' : isMostRecentPast ? 'text-blue-700' : 'text-gray-800'}`}>
                            {e.title} {e.isImportant && <Star size={14} className="text-amber-400 fill-amber-400"/>}
                          </div>
                        </div>
