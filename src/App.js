@@ -334,7 +334,9 @@ function LockScreenView({ correctPin, onUnlock }) {
   );
 }
 
+// ==========================================
 // 4. SETTINGS COMPONENT
+// ==========================================
 function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurrentUser, categories, setCategories, userSettings, setUserSettings, selectedYear, selectedMonth, currentMonthKey, user, handleClearAllMessages, appFont, setAppFont }) {
   const [isSystemSettingsOpen, setIsSystemSettingsOpen] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(() => localStorage.getItem('hyunaLockEnabled') === 'true');
@@ -459,9 +461,21 @@ function SettingsView({ activeTab, tabOrder, setTabOrder, currentUser, setCurren
 
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5"><User size={16} className="text-purple-500"/> 내 기기 프로필 설정 (부부 톡 용)</h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-4">
               <button onClick={() => handleSetCurrentUser('현아')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '현아' ? 'bg-pink-500 text-white shadow-md border-pink-600' : 'bg-pink-50 text-pink-400 border border-pink-100 hover:bg-pink-100'}`}>👩 현아</button>
               <button onClick={() => handleSetCurrentUser('정훈')} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${currentUser === '정훈' ? 'bg-blue-600 text-white shadow-md border-blue-700' : 'bg-blue-50 text-blue-400 border border-blue-100 hover:bg-blue-100'}`}>🧑 정훈</button>
+            </div>
+            
+            {/* 💡 [V5.26] 스텔스 접속 기록기 표출부 */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-2 shadow-inner">
+               <div className="text-[11px] font-bold text-gray-500 flex justify-between items-center">
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-pink-400"></span>현아 최근 접속</span>
+                  <span className="text-gray-800 font-black tracking-tight">{userSettings.lastAccess?.['현아'] || '기록 없음'}</span>
+               </div>
+               <div className="text-[11px] font-bold text-gray-500 flex justify-between items-center">
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>정훈 최근 접속</span>
+                  <span className="text-gray-800 font-black tracking-tight">{userSettings.lastAccess?.['정훈'] || '기록 없음'}</span>
+               </div>
             </div>
           </div>
 
@@ -1769,7 +1783,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
      
      const netAmt = Math.max(0, (parseInt(String(inputAmt).replace(/,/g,''))||0) - saved.amt);
      return (
-         // 💡 [V5.25] 화이트 모달용 텍스트 색상
          <div className="text-[11px] text-blue-600 ml-[55px] font-black flex items-center gap-1 mt-1 pb-1 tracking-tight">
              <span className="opacity-80">↳ 누적 {formatLargeMoney(saved.amt)} ➔</span> <span className="text-rose-500 font-black">실적: +{formatLargeMoney(netAmt)}</span>
          </div>
@@ -1906,21 +1919,22 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
         {isYearlySummaryOpen ? (
           <div className="bg-gradient-to-br from-slate-700 to-slate-800 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden mb-1 animate-in fade-in" onClick={() => setIsYearlySummaryOpen(false)}>
             <Bike className="absolute -right-2 -bottom-2 w-32 h-32 opacity-10 rotate-12" fill="white" />
-            <div className="flex justify-between items-end mb-4 relative z-10 cursor-pointer">
-              <div>
-                <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300">
+            
+            {/* 💡 [V5.26] 좌우 영역 찌그러짐 방지 & 칼각 다이어트 적용 */}
+            <div className="flex justify-between items-end mb-4 relative z-10 cursor-pointer gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300 whitespace-nowrap">
                    <ChevronUp size={16}/> {selectedYear}년 누적 배달 수익
                 </div>
-                {/* 💡 [V5.25] 천만 원 단위 짤림 방지: 폰트 28px 최적화 & 알약 모양(Pill) 배경으로 하이라이트 */}
-                <div className="inline-flex items-baseline bg-black/20 px-3 py-1.5 rounded-2xl border border-white/10 shadow-inner mt-1">
-                   <span className="text-[28px] font-black tracking-tighter text-white leading-none">{formatLargeMoney(yearlyMetrics.totalAmt)}</span>
-                   <span className="text-sm ml-1 font-bold text-slate-300">원</span>
+                <div className="inline-flex items-baseline bg-black/20 px-2 py-1.5 rounded-2xl border border-white/10 shadow-inner mt-1 max-w-full overflow-hidden">
+                   <span className="text-[24px] font-black tracking-tighter text-white leading-none truncate">{formatLargeMoney(yearlyMetrics.totalAmt)}</span>
+                   <span className="text-[11px] ml-0.5 font-bold text-slate-300 shrink-0">원</span>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="flex flex-col items-end gap-1.5 text-[10px] font-bold opacity-90 pb-1">
-                   <span className="flex gap-2 text-slate-100"><span>총 {formatLargeMoney(yearlyMetrics.totalCnt)}건</span><span>{yearlyMetrics.durationStr} 근무</span></span>
-                   <span className="flex gap-2 text-slate-300"><span>평단 {formatLargeMoney(yearlyMetrics.perDelivery)}원</span><span>시급 {formatLargeMoney(yearlyMetrics.hourlyRate)}원</span></span>
+              <div className="shrink-0 text-right">
+                <div className="flex flex-col items-end gap-1.5 text-[9px] font-bold opacity-90 pb-1 whitespace-nowrap tracking-tighter">
+                   <span className="flex gap-1.5 text-slate-100"><span>총 {formatLargeMoney(yearlyMetrics.totalCnt)}건</span><span>{yearlyMetrics.durationStr} 근무</span></span>
+                   <span className="flex gap-1.5 text-slate-300"><span>평단 {formatLargeMoney(yearlyMetrics.perDelivery)}원</span><span>시급 {formatLargeMoney(yearlyMetrics.hourlyRate)}원</span></span>
                 </div>
               </div>
             </div>
@@ -2620,7 +2634,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       )}
     </div>
   );
-}                       
+}
+                                                                         
         
 // ==========================================
 // 7. ASSETS TAB COMPONENT
@@ -3906,7 +3921,6 @@ function AppContent() {
   const todayStr = getKSTDateStr();
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('hyunaCurrentUser') || '현아');
   const [appFont, setAppFont] = useState(() => localStorage.getItem('hyunaFont') || 'Inter');
-
   const defaultTabOrder = ['calendar', 'ledger', 'delivery', 'assets'];
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('hyunaDefaultTab') || 'calendar');
   const [tabOrder, setTabOrder] = useState(() => { const saved = localStorage.getItem('hyunaTabOrder'); return saved ? JSON.parse(saved) : defaultTabOrder; });
@@ -3952,6 +3966,7 @@ function AppContent() {
         const updateTime = item.updatedAt ? new Date(item.updatedAt).getTime() : (item.isoUpdate ? new Date(item.isoUpdate).getTime() : 0);
         const lastSeen = lastVisited[tab] || 0;
         const author = item.updatedBy || item.author;
+  
         return author && author !== currentUser && updateTime > lastSeen;
       });
     };
@@ -3963,6 +3978,37 @@ function AppContent() {
       assets: activeTab !== 'assets' && (check(assets.deposits, 'assets') || check(assets.savings, 'assets') || check(assets.loans, 'assets'))
     };
   }, [ledger, dailyDeliveries, assets, events, messages, memos, activeTab, lastVisited, currentUser, timerActive]);
+
+  // 💡 [V5.26] 부부 스텔스 접속 기록 로직
+  const lastWrittenRef = useRef('');
+
+  useEffect(() => {
+    if (!isFirebaseEnabled || !user || !currentUser) return;
+    const logAccess = async () => {
+       const d = new Date();
+       let hh = d.getHours();
+       const ampm = hh >= 12 ? '오후' : '오전';
+       hh = hh % 12 || 12;
+       const timeStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${ampm} ${hh}:${String(d.getMinutes()).padStart(2,'0')}`;
+       
+       if (lastWrittenRef.current === timeStr) return; // 동일 분(Minute) 중복 저장 방지
+       lastWrittenRef.current = timeStr;
+
+       try {
+           // 기존 데이터를 건드리지 않고 lastAccess 필드 내의 현재 유저 시간만 몰래 덮어씀
+           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), 
+           { lastAccess: { [currentUser]: timeStr } }, { merge: true });
+       } catch(e) {}
+    };
+    
+    // 앱 켤 때 1번 스텔스 작동
+    logAccess();
+
+    // 백그라운드에 있다가 화면으로 다시 돌아올 때 스텔스 작동
+    const handleVis = () => { if (!document.hidden) logAccess(); };
+    document.addEventListener('visibilitychange', handleVis);
+    return () => document.removeEventListener('visibilitychange', handleVis);
+  }, [user, currentUser]);
 
   useEffect(() => {
     const checkLockStatus = () => {
@@ -3995,7 +4041,6 @@ function AppContent() {
         checkLockStatus();
       }
     };
-
     checkLockStatus();
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -4081,7 +4126,6 @@ function AppContent() {
   let headerColor = 'text-indigo-500';
   const currentLedgerTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.ledger || 'pink'];
   const currentCalendarTheme = THEME_PALETTES[MONTHLY_THEME_MAP[selectedMonth]?.calendar || 'sky'];
-
   if (activeTab === 'ledger') {
      appBgColor = `${currentLedgerTheme.bg50}/30`;
      headerColor = currentLedgerTheme.text500;
@@ -4157,7 +4201,6 @@ function AppContent() {
             const isActive = activeTab === tabId;
             let activeColor = 'text-indigo-500';
             let badgeColor = 'bg-indigo-500';
-            
             if (tabId === 'ledger') { activeColor = currentLedgerTheme.text500; badgeColor = currentLedgerTheme.bg500; }
             if (tabId === 'calendar') { activeColor = currentCalendarTheme.text500; badgeColor = currentCalendarTheme.bg500; }
             if (tabId === 'delivery') { activeColor = 'text-blue-500'; badgeColor = 'bg-blue-500'; }
@@ -4208,6 +4251,8 @@ function AppContent() {
     </>
   );
 }
+
+        
 
 // 10. ERROR BOUNDARY
 class ErrorBoundary extends React.Component {
