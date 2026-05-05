@@ -1456,7 +1456,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   );
 }
 
-                                                                                  
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
@@ -1505,9 +1504,11 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   const emptyForm = { date: todayStr, startTime: '', endTime: '', amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '' };
   const [deliveryFormData, setDeliveryFormData] = useState(emptyForm);
 
+  // 💡 [V5.24] 현재 수정 중인 내역을 제외한 '진짜 누적액'만 가져오는 로직으로 강화!
   const getTodaySaved = (earner, platform, targetDate) => {
     let amt = 0, cnt = 0;
     (dailyDeliveries || []).forEach(d => {
+       if (editingDeliveryShift && editingDeliveryShift.items.some(item => item.id === d.id)) return;
        if (d.date === targetDate && d.earner === earner && d.platform === platform) {
            amt += (d.amount || 0); cnt += (d.count || 0);
        }
@@ -1666,13 +1667,10 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       const inputCnt = parseInt(String(inputCntStr||0).replace(/,/g, ''), 10) || 0;
       if(inputAmt === 0 && inputCnt === 0) return;
       
-      let finalAmt = inputAmt, finalCnt = inputCnt;
-      
-      if (!editingDeliveryShift) {
-         const saved = getTodaySaved(earner, platform, deliveryFormData.date);
-         finalAmt = Math.max(0, inputAmt - saved.amt);
-         finalCnt = Math.max(0, inputCnt - saved.cnt);
-      }
+      // 💡 [V5.24] 뻥튀기 방지: 무조건 누적액 빼기 로직 작동 (editingDeliveryShift 여부 무관!)
+      const saved = getTodaySaved(earner, platform, deliveryFormData.date);
+      const finalAmt = Math.max(0, inputAmt - saved.amt);
+      const finalCnt = Math.max(0, inputCnt - saved.cnt);
       
       if(finalAmt > 0 || finalCnt > 0) {
          adds.push({ date: deliveryFormData.date, earner, platform, amount: finalAmt, count: finalCnt, startTime: deliveryFormData.startTime, endTime: deliveryFormData.endTime, updatedAt: timestamp, updatedBy: currentUser });
@@ -1714,14 +1712,40 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
     }
   };
 
+  // 💡 [V5.24] 수정 창 열 때 '순수익'이 아닌 '당시의 앱 누적 총액'을 띄워주는 UX 통일!
   const openEditShiftForm = (shift) => {
     const form = { ...emptyForm, date: shift.date, startTime: shift.startTime || '', endTime: shift.endTime || '' };
-    shift.items.forEach(d => {
-       const earnerEng = d.earner === '정훈' ? 'Junghoon' : 'Hyuna';
-       const platformEng = d.platform === '배민' ? 'Baemin' : 'Coupang';
-       form[`amount${earnerEng}${platformEng}`] = String(d.amount || '');
-       form[`count${earnerEng}${platformEng}`] = String(d.count || '');
+    
+    const platforms = ['배민', '쿠팡'];
+    const earners = ['정훈', '현아'];
+    
+    earners.forEach(earner => {
+        platforms.forEach(platform => {
+            const earnerEng = earner === '정훈' ? 'Junghoon' : 'Hyuna';
+            const platformEng = platform === '배민' ? 'Baemin' : 'Coupang';
+            
+            let priorAmt = 0; let priorCnt = 0;
+            (dailyDeliveries || []).forEach(d => {
+                if (shift.items.some(item => item.id === d.id)) return; // 수정하는 현재 타임은 누적에서 제외
+                if (d.date === shift.date && d.earner === earner && d.platform === platform) {
+                    priorAmt += (d.amount || 0); priorCnt += (d.count || 0);
+                }
+            });
+            
+            const thisItem = shift.items.find(i => i.earner === earner && i.platform === platform);
+            const thisAmt = thisItem ? (thisItem.amount || 0) : 0;
+            const thisCnt = thisItem ? (thisItem.count || 0) : 0;
+            
+            const cumulativeAmt = priorAmt + thisAmt;
+            const cumulativeCnt = priorCnt + thisCnt;
+            
+            if (cumulativeAmt > 0 || cumulativeCnt > 0) {
+                form[`amount${earnerEng}${platformEng}`] = String(cumulativeAmt);
+                form[`count${earnerEng}${platformEng}`] = String(cumulativeCnt);
+            }
+        });
     });
+
     setDeliveryFormData(form); setEditingDeliveryShift(shift); setSelectedShiftDetail(null); setIsDeliveryModalOpen(true); 
   };
 
@@ -1743,7 +1767,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
   };
 
   const NetDiffInfo = ({ earner, platform, inputAmt, inputCnt, date }) => {
-     if (editingDeliveryShift) return null;
+     // 💡 [V5.24] 수정 창에서도 밑에 계산기 표시!
      const saved = getTodaySaved(earner, platform, date);
      if (saved.amt === 0 && saved.cnt === 0) return null;
      
@@ -1890,7 +1914,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300">
                    <ChevronUp size={16}/> {selectedYear}년 누적 배달 수익
                 </div>
-                {/* 💡 [V5.23] 글자 크기 10% 축소 (text-[34px] -> text-[30px]) */}
                 <div className="text-[30px] font-black tracking-tighter leading-none mt-1">{formatLargeMoney(yearlyMetrics.totalAmt)}<span className="text-lg ml-1 opacity-90 font-bold">원</span></div>
               </div>
               <div className="text-right">
@@ -2507,7 +2530,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-[0_0_15px_rgba(37,99,235,0.6)] flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-600"><Plus size={28}/></button>
 
-      {/* 💡 [V5.23] 마감 모달: 배경 35% 연하게(bg-black/40), 투명도 조절, 입력폼 네온 컬러 튜닝 */}
       {isDeliveryModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
@@ -2539,7 +2561,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
 
-              {/* 💡 [V5.23] 배민 카드: 정훈(Blue), 현아(Pink), 금액(Amber), 건수(Emerald) 컬러 분리 */}
               <div className="bg-slate-700/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
                 <div className="font-black text-[#4cd1cc] text-[13px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 배달의민족</div>
                 <div className="space-y-2">
@@ -2563,7 +2584,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 </div>
               </div>
               
-              {/* 💡 [V5.23] 쿠팡 카드: 정훈(Blue), 현아(Pink), 금액(Amber), 건수(Emerald) 컬러 분리 */}
               <div className="bg-slate-700/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
                 <div className="font-black text-blue-300 text-[13px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠</div>
                 <div className="space-y-2">
@@ -2596,7 +2616,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       )}
     </div>
   );
-}                                                     
+}                                                  
         
 // ==========================================
 // 7. ASSETS TAB COMPONENT
