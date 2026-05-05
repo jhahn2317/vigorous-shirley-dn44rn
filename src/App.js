@@ -1455,6 +1455,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     </div>
   );
 }
+
+                                                                                  
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
@@ -1747,7 +1749,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
      
      const netAmt = Math.max(0, (parseInt(String(inputAmt).replace(/,/g,''))||0) - saved.amt);
      return (
-         // 💡 다크 모드용 색상 적용
          <div className="text-[11px] text-blue-300 ml-[55px] font-bold flex items-center gap-1 mt-1 pb-1 tracking-tight">
              <span className="opacity-80">↳ 누적 {formatLargeMoney(saved.amt)} ➔</span> <span className="text-rose-400 font-bold">실적: +{formatLargeMoney(netAmt)}</span>
          </div>
@@ -1778,7 +1779,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
          </div>
       )}
 
-      {/* 💡 [V5.20] 타이머 카드: 스텔스 블랙 & 라이트 다크 전환 */}
+      {/* 프리미엄 타이머 카드 */}
       <div className={`mx-1 rounded-[2rem] p-5 shadow-lg transition-all duration-700 ${timerActive ? 'bg-gradient-to-br from-blue-600 to-indigo-800 ring-4 ring-blue-100 shadow-[0_10px_20px_rgba(37,99,235,0.3)]' : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-md'}`}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-3 ml-1">
@@ -1889,7 +1890,8 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                 <div className="text-[12px] font-black opacity-90 mb-1 flex items-center gap-1 text-slate-300">
                    <ChevronUp size={16}/> {selectedYear}년 누적 배달 수익
                 </div>
-                <div className="text-[34px] font-black tracking-tighter leading-none mt-1">{formatLargeMoney(yearlyMetrics.totalAmt)}<span className="text-lg ml-1 opacity-90 font-bold">원</span></div>
+                {/* 💡 [V5.23] 글자 크기 10% 축소 (text-[34px] -> text-[30px]) */}
+                <div className="text-[30px] font-black tracking-tighter leading-none mt-1">{formatLargeMoney(yearlyMetrics.totalAmt)}<span className="text-lg ml-1 opacity-90 font-bold">원</span></div>
               </div>
               <div className="text-right">
                 <div className="flex flex-col items-end gap-1.5 text-[10px] font-bold opacity-90 pb-1">
@@ -1942,7 +1944,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                     </div>
                     <div className="flex justify-between items-end">
                        <div className="text-[32px] font-black tracking-tighter leading-none">{formatLargeMoney(deliveryFilteredTotal)}<span className="text-base ml-1 opacity-80 font-bold">원</span></div>
-                       {/* 💡 [V5.20] 2x2 칼각 데이터 정렬 */}
                        <div className="flex flex-col items-end gap-1.5 text-[10px] font-bold opacity-90 pb-1">
                           <span className="flex gap-2"><span>총 {formatLargeMoney(deliveryFilteredCount)}건</span><span>{monthlyMetrics.durationStr} 근무</span></span>
                           <span className="flex gap-2 text-blue-200"><span>평단 {formatLargeMoney(deliveryAvgPerDelivery)}원</span><span>시급 {formatLargeMoney(monthlyMetrics.hourlyRate)}원</span></span>
@@ -2030,7 +2031,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                           </div>
                           <div className="flex justify-between items-end">
                              <div className={`text-[32px] font-black tracking-tighter leading-none mt-1`}>{formatLargeMoney(group.total)}<span className="text-base font-bold ml-1 opacity-80">원</span></div>
-                             {/* 💡 [V5.20] 정산 예정금도 2x2 칼각 배치 적용 */}
                              <div className="flex flex-col items-end gap-1.5 text-[10px] font-bold opacity-90 pb-1">
                                 <span className="flex gap-2 text-teal-50"><span>총 {formatLargeMoney(metrics.totalCnt)}건</span><span>{metrics.durationStr} 근무</span></span>
                                 <span className="flex gap-2 text-teal-200"><span>평단 {formatLargeMoney(metrics.perDelivery)}원</span><span>시급 {formatLargeMoney(metrics.hourlyRate)}원</span></span>
@@ -2038,7 +2038,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                           </div>
                       </div>
                       
-                      {/* 💡 [V5.20] 정산 예정금 하단 정훈/현아 및 배민/쿠팡 50:50 쌍둥이 핏 추가 */}
                       <div className="grid grid-cols-2 gap-2 relative z-10">
                          <div className="bg-white/10 rounded-xl p-2.5 flex flex-col gap-1 border border-white/20 shadow-sm">
                            <div className="flex justify-between items-center"><span className="text-[11px] font-bold text-teal-100">정훈</span><span className="text-[13px] font-black text-white">{formatLargeMoney(group.junghoon || 0)}원</span></div>
@@ -2219,7 +2218,6 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
                         const platforms = Array.from(new Set(shift.items.map(item => item.platform)));
 
                         return (
-                          // 💡 [V5.20] 아코디언 회차별 박스: 세단 실내 무드등 라이트-다크 그라데이션
                           <div key={shift.id} onClick={(e) => { e.stopPropagation(); setSelectedShiftDetail(shift); }} className="flex justify-between items-center bg-gradient-to-br from-slate-500 to-indigo-600 p-3 rounded-2xl border border-white/10 cursor-pointer active:scale-95 shadow-sm mt-2 text-white transition-all hover:from-slate-600 hover:to-indigo-700">
                               <div className="flex items-center gap-2 overflow-hidden">
                                   <div className="flex flex-col items-center justify-center shrink-0 w-[36px] gap-0.5">
@@ -2509,14 +2507,14 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
 
       <button onClick={() => { setEditingDeliveryShift(null); setDeliveryFormData({ date: todayStr, amountHyunaBaemin: '', countHyunaBaemin: '', amountHyunaCoupang: '', countHyunaCoupang: '', amountJunghoonBaemin: '', countJunghoonBaemin: '', amountJunghoonCoupang: '', countJunghoonCoupang: '', startTime: '', endTime: '' }); setIsDeliveryModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-blue-600 text-white w-14 h-14 rounded-[1.5rem] shadow-[0_0_15px_rgba(37,99,235,0.6)] flex items-center justify-center active:scale-90 transition-all z-40 border border-blue-600"><Plus size={28}/></button>
 
-      {/* 💡 [V5.20] 마감 모달: 라이트-다크 글래스모피즘 테마 (20% 다이어트 적용) */}
+      {/* 💡 [V5.23] 마감 모달: 배경 35% 연하게(bg-black/40), 투명도 조절, 입력폼 네온 컬러 튜닝 */}
       {isDeliveryModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-end justify-center z-[90] p-0 overflow-y-auto no-scrollbar">
           <div 
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={(e) => handleTouchEnd(e, handleCloseDeliveryModal)}
-            className="bg-gradient-to-br from-slate-600 to-slate-700 w-full max-w-md rounded-t-[2.5rem] p-4 pb-6 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-slate-800 flex flex-col max-h-[90vh]"
+            className="bg-gradient-to-br from-slate-500/90 to-slate-600/90 w-full max-w-md rounded-t-[2.5rem] p-4 pb-6 shadow-2xl animate-in slide-in-from-bottom duration-300 mt-20 border-t-8 border-slate-700 flex flex-col max-h-[90vh] backdrop-blur-xl"
           >
             <div className="w-12 h-1.5 bg-slate-400 rounded-full mx-auto mb-3 shrink-0"></div>
             <div className="flex justify-between items-center mb-3 shrink-0">
@@ -2526,63 +2524,63 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
             
             <form onSubmit={handleDeliverySubmit} className="space-y-2 overflow-y-auto no-scrollbar pb-2">
               
-              <div className="grid grid-cols-3 gap-2 pb-2 border-b border-slate-500 w-full">
+              <div className="grid grid-cols-3 gap-2 pb-2 border-b border-slate-400/50 w-full">
                 <div className="bg-white/10 rounded-xl p-1.5 border border-white/20 shadow-sm">
-                  <label className="text-[10px] font-bold text-slate-300 flex items-center gap-1 mb-0.5 ml-1"><CalendarIcon size={10} className="text-slate-100"/>날짜</label>
+                  <label className="text-[10px] font-bold text-slate-200 flex items-center gap-1 mb-0.5 ml-1"><CalendarIcon size={10} className="text-slate-100"/>날짜</label>
                   <input type="date" value={deliveryFormData.date} onChange={e=>setDeliveryFormData({...deliveryFormData, date:e.target.value})} className="w-full bg-transparent px-1 h-[24px] font-black text-[13px] outline-none text-white [color-scheme:dark]" />
                 </div>
                 <div className="bg-white/10 rounded-xl p-1.5 border border-white/20 shadow-sm">
-                  <label className="text-[10px] font-bold text-slate-300 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-slate-100"/>시작</label>
+                  <label className="text-[10px] font-bold text-slate-200 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-slate-100"/>시작</label>
                   <input type="time" value={deliveryFormData.startTime} onChange={e=>setDeliveryFormData({...deliveryFormData, startTime:e.target.value})} className="w-full bg-transparent px-1 h-[24px] font-black text-[13px] outline-none text-white [color-scheme:dark]" />
                 </div>
                 <div className="bg-white/10 rounded-xl p-1.5 border border-white/20 shadow-sm">
-                  <label className="text-[10px] font-bold text-slate-300 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-slate-100"/>종료</label>
+                  <label className="text-[10px] font-bold text-slate-200 flex items-center gap-1 mb-0.5 ml-1"><Clock size={10} className="text-slate-100"/>종료</label>
                   <input type="time" value={deliveryFormData.endTime} onChange={e=>setDeliveryFormData({...deliveryFormData, endTime:e.target.value})} className="w-full bg-transparent px-1 h-[24px] font-black text-[13px] outline-none text-white [color-scheme:dark]" />
                 </div>
               </div>
 
-              {/* 배민 카드: 반투명 글래스모피즘 */}
-              <div className="bg-slate-800/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
+              {/* 💡 [V5.23] 배민 카드: 정훈(Blue), 현아(Pink), 금액(Amber), 건수(Emerald) 컬러 분리 */}
+              <div className="bg-slate-700/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
                 <div className="font-black text-[#4cd1cc] text-[13px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 배달의민족</div>
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
                      <div className="flex gap-1 items-center w-full">
-                        <span className="w-[50px] shrink-0 text-[15px] font-black text-[#4cd1cc] bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">정훈</span>
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
+                        <span className="w-[50px] shrink-0 text-[15px] font-black text-blue-300 bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">정훈</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonBaemin ? formatLargeMoney(deliveryFormData.amountJunghoonBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-amber-300 placeholder:text-amber-300/40" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-emerald-300 placeholder:text-emerald-300/40" />
                      </div>
                      <NetDiffInfo earner="정훈" platform="배민" inputAmt={deliveryFormData.amountJunghoonBaemin} inputCnt={deliveryFormData.countJunghoonBaemin} date={deliveryFormData.date} />
                   </div>
-                  <div className="w-full border-t border-slate-600"></div>
+                  <div className="w-full border-t border-slate-500/50"></div>
                   <div className="flex flex-col gap-1">
                      <div className="flex gap-1 items-center w-full">
-                        <span className="w-[50px] shrink-0 text-[15px] font-black text-[#4cd1cc] bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">현아</span>
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
+                        <span className="w-[50px] shrink-0 text-[15px] font-black text-pink-300 bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">현아</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaBaemin ? formatLargeMoney(deliveryFormData.amountHyunaBaemin) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-amber-300 placeholder:text-amber-300/40" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaBaemin} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaBaemin: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-[#4cd1cc] focus:ring-2 focus:ring-[#4cd1cc]/30 transition-all text-emerald-300 placeholder:text-emerald-300/40" />
                      </div>
                      <NetDiffInfo earner="현아" platform="배민" inputAmt={deliveryFormData.amountHyunaBaemin} inputCnt={deliveryFormData.countHyunaBaemin} date={deliveryFormData.date} />
                   </div>
                 </div>
               </div>
               
-              {/* 쿠팡 카드 */}
-              <div className="bg-slate-800/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
+              {/* 💡 [V5.23] 쿠팡 카드: 정훈(Blue), 현아(Pink), 금액(Amber), 건수(Emerald) 컬러 분리 */}
+              <div className="bg-slate-700/40 p-3 rounded-[1.2rem] shadow-sm border border-slate-500">
                 <div className="font-black text-blue-300 text-[13px] mb-2 flex items-center gap-1.5"><Bike size={14}/> 쿠팡이츠</div>
                 <div className="space-y-2">
                    <div className="flex flex-col gap-1">
                      <div className="flex gap-1 items-center w-full">
                         <span className="w-[50px] shrink-0 text-[15px] font-black text-blue-300 bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">정훈</span>
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountJunghoonCoupang ? formatLargeMoney(deliveryFormData.amountJunghoonCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-amber-300 placeholder:text-amber-300/40" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countJunghoonCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countJunghoonCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-emerald-300 placeholder:text-emerald-300/40" />
                      </div>
                      <NetDiffInfo earner="정훈" platform="쿠팡" inputAmt={deliveryFormData.amountJunghoonCoupang} inputCnt={deliveryFormData.countJunghoonCoupang} date={deliveryFormData.date} />
                   </div>
-                  <div className="w-full border-t border-slate-600"></div>
+                  <div className="w-full border-t border-slate-500/50"></div>
                   <div className="flex flex-col gap-1">
                      <div className="flex gap-1 items-center w-full">
-                        <span className="w-[50px] shrink-0 text-[15px] font-black text-blue-300 bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">현아</span>
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
-                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-white placeholder:text-slate-400 placeholder:font-bold" />
+                        <span className="w-[50px] shrink-0 text-[15px] font-black text-pink-300 bg-white/10 border border-white/20 rounded-xl text-center flex items-center justify-center h-[44px] shadow-sm">현아</span>
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.amountHyunaCoupang ? formatLargeMoney(deliveryFormData.amountHyunaCoupang) : ''} onChange={e => setDeliveryFormData({...deliveryFormData, amountHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="총액" className="flex-[7] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-3 h-[44px] outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-amber-300 placeholder:text-amber-300/40" />
+                        <input type="text" inputMode="numeric" pattern="[0-9,]*" value={deliveryFormData.countHyunaCoupang} onChange={e => setDeliveryFormData({...deliveryFormData, countHyunaCoupang: e.target.value.replace(/[^0-9]/g, '')})} placeholder="건수" className="flex-[3] min-w-0 text-[17px] font-black bg-white/10 rounded-xl px-1 h-[44px] text-center outline-none border border-white/20 focus:bg-white/20 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all text-emerald-300 placeholder:text-emerald-300/40" />
                      </div>
                      <NetDiffInfo earner="현아" platform="쿠팡" inputAmt={deliveryFormData.amountHyunaCoupang} inputCnt={deliveryFormData.countHyunaCoupang} date={deliveryFormData.date} />
                   </div>
@@ -2598,7 +2596,7 @@ function DeliveryView({ dailyDeliveries, setDailyDeliveries, selectedYear, selec
       )}
     </div>
   );
-}                                                       
+}                                                     
         
 // ==========================================
 // 7. ASSETS TAB COMPONENT
