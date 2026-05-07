@@ -5,7 +5,7 @@ import {
   Bike, Landmark, Wallet, CheckCircle2, 
   Trash2, Settings, Clock, Search, ChevronDown, ChevronUp, CalendarCheck, Coins, Filter, RefreshCw, ArrowDownUp, Timer, Target, Edit3, CalendarDays, Play, Square, Smartphone, Heart,
   Utensils, Home, Car, Shield, User, CreditCard, PiggyBank, GraduationCap, Gift, Plane, FileText, Film, Scissors, ShoppingBag, Tv, Package, Briefcase, Star, Stethoscope, Coffee, MessageSquareHeart,
-  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid, Repeat, ChevronDownSquare, AlertCircle
+  NotebookPen, Calculator, ChevronLeftCircle, Lock, Delete, Copy, Building2, Grid, Repeat, ChevronDownSquare, AlertCircle, Sparkles
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
