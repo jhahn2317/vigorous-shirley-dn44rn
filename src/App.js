@@ -572,8 +572,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
-  
-  // 💡 [V5.32] 세부메모(subNote) 삭제 및 초기화 상태 업데이트
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', isFromSavings: false, linkedAssetId: '' });
   
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
@@ -585,6 +583,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [calcConfirm, setCalcConfirm] = useState({ show: false, count: 0, total: 0 });
   const suggestionRef = useRef(null);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
+
+  // 💡 [V5.40] AI 재무장관 상태 및 API 키 탑재
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiReportText, setAiReportText] = useState('');
+  const GEMINI_API_KEY = "AIzaSyC3A7hVWO1OpdmcXTrv4ctocH-zXgRSDqQ"; // 소장님이 던져주신 키!
 
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
@@ -701,6 +705,46 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
 
+  // 💡 [V5.40] AI 재무장관 호출 브리핑 로직!
+  const handleGenerateAiReport = async () => {
+     setIsAiModalOpen(true);
+     setIsAiLoading(true);
+     setAiReportText('');
+     
+     try {
+        // 1. 데이터를 초압축 텍스트로 변환 (토큰 절약 기술)
+        const expenseTop3 = reviewData.expense.slice(0, 3).map(x => `${x[0]}(${formatLargeMoney(x[1])}원)`).join(', ');
+        const incomeTop3 = reviewData.income.slice(0, 3).map(x => `${x[0]}(${formatLargeMoney(x[1])}원)`).join(', ');
+        const dataStr = `[${calMonth}월 가계부 데이터]\n총수입:${formatLargeMoney(ledgerSummary.income)}원 (주요: ${incomeTop3})\n총지출:${formatLargeMoney(ledgerSummary.expense)}원 (순수생활비:${formatLargeMoney(financialSummary.sumLiving)}원 / 대출원리금:${formatLargeMoney(financialSummary.sumPrincipal + financialSummary.sumInterest)}원)\n지출 1~3위: ${expenseTop3}\n최종수익(남은돈): ${formatLargeMoney(ledgerSummary.net)}원`;
+
+  const prompt = `너는 정훈과 현아 부부의 자산을 관리하는 수석 재무장관 AI야. 말투는 전문가스럽게, 하지만 부부에게 말하듯 친근하게 해줘. 다음 압축된 이번 달 데이터를 바탕으로 분석 보고서를 작성해줘.
+1. 이번 달 수입 및 재무 상태 총평 (피땀 흘려 번 총수입과 주요 수입원에 대한 극찬, 그리고 남은 돈/생활비 방어율 평가)
+2. 가장 많이 쓴 지출(TOP 3)에 대한 뼈 때리는 분석과 건설적인 미래를 위한 조언 (단, '대출상환', '대출원금', '대출이자' 등 대출 관련 지출은 부부가 이미 완벽하게 통제하고 있는 훌륭한 고정 지출이니 절대 문제 삼거나 잔소리하지 말 것. 순수 생활비와 변동 지출에만 집중해서 팩트 폭행해 줘.)
+3. 다음 달 수입 증대 및 지출 방어를 위한 구체적인 액션 플랜 1가지
+너무 길지 않게 3문단으로 임팩트 있게 작성하고, 마크다운(bold, emoji)을 써서 가독성을 높여줘.
+데이터: ${dataStr}`;
+
+        // 2. Gemini API 호출
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+           })
+        });
+        
+        const json = await response.json();
+        if(json.error) throw new Error(json.error.message);
+        
+        setAiReportText(json.candidates[0].content.parts[0].text);
+     } catch (error) {
+        console.error(error);
+        setAiReportText(`앗, AI 재무장관님이 휴가를 떠났습니다! 🏖️\n(API 키 오류 또는 네트워크 문제 발생)\n\n에러: ${error.message}`);
+     } finally {
+        setIsAiLoading(false);
+     }
+  };
+
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -717,7 +761,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     const finalAmount = parseInt(String(formData.amount).replace(/,/g, ''), 10);
     const timestamp = new Date().toISOString();
     
-    // 💡 [V5.32] subNote 필드 제거
     const newTx = { 
        ...formData, 
        category: finalCategory, 
@@ -916,10 +959,15 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       </div>
 
       <div className="bg-white rounded-3xl p-5 shadow-md border border-pink-200 relative overflow-hidden">
-         <h3 className="text-sm font-black text-gray-800 mb-3 flex items-center gap-1.5">
-           <PieChart size={16} className="text-pink-500"/> 
-           {isSearchActive ? '검색된 내역 요약 🔍' : `${calMonth}월 가계부 요약 🌷`}
-         </h3>
+         {/* 💡 [V5.40] AI 재무장관 호출 버튼 추가 */}
+         <div className="flex justify-between items-center mb-3">
+             <h3 className="text-sm font-black text-gray-800 flex items-center gap-1.5">
+               <PieChart size={16} className="text-pink-500"/> 
+               {isSearchActive ? '검색된 내역 요약 🔍' : `${calMonth}월 가계부 요약 🌷`}
+             </h3>
+             <button onClick={handleGenerateAiReport} className="text-[10px] bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1.5 rounded-full font-black shadow-md flex items-center gap-1 active:scale-95 transition-transform"><Star size={12} className="fill-yellow-300 text-yellow-300"/> AI 브리핑</button>
+         </div>
+
          <div className="grid grid-cols-3 gap-2 mb-3">
            <div className="bg-blue-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold text-blue-500 mb-1">수입 합계 💰</div><AutoScaleValue value={ledgerSummary.income} /></div>
            <div className="bg-rose-50/60 p-3 rounded-2xl border text-center shadow-sm"><div className="text-[9px] font-bold text-rose-500 mb-1">지출 합계 💸</div><AutoScaleValue value={ledgerSummary.expense} /></div>
@@ -991,7 +1039,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
         );
       })()}
 
-      {/* 💡 [V5.4] 리포트 UI 드릴다운 (접기/펴기 + 카테고리 상세 모달 연결) */}
       {ledgerSubTab === 'review' && (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 mt-1">
           {reviewData.expense.length > 0 && (
@@ -1121,7 +1168,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {/* 가계부 플로팅 버튼 */}
       <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
-      {/* 💡 [V5.4] 카테고리 리포트 상세 내역 팝업 모달 */}
+      {/* 카테고리 리포트 상세 내역 팝업 모달 */}
       {selectedReportCategory && (() => {
          const isIncome = selectedReportCategory.type === '수입';
          const catItems = filteredLedger.filter(t => t.type === selectedReportCategory.type && t.category === selectedReportCategory.category).sort((a,b) => b.date.localeCompare(a.date));
@@ -1258,7 +1305,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          </div>
       )}
 
-      {/* 💡 [V5.32] 가계부 입력/수정 메인 모달 UI 동선 최적화 */}
+      {/* 가계부 입력/수정 메인 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
@@ -1473,11 +1520,45 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
            )}
         </div>
       )}
+
+      {/* 💡 [V5.40] AI 재무장관 결과 팝업 모달 */}
+      {isAiModalOpen && (
+         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex justify-center items-center p-4">
+            <div className="bg-gradient-to-br from-indigo-900 to-purple-900 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl relative overflow-hidden border border-purple-500/50">
+               <Star className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 rotate-12 text-yellow-300 fill-yellow-300" />
+               <div className="flex justify-between items-center mb-4 relative z-10">
+                  <h3 className="text-lg font-black text-yellow-300 flex items-center gap-1.5"><Sparkles size={20} className="text-yellow-300"/> AI 재무장관 브리핑</h3>
+                  <button onClick={() => setIsAiModalOpen(false)} className="bg-white/10 text-white/70 p-2 rounded-full active:scale-95"><X size={16}/></button>
+               </div>
+               
+               <div className="relative z-10 min-h-[200px] flex flex-col justify-center">
+                  {isAiLoading ? (
+                     <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="w-12 h-12 border-4 border-yellow-300/30 border-t-yellow-300 rounded-full animate-spin"></div>
+                        <p className="text-white font-bold text-sm">재무장관님이 가계부를 꼼꼼히 뜯어보는 중입니다... 🕵️‍♂️</p>
+                     </div>
+                  ) : (
+                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-inner max-h-[60vh] overflow-y-auto no-scrollbar">
+                        <div className="text-white text-sm font-bold leading-relaxed whitespace-pre-wrap markdown-content">
+                           {aiReportText}
+                        </div>
+                     </div>
+                  )}
+               </div>
+               
+               {!isAiLoading && (
+                  <button onClick={() => setIsAiModalOpen(false)} className="w-full mt-4 bg-yellow-300 text-indigo-900 font-black py-3.5 rounded-2xl active:scale-95 shadow-md">
+                     확인했습니다! 🫡
+                  </button>
+               )}
+            </div>
+         </div>
+      )}
     </div>
   );
-}
-                                                                                  
+}                                                                     
 
+                                                                                  
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
 // ==========================================
