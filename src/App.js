@@ -299,8 +299,8 @@ export const handleTouchEnd = (e, closeFunction) => {
 
 // 3. LOCK SCREEN COMPONENT
 function LockScreenView({ correctPin, onUnlock }) {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
+  const [pin, setPin] = ('');
+  const [error, setError] = (false);
 
   const handlePress = (num) => {
     if (pin.length < 4) {
@@ -563,8 +563,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   
   const [selectedLedgerDetail, setSelectedLedgerDetail] = useState(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
-  
-  // 💡 [V5.4] 리포트 전체보기 및 카테고리 상세 팝업을 위한 상태
   const [isExpenseExpanded, setIsExpenseExpanded] = useState(false);
   const [isIncomeExpanded, setIsIncomeExpanded] = useState(false);
   const [selectedReportCategory, setSelectedReportCategory] = useState(null);
@@ -574,7 +572,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
-  
   const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
@@ -588,14 +585,12 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
   const [calYear, setCalYear] = useState(selectedYear);
   const [calMonth, setCalMonth] = useState(selectedMonth);
-
   useEffect(() => {
     setCalYear(selectedYear);
     setCalMonth(selectedMonth);
   }, [selectedYear, selectedMonth]);
   
   const [isYearlyIncomeOpen, setIsYearlyIncomeOpen] = useState(false);
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target)) setIsSuggestionOpen(false);
@@ -603,18 +598,15 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
   const getSortedCategories = (type) => {
-    let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
+    let cats = type === 'all' ?
+ [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
   };
-
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
-
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && typeof t?.date === 'string' && t.date.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
-
   const filteredLedger = useMemo(() => {
     let data = ledger || [];
     if (ledgerDateRange.start || ledgerDateRange.end) {
@@ -628,7 +620,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     if (searchQuery.trim()) data = data.filter(t => (t.note||'').toLowerCase().includes(searchQuery.toLowerCase()) || (t.category||'').toLowerCase().includes(searchQuery.toLowerCase()));
     return data;
   }, [ledger, calYear, calMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
-
   const monthUsedCategories = useMemo(() => {
     const categoryTotals = {};
     filteredLedger.forEach(t => {
@@ -639,26 +630,21 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
-
   const isActualExpense = (t) => {
     if (t.type !== '지출') return false;
     if (!t.date) return false;
     if (t.date < '2026-05-01') return !t.isFromSavings;
     return t.category !== '저축'; 
   };
-
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
     expense: filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0), 
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
-
-  // 💡 [V5.4] slice(0, 5) 제거: 전체 데이터를 가지고 있게끔 수정
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(isActualExpense).reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
   }), [filteredLedger]);
-
   const financialSummary = useMemo(() => {
     const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     const rawExpense = monthRawLedger.filter(isActualExpense).reduce((a,b)=>a+(b.amount||0),0);
@@ -666,10 +652,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
   }, [ledger, calYear, calMonth]);
-
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
-
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
@@ -680,7 +664,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger, formData.type]);
-
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -691,7 +674,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note, formData.type]);
-
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
     const lastTx = [...ledger].filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date).sort((a,b) => b.date.localeCompare(a.date))[0];
@@ -701,9 +683,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       const verb = formData.type === '수입' ? '기록한' : '지출한';
       return `최근 ${m}월 ${d}일에 ${verb} 금액은 ${new Intl.NumberFormat('ko-KR').format(lastTx.amount)}원이었어요 😊`;
     }
+  
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
-
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -727,7 +709,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        updatedAt: timestamp,
        updatedBy: currentUser
     };
-
     let assetToUpdate = null;
     let assetUpdates = null;
     if (!editingLedgerId && formData.linkedAssetId) { 
@@ -756,7 +737,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     }
     return true;
   };
-
   const handleTransactionSubmit = async (e, isContinuous = false) => {
     e.preventDefault();
     const success = await saveTransaction();
@@ -765,7 +745,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        else { setIsModalOpen(false); setEditingLedgerId(null); }
     }
   };
-
   const handleEditClick = (t) => {
     setSelectedLedgerDetail(null);
     setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
@@ -786,7 +765,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     else setLedger((ledger||[]).filter(t => t.id !== id));
     setSelectedLedgerDetail(null);
   };
-
   const saveMemo = async () => {
     if(!user || !window.confirm("메모를 저장하시겠습니까?")) return;
     const stamp = getKSTTimestamp();
@@ -892,6 +870,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
       <div>
         <div className="flex items-center gap-2 mb-2">
+          
           <button onClick={() => setShowFilters(!showFilters)} className={`p-2.5 rounded-xl transition-colors shadow-sm ${showFilters ? 'bg-pink-500 text-white' : 'bg-white text-pink-500 border border-pink-200'}`}><Search size={16} /></button>
           <div className="flex overflow-x-auto no-scrollbar gap-1.5 py-1 flex-1">
             <button onClick={() => { setFilterType('all'); setFilterCategory('all'); }} className={`flex-none px-3 py-1.5 rounded-xl text-xs font-black shadow-sm ${filterCategory === 'all' && filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 border border-pink-100'}`}>전체</button>
@@ -1000,10 +979,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  {(isExpenseExpanded ? reviewData.expense : reviewData.expense.slice(0, 5)).map(([cat, amt], idx) => (
                   <div key={cat} onClick={() => setSelectedReportCategory({type: '지출', category: cat})} className="cursor-pointer group active:scale-[0.98] transition-transform p-1.5 -mx-1.5 rounded-xl hover:bg-rose-50">
                     <div className="flex justify-between items-end mb-1">
-                       <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
                           <span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-rose-500':idx===1?'bg-pink-400':idx===2?'bg-gray-400':'bg-gray-300'}`}>{idx + 1}</span>
                           <span className="text-xs font-bold text-gray-700 group-hover:text-rose-600 transition-colors">{cat}</span>
-                       </div>
+                      </div>
                        <div className="flex items-center gap-1">
                           <div className="text-xs font-black text-gray-800">{formatMoney(amt)}원</div>
                           <ChevronRight size={14} className="text-gray-300 group-hover:text-rose-400"/>
@@ -1027,7 +1006,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               <div className="space-y-3">
                 {(isIncomeExpanded ? reviewData.income : reviewData.income.slice(0, 5)).map(([cat, amt], idx) => (
                   <div key={cat} onClick={() => setSelectedReportCategory({type: '수입', category: cat})} className="cursor-pointer group active:scale-[0.98] transition-transform p-1.5 -mx-1.5 rounded-xl hover:bg-blue-50">
-                    <div className="flex justify-between items-end mb-1">
+                     <div className="flex justify-between items-end mb-1">
                        <div className="flex items-center gap-1.5">
                           <span className={`w-4 h-4 rounded-full text-[10px] font-black text-white flex justify-center items-center ${idx===0?'bg-blue-600':idx===1?'bg-blue-400':idx===2?'bg-sky-400':'bg-gray-300'}`}>{idx + 1}</span>
                           <span className="text-xs font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{cat}</span>
@@ -1063,7 +1042,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
               }} className="text-[10px] bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-bold border border-pink-200 shadow-sm">+ 새 메모</button>
            </div>
            {memos.sort((a,b) => (b.createdAt).localeCompare(a.createdAt)).map(memo => (
-              <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setIsMemoEditorOpen(true); }} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer relative hover:bg-gray-50 transition-colors">
+              <div key={memo.id} onClick={() => { setCurrentMemoId(memo.id); setMemoText(memo.text || ''); setIsMemoEditorOpen(true);
+}} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-200/80 cursor-pointer relative hover:bg-gray-50 transition-colors">
                  <div className="text-[10px] font-bold text-pink-500 mb-2 bg-pink-50 px-2 py-1 rounded inline-block">{(memo.updatedAt || memo.createdAt).replace(/-/g, '.')}</div>
                  <div className="text-base font-bold text-gray-800 line-clamp-2 whitespace-pre-wrap">{memo.text || '내용 없음'}</div>
                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 w-5 h-5" />
@@ -1094,7 +1074,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                     <div key={t.id} onClick={() => setSelectedLedgerDetail(t)} className="bg-gray-50/50 border border-gray-100/50 rounded-2xl cursor-pointer shadow-sm hover:bg-pink-50 transition-colors">
                       <div className="flex justify-between items-center p-3">
                          <div className="flex items-center gap-3 overflow-hidden flex-1">
-                          <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
+                            <div className={`p-2.5 rounded-xl shadow-sm ${t.type === '수입' ? 'bg-blue-100 text-blue-500' : 'bg-pink-100 text-pink-500'}`}>{getCategoryIcon(t.category, t.type)}</div>
                           <div className="truncate pr-2">
                             <div className="text-[10px] font-bold text-gray-500 flex items-center gap-1">{t.category}</div>
                             <div className="font-bold text-sm text-gray-800 truncate flex items-center gap-1">
@@ -1102,7 +1082,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                                {t.isFromSavings && <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100">💳 금고출금</span>}
                             </div>
                           </div>
-                        </div>
+                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 pl-2">
                           <span className={`font-black text-base flex-shrink-0 pl-2 ${t.type === '수입' ? 'text-blue-500' : (!isActualExpense(t) && t.type === '지출') ? 'text-gray-400 line-through decoration-1' : 'text-gray-900'}`}>{formatLargeMoney(t.amount)}원</span>
                         </div>
@@ -1122,7 +1102,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       {/* 💡 [V5.4] 카테고리 리포트 상세 내역 팝업 모달 */}
       {selectedReportCategory && (() => {
          const isIncome = selectedReportCategory.type === '수입';
-         // 선택된 카테고리의 이번 달 내역 긁어와서 최신순 정렬
          const catItems = filteredLedger.filter(t => t.type === selectedReportCategory.type && t.category === selectedReportCategory.category).sort((a,b) => b.date.localeCompare(a.date));
          const totalAmt = catItems.reduce((a,b) => a + (b.amount||0), 0);
          
@@ -1150,7 +1129,6 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  <div className="overflow-y-auto no-scrollbar space-y-2.5 flex-1 pb-4 border-t border-gray-100 pt-4">
                     {catItems.map(t => (
                       <div key={t.id} onClick={() => {
-                          // 상세 창을 누르면, 기존의 selectedLedgerDetail 팝업을 상위에 띄워버림 (수정/삭제 연동)
                           setSelectedLedgerDetail(t);
                       }} className="bg-gray-50 border border-gray-100 rounded-2xl cursor-pointer shadow-sm p-3 flex justify-between items-center hover:bg-gray-100 transition-colors active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
@@ -1171,7 +1149,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  </div>
               </div>
             </div>
-         );
+          );
       })()}
 
       {/* 달력 날짜 클릭 시 나타나는 리스트 뷰 모달 */}
@@ -1187,7 +1165,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-6 shrink-0"></div>
                <div className="flex justify-between items-center mb-6 shrink-0">
                   <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
-                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '. ')}
+                     <CalendarCheck className="text-pink-500" size={24}/> {selectedCalendarDate.replace(/-/g, '.')}
                   </h2>
                   <button onClick={() => setSelectedCalendarDate(null)} className="bg-gray-100 text-gray-500 p-2.5 rounded-2xl active:scale-95"><X size={20}/></button>
                </div>
@@ -1234,12 +1212,13 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                </div>
             
                <div className="mb-6">
-                  <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarIcon size={12}/> {selectedLedgerDetail.date}</div>
+                 <div className="text-xs font-bold text-gray-400 mb-1 flex items-center gap-1.5"><CalendarIcon size={12}/> {selectedLedgerDetail.date}</div>
                   <div className="text-2xl font-black text-gray-900 mb-2 leading-tight flex items-center gap-2">
                      {selectedLedgerDetail.note || selectedLedgerDetail.category} 
                      {selectedLedgerDetail.isFromSavings && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 flex items-center gap-1"><Coins size={10}/> 금고출금</span>}
                   </div>
                   <div className="text-[11px] font-bold text-gray-500 mb-5 px-2.5 py-1 bg-gray-100 inline-block rounded-lg shadow-inner">{selectedLedgerDetail.category}</div>
+                 
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">{selectedLedgerDetail.type} 금액</div>
                     <div className={`text-4xl font-black tracking-tighter ${selectedLedgerDetail.type === '수입' ? 'text-blue-500' : 'text-rose-500'}`}>
@@ -1256,9 +1235,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                   </div>
                )}
                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
-                  <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 내역 복사</button>
-                  <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 내용 수정</button>
-                  <button onClick={() => handleDeleteClick(selectedLedgerDetail.id)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 내역 삭제</button>
+                  <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 복사</button>
+                  <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 수정</button>
+                  <button onClick={() => handleDeleteClick(selectedLedgerDetail.id)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Trash2 size={16}/> 삭제</button>
                </div>
             </div>
          </div>
@@ -1283,7 +1262,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
             <form className="space-y-3 flex-1 pb-2">
               {!editingLedgerId && frequentItems.length > 0 && (
                 <div className="mb-1">
-                  <div className="text-[10px] font-black text-gray-400 ml-1 mb-1.5 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 {formData.type} 불러오기</div>
+                   <div className="text-[10px] font-black text-gray-400 ml-1 mb-1.5 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 {formData.type} 불러오기</div>
                   <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1">
                     {frequentItems.map(([cat, note], idx) => (
                        <button key={idx} type="button" onClick={() => {
@@ -1343,17 +1322,28 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
-              <div className="flex gap-3 w-full relative z-30">
+              <div className="flex gap-3 w-full relative z-30 flex-col sm:flex-row">
                 <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
                    <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
                 </div>
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
+                <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200 flex flex-col gap-1">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className="text-pink-500"/> 카테고리</label>
                    <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
-                      <option value="직접입력">+ 직접입력 (신규)</option>
+                      <option value="직접입력" className="font-black text-pink-500">+ 직접입력 (신규)</option>
                    </select>
+
+                   {/* 💡 [V5.31] 직접입력 폼 노출 (스텔스 폼) */}
+                   {isCustomCategory && (
+                     <div className="mt-1 bg-pink-50/50 border border-pink-200 rounded-xl p-2.5 animate-in slide-in-from-top-2">
+                       <input type="text" placeholder="새로운 카테고리명" value={customCategoryInput} onChange={e => setCustomCategoryInput(e.target.value)} className="w-full bg-white rounded-lg px-3 py-2 text-xs font-black outline-none border border-pink-200 focus:border-pink-500 shadow-sm mb-2" />
+                       <label className="flex items-center gap-2 cursor-pointer">
+                         <input type="checkbox" checked={saveToCategoryList} onChange={e => setSaveToCategoryList(e.target.checked)} className="w-4 h-4 text-pink-600 rounded border-pink-300 focus:ring-pink-500" />
+                         <span className="text-[10px] font-bold text-gray-600">즐겨찾기(카테고리 리스트)에 영구 추가</span>
+                       </label>
+                     </div>
+                   )}
                 </div>
               </div>
 
@@ -1383,7 +1373,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                                 <div className="font-black text-xs truncate">{a.name}</div>
                              </button>
                           ))}
-                      </div>
+                       </div>
                     )}
                  </div>
               )}
@@ -1428,7 +1418,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  autoFocus 
               />
            </div>
-              
+            
            {isCalcOpen && (
               <div className="absolute top-[88px] left-4 right-4 bg-gray-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-700/50 p-4 z-[90] animate-in slide-in-from-top-2">
                  {calcConfirm.show ? (
@@ -1445,7 +1435,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                         </div>
                      </div>
                  ) : (
-                     <>
+                   <>
                          <button onClick={() => setIsCalcOpen(false)} className="w-full bg-gray-700/80 text-white py-2 rounded-xl font-bold text-xs mb-3 active:scale-95 shadow-sm border border-gray-600">
                             🔽 계산기 내리기
                          </button>
@@ -1469,6 +1459,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     </div>
   );
 }
+                                                                                  
 
 // ==========================================
 // 6. DELIVERY TAB COMPONENT
@@ -3075,7 +3066,7 @@ function AssetView({ assets, setAssets, selectedYear, selectedMonth, currentMont
 // ==========================================
 // 8. FAMILY CALENDAR COMPONENT 
 // ==========================================
-function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab, customHolidays, updateSettings, userSettings }) {
+function FamilyCalendarView({ events, setEvents, messages, setMessages, selectedYear, selectedMonth, currentMonthKey, todayStr, currentUser, user, isManageMode, activeTab, customHolidays, updateSettings, userSettings, weatherCache }) {
   const [calendarSubTab, setCalendarSubTab] = useState('timeline');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
   
@@ -3114,12 +3105,9 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const dutyTimelineRef = useRef(null); 
   
   const [isAllImportantEventsModalOpen, setIsAllImportantEventsModalOpen] = useState(false);
-
-  // 💡 [V5.21] 타임라인 과거/미래 토글 상태 추가 ('future'가 기본값)
   const [timelineMode, setTimelineMode] = useState('future');
 
   const extendedDutyDays = useMemo(() => Array.from({length: 32}, (_, i) => { const d = new Date(); d.setDate(d.getDate() + (i - 2)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), []);
-  
   const topImportantEvents = useMemo(() => {
     return (events || [])
       .filter(e => {
@@ -3138,26 +3126,20 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       .sort((a,b) => (a.date||'').localeCompare(b.date||''))
       .slice(0, 3);
   }, [events, todayStr]);
-
   const allFutureImportantEvents = useMemo(() => {
     return (events || [])
       .filter(e => e.isImportant && e.date && (e.endDate || e.date) >= todayStr)
       .sort((a,b) => (a.date||'').localeCompare(b.date||''));
   }, [events, todayStr]);
-
   const familyEventsList = useMemo(() => (events || []).filter(e => e.type !== '듀티' && e.date).sort((a, b) => (a.date||'').localeCompare(b.date||'')), [events]);
-  
-  // 💡 [V5.22] 타임라인 역스크롤 마법
   const timelineEventsList = useMemo(() => {
     if (timelineMode === 'future') {
       return familyEventsList.filter(e => (e.endDate || e.date) >= todayStr);
     } else {
-      // 과거 일정: 오름차순 유지 (오래된 게 위로, 최근이 아래로 배치됨)
       return familyEventsList.filter(e => (e.endDate || e.date) < todayStr);
     }
   }, [familyEventsList, todayStr, timelineMode]);
 
-  // 💡 [V5.22] 과거 타임라인 진입 시 스크롤 맨 밑바닥으로 자동 이동시키는 마법
   useEffect(() => {
     if (calendarSubTab === 'timeline' && timelineMode === 'past') {
       const timer = setTimeout(() => {
@@ -3173,6 +3155,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
   const activeMessages = useMemo(() => (messages || []).filter(m => !m.isChecked).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   const archivedMessages = useMemo(() => (messages || []).filter(m => m.isChecked && !m.isSystemLog).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [messages]);
   
+  // 💡 [V5.31] 기존 달력 내부 스마트 아이콘 렌더링은 점(•)으로 교체! 이 함수는 이제 타임라인이나 중요 카드에서만 예외적으로 씁니다.
   const getSmartIcon = (title, type) => {
     const t = title || '';
     if (t.includes('생일') || t.includes('생신') || t.includes('탄생')) return '🎂';
@@ -3214,7 +3197,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsEventModalOpen(false); setEditingEventId(null); setSelectedEventDetail(null);
   };
-
   const deleteEvent = async (id) => {
     if(!window.confirm('일정을 삭제하시겠습니까?')) return;
     if (isFirebaseEnabled && user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id));
@@ -3235,7 +3217,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages([{...newMsg, id: Date.now().toString()}, ...messages]);
     setMessageFormData({ text: '' });
   };
-
   const handleAddReplySubmit = async (msgId) => {
     if (!replyText.trim() || !user) return;
     const msg = messages.find(m => m.id === msgId);
@@ -3246,7 +3227,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     else setMessages(messages.map(m => m.id === msgId ? { ...m, replies: updatedReplies, isoUpdate: new Date().toISOString() } : m));
     setReplyText(''); setReplyingTo(null);
   };
-
   const handleCheckMessage = async (id) => {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
@@ -3258,7 +3238,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
       else setMessages(messages.map(m => m.id === id ? { ...m, isChecked: true, checkedAt: todayStr } : m));
     }
   };
-
   const handleQuickDutyUpdate = async (dateStr, newDuty) => {
     if (!user) return;
     const existingEvent = events.find(e => e.date === dateStr && e.type === '듀티');
@@ -3302,7 +3281,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     setContinuousCursorDateStr(`${selectedYear}-${String(selectedMonth).padStart(2,'0')}-01`);
     setIsDutyBatchModalOpen(true);
   };
-
   const handleContinuousStamp = (duty) => {
     if (duty === 'BACK') {
        const d = new Date(continuousCursorDateStr);
@@ -3335,7 +3313,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
     }
     setIsDutyBatchModalOpen(false); alert(`${dutyBatchMonth}월 스케쥴 저장완료!`);
   };
-
   const toggleCustomHoliday = async (dateStr) => {
      if (!user) return;
      let newHolidays = [...customHolidays];
@@ -3446,7 +3423,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
           <div className="space-y-1.5 relative z-10">
             {topImportantEvents.length > 0 ? (
                topImportantEvents.map(e => (
-                  <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-transform">
+                 <div key={e.id} onClick={() => setSelectedEventDetail(e)} className="bg-white/20 py-3 px-4 rounded-xl flex items-center justify-between gap-2 cursor-pointer active:scale-95 transition-transform">
                    <div className="flex items-center gap-2.5 truncate">
                      <div className="bg-white text-pink-600 px-2 py-1 rounded-lg text-[10px] font-black shrink-0 text-center shadow-sm"><div>{parseInt((e.date||'').slice(5,7))}/{parseInt((e.date||'').slice(8,10))}</div><div>{['일','월','화','수','목','금','토'][new Date(e.date||todayStr).getDay()]}</div></div>
                      <div className="font-bold text-base truncate">{e.title}</div>
@@ -3454,7 +3431,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    <div className="bg-amber-400 text-amber-900 px-2.5 py-1 rounded-lg text-[11px] font-black shrink-0 shadow-sm border border-amber-300">
                      {getDDay(e.date)}
                    </div>
-                  </div>
+                 </div>
                ))
             ) : (
                <div className="text-center py-2 text-[10px] font-bold text-white/80 bg-black/10 rounded-xl">D-10 이내에 예정된 일정이 없습니다.</div>
@@ -3478,7 +3455,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                </div>
                <div className="flex-1 overflow-y-auto space-y-3 no-scrollbar pb-10 border-t border-gray-100 pt-4">
                   {allFutureImportantEvents.map(e => (
-                     <div key={e.id} onClick={() => { setIsAllImportantEventsModalOpen(false); setSelectedEventDetail(e); }} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
+                    <div key={e.id} onClick={() => { setIsAllImportantEventsModalOpen(false); setSelectedEventDetail(e); }} className="bg-gray-50 border border-gray-100 rounded-2xl shadow-sm p-4 flex justify-between items-center hover:bg-pink-50 transition-colors cursor-pointer active:scale-95">
                         <div className="flex items-center gap-3 overflow-hidden">
                            <div className="text-2xl bg-white w-10 h-10 flex justify-center items-center rounded-full shadow-sm shrink-0 border border-gray-100">{getSmartIcon(e.title, e.type)}</div>
                            <div className="truncate">
@@ -3519,7 +3496,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                
                {timelineEventsList.map((e, i, arr) => {
                  const isTodayEvent = timelineMode === 'future' && e.date <= todayStr && (e.endDate || e.date) >= todayStr;
-                 // 💡 [V5.22] 과거 모드일 때 가장 마지막(최근) 아이템 식별
                  const isMostRecentPast = timelineMode === 'past' && i === arr.length - 1;
                  const isHighlighted = isTodayEvent || isMostRecentPast;
                  
@@ -3535,7 +3511,6 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                      
                      <div className={`relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group py-2 transition-all duration-500 ${isHighlighted ? 'scale-[1.02] z-20' : ''}`}>
                        
-                       {/* 💡 [V5.22] 하이라이트 링 색상 변경 */}
                        <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shadow shrink-0 z-10 ${isTodayEvent ? 'bg-pink-500 text-white ring-2 ring-pink-400 ring-offset-1 shadow-sm' : isMostRecentPast ? 'bg-blue-500 text-white ring-2 ring-blue-400 ring-offset-1 shadow-sm' : 'bg-white'}`}>
                          {isHighlighted ? <Clock size={18} className="animate-pulse" /> : <span className="text-[18px]">{getSmartIcon(e.title, e.type)}</span>}
                        </div>
@@ -3618,25 +3593,37 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                  const holidayName = getHolidayName(dateStr);
                  const isCustomHoliday = customHolidays.includes(dateStr);
                  const dayIndex = (i % 7);
-                 const isRed = dayIndex === 0 || holidayName || isCustomHoliday;
-                 const isBlue = dayIndex === 6 && !holidayName && !isCustomHoliday;
-                 const dayColor = isRed ? 'text-red-500' : isBlue ? 'text-blue-500' : 'text-gray-600';
+                 const isRedDay = dayIndex === 0 || holidayName || isCustomHoliday;
+                 const isSaturday = dayIndex === 6 && !holidayName && !isCustomHoliday;
+
+                 // 💡 [V5.31] 날씨 캐시에서 아이콘 꺼내오기
+                 const dayWeather = weatherCache ? weatherCache[dateStr] : null;
 
                  return (
                    <div key={`day-${i}`} 
                      onClick={() => { 
                          setSelectedCalendarDate(dateStr); 
                      }} 
-                     className={`h-[65px] border rounded-xl p-1 flex flex-col items-center justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} cursor-pointer active:scale-95 transition-transform ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 shadow-sm z-10' : ''}`}>
-                     <span className={`text-[10px] font-bold mb-1 ${dayColor}`}>{d}</span>
+                     className={`h-[65px] border rounded-xl p-1.5 flex flex-col items-stretch justify-start relative ${hasEvent?'border-pink-200 bg-pink-50/50 shadow-sm':'border-gray-100 bg-white hover:bg-gray-50'} cursor-pointer active:scale-95 transition-transform ${isToday ? 'ring-2 ring-pink-400 ring-offset-1 shadow-sm z-10' : ''}`}>
+                     
+                     <div className="flex justify-between items-start mb-1 h-4">
+                        {/* 💡 [V5.31] 날짜 숫자 바로 옆에 날씨 아이콘 딱 1개만 고정 배치! */}
+                        <div className="flex items-center gap-0.5">
+                           <span className={`text-[13px] font-black tracking-tighter ${isRedDay ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-800'}`}>{d}</span>
+                           {dayWeather && <span className="text-[12px] drop-shadow-sm ml-0.5" title="동탄7동 날씨">{dayWeather}</span>}
+                        </div>
+                        {holidayName && <span className="text-[8px] font-bold text-red-500 tracking-tighter truncate max-w-[32px] leading-tight text-right">{holidayName}</span>}
+                     </div>
                      
                      {hasEvent && (
-                       <div className="flex flex-col items-center justify-center w-full h-full pb-3 relative">
-                          <span className="text-[22px] leading-none mb-1">{getSmartIcon(dayEvents[0].title, dayEvents[0].type)}</span>
-                          {dayEvents.length > 1 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-sm border-2 border-white">+{(dayEvents.length - 1)}</span>
-                          )}
-                          <div className="text-[8px] font-black text-gray-700 w-full text-center truncate px-0.5">{dayEvents[0].title}</div>
+                       <div className="flex-1 flex flex-col gap-0.5 overflow-hidden w-full">
+                          {dayEvents.slice(0, 2).map((ev, idx) => (
+                             <div key={idx} className={`text-[8px] font-bold px-1 py-0.5 rounded shadow-sm truncate border leading-tight ${ev.type === '기념일' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-white text-gray-700 border-gray-200'}`}>
+                               <span className="mr-0.5 opacity-80">{ev.type === '기념일' ? '🚩' : '•'}</span>
+                               {ev.title}
+                             </div>
+                          ))}
+                          {dayEvents.length > 2 && <div className="text-[8px] text-center text-gray-400 font-black tracking-widest leading-none">+{dayEvents.length - 2}</div>}
                        </div>
                      )}
                    </div>
@@ -3784,7 +3771,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
 
               {/* 3. 옵션 초압축 통합 블록 */}
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-sm space-y-4 mt-2">
-                
+                 
                 {/* 3-1. 빨간날 지정 */}
                 <label className="flex items-center gap-3 cursor-pointer group">
                    <input type="checkbox" className="w-5 h-5 accent-red-500 rounded border-gray-300 cursor-pointer" checked={customHolidays.includes(eventFormData.date)} onChange={() => toggleCustomHoliday(eventFormData.date)} />
@@ -3821,7 +3808,7 @@ function FamilyCalendarView({ events, setEvents, messages, setMessages, selected
                    </div>
                 </label>
               </div>
-              
+               
               <button type="submit" disabled={!eventFormData.title.trim()} className="w-full bg-pink-500 mt-4 py-4 rounded-[2rem] text-white font-black text-lg active:scale-95 shadow-xl disabled:opacity-50 border border-pink-600">{editingEventId ? '수정 완료' : '등록 완료'} 🌿</button>
             </form>
           </div>
@@ -3992,6 +3979,9 @@ function AppContent() {
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [userSettings, setUserSettings] = useState({ deliveryGoals: {}, customHolidays: [] });
 
+  // 💡 [V5.31] 날씨 스텔스 캐싱 모듈 추가
+  const [weatherCache, setWeatherCache] = useState({});
+
   const [selectedYear, setSelectedYear] = useState(parseInt(todayStr.slice(0,4)));
   const [selectedMonth, setSelectedMonth] = useState(parseInt(todayStr.slice(5,7)));
   const currentMonthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
@@ -4005,6 +3995,48 @@ function AppContent() {
     const saved = localStorage.getItem('hyunaLastVisited');
     return saved ? JSON.parse(saved) : { calendar: 0, ledger: 0, delivery: 0, assets: 0 };
   });
+
+  // 💡 [V5.31] 날씨 API 스텔스 로드 (하루에 1번만)
+  useEffect(() => {
+    const fetchAndCacheWeather = async () => {
+      if (!isFirebaseEnabled || !appId) return;
+      const todayKST = getKSTDateStrFromDate(new Date());
+      const weatherRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'weatherCache');
+      
+      try {
+        const weatherSnap = await getDoc(weatherRef);
+        // 1. 오늘 이미 캐싱된 데이터가 있으면 DB에서 바로 꺼내 씀
+        if (weatherSnap.exists() && weatherSnap.data().date === todayKST) {
+          setWeatherCache(weatherSnap.data().forecast);
+          return;
+        }
+        
+        // 2. 캐시가 없거나 날이 바뀌었으면(00:00) 동탄7동(산척동) 날씨 Open-Meteo에서 긁어옴
+        // 산척동 위도: 37.168, 경도: 127.113
+        const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=37.168&longitude=127.113&daily=weather_code&timezone=Asia%2FSeoul");
+        const data = await res.json();
+        const forecast = {};
+        
+        data.daily.time.forEach((t, i) => {
+          const code = data.daily.weather_code[i];
+          let icon = '☁️';
+          if (code <= 1) icon = '☀️'; // 맑음
+          else if (code <= 3) icon = '⛅'; // 구름조금
+          else if (code >= 51 && code <= 67) icon = '🌧️'; // 비
+          else if (code >= 71 && code <= 77) icon = '❄️'; // 눈
+          else if (code >= 80 && code <= 82) icon = '☔'; // 소나기
+          forecast[t] = icon;
+        });
+
+        setWeatherCache(forecast);
+        // DB에 새 날씨 저장
+        await setDoc(weatherRef, { date: todayKST, forecast });
+      } catch(e) {
+        console.log("날씨 스텔스 로드 실패:", e);
+      }
+    };
+    fetchAndCacheWeather();
+  }, [user, appId]);
 
   useEffect(() => {
     setLastVisited(prev => {
@@ -4038,7 +4070,6 @@ function AppContent() {
 
   // 💡 [V5.26] 부부 스텔스 접속 기록 로직
   const lastWrittenRef = useRef('');
-
   useEffect(() => {
     if (!isFirebaseEnabled || !user || !currentUser) return;
     const logAccess = async () => {
@@ -4140,6 +4171,7 @@ function AppContent() {
     const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'categories'), (s) => { if(s.exists()) setCategories(s.data()); });
     const unsubPrefs = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'preferences'), (s) => { if(s.exists()) setUserSettings(s.data()); });
     const unsubTimer = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'deliveryTimer'), (s) => { if(s.exists()) { setTimerActive(s.data().timerActive || false); setTrackingStartTime(s.data().trackingStartTime || null); }});
+    
     return () => { unsubLedger(); unsubDelivery(); unsubAssets(); unsubEvents(); unsubMessages(); unsubMemos(); unsubSettings(); unsubPrefs(); unsubTimer(); };
   }, [user]);
 
@@ -4248,11 +4280,11 @@ function AppContent() {
           {activeTab === 'ledger' && <LedgerView ledger={ledger} setLedger={setLedger} assets={assets} setAssets={setAssets} memos={memos} setMemos={setMemos} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} categories={categories} setCategories={setCategories} user={user} isManageMode={isManageMode} currentUser={currentUser} customHolidays={customHolidays} />}
           {activeTab === 'delivery' && <DeliveryView dailyDeliveries={dailyDeliveries} setDailyDeliveries={setDailyDeliveries} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} userSettings={userSettings} timerActive={timerActive} trackingStartTime={trackingStartTime} elapsedSeconds={elapsedSeconds} handleStartDelivery={handleStartDelivery} handleEndDelivery={handleEndDelivery} user={user} isManageMode={isManageMode} currentUser={currentUser} customHolidays={customHolidays} />}
           {activeTab === 'assets' && <AssetView assets={assets} setAssets={setAssets} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} user={user} isManageMode={isManageMode} currentUser={currentUser} />}
-          {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} activeTab={activeTab} customHolidays={customHolidays} updateSettings={updateSettings} userSettings={userSettings} />}
+          {activeTab === 'calendar' && <FamilyCalendarView events={events} setEvents={setEvents} messages={messages} setMessages={setMessages} selectedYear={selectedYear} selectedMonth={selectedMonth} currentMonthKey={currentMonthKey} todayStr={todayStr} currentUser={currentUser} user={user} isManageMode={isManageMode} activeTab={activeTab} customHolidays={customHolidays} updateSettings={updateSettings} userSettings={userSettings} weatherCache={weatherCache} />}
         </main>
 
         <nav className="fixed bottom-6 left-4 right-4 h-[72px] bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-200/50 flex justify-around items-center z-50 px-2">
-          {tabOrder.map((tabId) => {
+           {tabOrder.map((tabId) => {
             const config = tabConfig[tabId];
             const Icon = config.icon;
             const isActive = activeTab === tabId;
@@ -4307,6 +4339,31 @@ function AppContent() {
       </div>
     </>
   );
+}
+
+// 10. ERROR BOUNDARY
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null, errorInfo: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { console.error(error, errorInfo); this.setState({ errorInfo }); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
+          <div className="bg-white p-6 rounded-[2rem] shadow-xl max-w-sm w-full border text-left">
+            <h2 className="text-lg font-black text-gray-900 mb-4">오류가 발생했습니다</h2>
+            <div className="bg-gray-900 rounded-xl p-4 mb-6 overflow-auto max-h-60 text-[10px] text-green-400 font-mono"><p>{this.state.error && this.state.error.toString()}</p></div>
+            <button onClick={() => window.location.reload()} className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black active:scale-95">새로고침 (홈으로 복구하기)</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children; 
+  }
+}
+
+export default function App() {
+  return <ErrorBoundary><AppContent /></ErrorBoundary>;
 }
 
         
