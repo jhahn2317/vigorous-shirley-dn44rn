@@ -4367,34 +4367,3 @@ export default function App() {
 }
 
         
-
-// 10. ERROR BOUNDARY
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, errorInfo) { console.error(error, errorInfo);
-    this.setState({ errorInfo }); 
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
-          <div className="bg-white p-6 rounded-[2rem] shadow-xl max-w-sm w-full border text-left">
-            <h2 className="text-lg font-black text-gray-900 mb-4">오류가 발생했습니다</h2>
-            <div className="bg-gray-900 rounded-xl p-4 mb-6 overflow-auto max-h-60 text-[10px] text-green-400 font-mono"><p>{this.state.error && this.state.error.toString()}</p></div>
-            <button onClick={() => window.location.reload()} className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-black active:scale-95">새로고침 (홈으로 복구하기)</button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children; 
-  }
-}
-
-export default function App() {
-  return <ErrorBoundary><AppContent /></ErrorBoundary>;
-}
-
-        
