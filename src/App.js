@@ -726,7 +726,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
         // 2. Gemini API 호출
 // 최후의 보루 (가장 안정적인 기본 모델)
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${GEMINI_API_KEY}`, {                     
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {                  
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({
