@@ -55,7 +55,7 @@ const MONTHLY_THEME_MAP = {
 };
 
 const DEFAULT_CATEGORIES = {
-  지출: ['식비', '주거/통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
+  지출: ['식비', '주거', '통신', '교통/차량', '보험', '오빠생활비', '대출상환', '카드대금', '저축', '교육', '경조사', '여행경비', '세금', '문화생활', '미용', '쇼핑', '가전', '생필품', '교회', '기타'],
   수입: ['월급', '배달비', '월세', '용돈', '기타수입']
 };
 
@@ -231,7 +231,7 @@ const calcDailyMetrics = (deliveries) => {
 const getCategoryIcon = (category, type) => {
   switch (category) {
     case '식비': return <Utensils size={18} />;
-    case '주거/통신': case '월세': return <Home size={18} />;
+    case '주거': case '통신': case '주거/통신': case '월세': return <Home size={18} />;
     case '교통/차량': return <Car size={18} />;
     case '보험': return <Shield size={18} />;
     case '오빠생활비': return <User size={18} />;
@@ -572,7 +572,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [saveToCategoryList, setSaveToCategoryList] = useState(true);
-  const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' });
+  
+  // 💡 [V5.32] 세부메모(subNote) 삭제 및 초기화 상태 업데이트
+  const [formData, setFormData] = useState({ date: todayStr, type: '지출', amount: '', category: '식비', note: '', isFromSavings: false, linkedAssetId: '' });
+  
   const [isMemoEditorOpen, setIsMemoEditorOpen] = useState(false);
   const [currentMemoId, setCurrentMemoId] = useState(null);
   const [memoText, setMemoText] = useState('');
@@ -598,15 +601,18 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
   const getSortedCategories = (type) => {
-    let cats = type === 'all' ?
- [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
+    let cats = type === 'all' ? [...(categories['지출'] || []), ...(categories['수입'] || [])] : [...(categories[type] || [])];
     return Array.from(new Set(cats)).sort((a, b) => (a||'').localeCompare(b||''));
   };
+
   const depositAssets = useMemo(() => {
      return [...(assets?.deposits || []), ...(assets?.savings || [])].sort((a,b) => b.balance - a.balance);
   }, [assets]);
+
   const yearlyIncome = useMemo(() => (ledger || []).filter(t => t?.type === '수입' && typeof t?.date === 'string' && t.date.startsWith(String(selectedYear))).reduce((acc, curr) => acc + (curr.amount||0), 0), [ledger, selectedYear]);
+  
   const filteredLedger = useMemo(() => {
     let data = ledger || [];
     if (ledgerDateRange.start || ledgerDateRange.end) {
@@ -620,6 +626,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     if (searchQuery.trim()) data = data.filter(t => (t.note||'').toLowerCase().includes(searchQuery.toLowerCase()) || (t.category||'').toLowerCase().includes(searchQuery.toLowerCase()));
     return data;
   }, [ledger, calYear, calMonth, filterType, filterCategory, searchQuery, ledgerDateRange]);
+
   const monthUsedCategories = useMemo(() => {
     const categoryTotals = {};
     filteredLedger.forEach(t => {
@@ -630,21 +637,25 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
   }, [filteredLedger]);
+
   const isActualExpense = (t) => {
     if (t.type !== '지출') return false;
     if (!t.date) return false;
     if (t.date < '2026-05-01') return !t.isFromSavings;
     return t.category !== '저축'; 
   };
+
   const ledgerSummary = useMemo(() => ({ 
     income: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0), 
     expense: filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0), 
     net: filteredLedger.filter(t => t.type === '수입').reduce((a, b) => a + (b.amount||0), 0) - filteredLedger.filter(isActualExpense).reduce((a, b) => a + (b.amount||0), 0) 
   }), [filteredLedger]);
+
   const reviewData = useMemo(() => ({
     expense: Object.entries(filteredLedger.filter(isActualExpense).reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
     income: Object.entries(filteredLedger.filter(t => t.type === '수입').reduce((acc, curr) => { acc[curr.category || '기타'] = (acc[curr.category || '기타'] || 0) + (curr.amount || 0); return acc; }, {})).sort((a, b) => b[1] - a[1]),
   }), [filteredLedger]);
+
   const financialSummary = useMemo(() => {
     const monthRawLedger = (ledger||[]).filter(t => typeof t?.date==='string' && t.date.startsWith(`${calYear}-${String(calMonth).padStart(2, '0')}`));
     const rawExpense = monthRawLedger.filter(isActualExpense).reduce((a,b)=>a+(b.amount||0),0);
@@ -652,8 +663,10 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     const sumInterest = monthRawLedger.filter(t => (t.category||'').includes('대출이자') || (t.category||'').includes('이자상환')).reduce((a,b)=>a+(b.amount||0),0);
     return { sumLiving: rawExpense - sumPrincipal - sumInterest, sumPrincipal, sumInterest };
   }, [ledger, calYear, calMonth]);
+
   const groupedLedger = useMemo(() => (filteredLedger || []).reduce((acc, curr) => { if(curr.date){ if (!acc[curr.date]) acc[curr.date] = []; acc[curr.date].push(curr); } return acc; }, {}), [filteredLedger]);
   const ledgerDates = Object.keys(groupedLedger).sort((a, b) => new Date(b) - new Date(a));
+
   const frequentItems = useMemo(() => {
     const counts = {};
     ledger.forEach(t => {
@@ -664,6 +677,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(e => e[0].split('|'));
   }, [ledger, formData.type]);
+
   const suggestedNotes = useMemo(() => {
     if (!formData.note) return [];
     const matches = ledger.filter(t => t.type === formData.type && t.note && t.note.includes(formData.note) && t.note !== formData.note);
@@ -674,6 +688,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     });
     return uniqueMatches.slice(0, 5);
   }, [ledger, formData.note, formData.type]);
+
   const amountPlaceholder = useMemo(() => {
     if (!formData.note) return null;
     const lastTx = [...ledger].filter(t => t.type === formData.type && t.note === formData.note && t.id !== editingLedgerId && t.date).sort((a,b) => b.date.localeCompare(a.date))[0];
@@ -683,9 +698,9 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       const verb = formData.type === '수입' ? '기록한' : '지출한';
       return `최근 ${m}월 ${d}일에 ${verb} 금액은 ${new Intl.NumberFormat('ko-KR').format(lastTx.amount)}원이었어요 😊`;
     }
-  
     return null;
   }, [formData.note, formData.type, ledger, editingLedgerId]);
+
   const saveTransaction = async () => {
     if (!formData.amount || !user) return false;
     let finalCategory = formData.category;
@@ -701,6 +716,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
 
     const finalAmount = parseInt(String(formData.amount).replace(/,/g, ''), 10);
     const timestamp = new Date().toISOString();
+    
+    // 💡 [V5.32] subNote 필드 제거
     const newTx = { 
        ...formData, 
        category: finalCategory, 
@@ -709,6 +726,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
        updatedAt: timestamp,
        updatedBy: currentUser
     };
+    
     let assetToUpdate = null;
     let assetUpdates = null;
     if (!editingLedgerId && formData.linkedAssetId) { 
@@ -737,23 +755,25 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     }
     return true;
   };
+
   const handleTransactionSubmit = async (e, isContinuous = false) => {
     e.preventDefault();
     const success = await saveTransaction();
     if (success) {
-       if (isContinuous) setFormData({ ...formData, amount: '', note: '', subNote: '' });
+       if (isContinuous) setFormData({ ...formData, amount: '', note: '' });
        else { setIsModalOpen(false); setEditingLedgerId(null); }
     }
   };
+
   const handleEditClick = (t) => {
     setSelectedLedgerDetail(null);
-    setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
+    setFormData({ date: t.date, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
     setEditingLedgerId(t.id);
     setIsModalOpen(true); 
   };
 
   const handleCopyClick = (t) => {
-    setFormData({ date: todayStr, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', subNote: t.subNote || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
+    setFormData({ date: todayStr, type: t.type, amount: String(t.amount), category: t.category, note: t.note || '', isFromSavings: t.isFromSavings || false, linkedAssetId: '' });
     setEditingLedgerId(null);
     setSelectedLedgerDetail(null);
     setIsModalOpen(true);
@@ -765,6 +785,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
     else setLedger((ledger||[]).filter(t => t.id !== id));
     setSelectedLedgerDetail(null);
   };
+
   const saveMemo = async () => {
     if(!user || !window.confirm("메모를 저장하시겠습니까?")) return;
     const stamp = getKSTTimestamp();
@@ -848,6 +869,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
   };
 
   const isSearchActive = searchQuery || filterType !== 'all' || filterCategory !== 'all' || ledgerDateRange.start || ledgerDateRange.end;
+  
   return (
     <div className="space-y-3 pb-4 pt-2 animate-in fade-in duration-500">
       
@@ -1097,7 +1119,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
       )}
 
       {/* 가계부 플로팅 버튼 */}
-      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', subNote: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
+      <button onClick={() => { setEditingLedgerId(null); setFormData({ date: todayStr, type: '지출', amount: '', category: getSortedCategories('지출')[0]||'식비', note: '', isFromSavings: false, linkedAssetId: '' }); setIsModalOpen(true); }} className="fixed bottom-[100px] right-6 bg-pink-500 text-white w-14 h-14 rounded-[1.5rem] shadow-xl flex items-center justify-center active:scale-90 transition-all z-40 border border-pink-600"><Plus size={28}/></button>
 
       {/* 💡 [V5.4] 카테고리 리포트 상세 내역 팝업 모달 */}
       {selectedReportCategory && (() => {
@@ -1226,14 +1248,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                     </div>
                   </div>
                </div>
-               {selectedLedgerDetail.subNote && (
-                  <div className="mb-6 border-t border-dashed border-gray-200 pt-4">
-                    <span className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest flex items-center gap-1"><FileText size={12}/> 세부 메모</span>
-                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner">
-                        {selectedLedgerDetail.subNote}
-                     </div>
-                  </div>
-               )}
+               
                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => handleCopyClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Copy size={16}/> 복사</button>
                   <button onClick={() => handleEditClick(selectedLedgerDetail)} className="py-3 bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 text-gray-600 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95 shadow-sm"><Edit3 size={16}/> 수정</button>
@@ -1243,7 +1258,7 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
          </div>
       )}
 
-      {/* 가계부 입력/수정 메인 모달 */}
+      {/* 💡 [V5.32] 가계부 입력/수정 메인 모달 UI 동선 최적화 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[90] p-0">
           <div 
@@ -1259,7 +1274,8 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                <button onClick={() => setIsModalOpen(false)} className="bg-gray-50 text-gray-500 p-2 rounded-2xl border border-gray-100 hover:bg-pink-50 hover:text-pink-500"><X size={20}/></button>
             </div>
 
-            <form className="space-y-3 flex-1 pb-2">
+            <form className="space-y-4 flex-1 pb-2 overflow-y-auto no-scrollbar">
+              
               {!editingLedgerId && frequentItems.length > 0 && (
                 <div className="mb-1">
                    <div className="text-[10px] font-black text-gray-400 ml-1 mb-1.5 flex items-center gap-1"><Star size={12} className="text-amber-400 fill-amber-400"/> 자주 쓰는 {formData.type} 불러오기</div>
@@ -1276,20 +1292,37 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                 </div>
               )}
 
+              {/* 1. 지출/수입 토글 */}
               <div className="flex bg-gray-50 p-1 rounded-2xl border border-gray-200/60 shadow-inner">
                  <button type="button" onClick={() => setFormData({...formData, type:'지출', category: getSortedCategories('지출')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='지출'?'bg-white text-pink-500 shadow-sm border border-pink-100':'text-gray-500'}`}>지출하기</button>
                  <button type="button" onClick={() => setFormData({...formData, type:'수입', category: getSortedCategories('수입')[0], isFromSavings: false})} className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${formData.type==='수입'?'bg-white text-blue-500 shadow-sm border border-blue-100':'text-gray-500'}`}>수입얻기</button>
               </div>
 
-              <div className="relative z-50" ref={suggestionRef}>
-                 <label className="text-[10px] font-black text-gray-400 ml-1 mb-1 block">상세 내용 (어디서 쓰셨나요?)</label>
+              {/* 2. 금액 (우선순위 1위) */}
+              <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40 mt-3">
+                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">금액</label>
+                 <div className="relative">
+                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="얼마를 쓰셨나요?" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
+                    <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
+                 </div>
+                 
+                 {amountPlaceholder && (
+                    <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
+                       <Star size={12} className="fill-pink-400 text-pink-400 shrink-0"/> {amountPlaceholder}
+                    </div>
+                 )}
+              </div>
+
+              {/* 3. 상세내용 (우선순위 2위) */}
+              <div className="relative z-50 mt-3" ref={suggestionRef}>
+                 <label className="text-[10px] font-black text-gray-400 ml-1 block mb-1">상세 내용</label>
                  <input type="text" value={formData.note} 
                     onChange={e => {
                        setFormData({...formData, note: e.target.value});
                        setIsSuggestionOpen(true);
                     }}
                     onFocus={() => setIsSuggestionOpen(true)}
-                    placeholder="내역을 적어주세요" className="w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border focus:border-pink-300 transition-colors shadow-inner" />
+                    placeholder="예: 배달의민족, 카페, 편의점" className="w-full bg-gray-50 rounded-xl px-4 h-[56px] font-black text-lg outline-none border focus:border-pink-300 transition-colors shadow-inner" />
                  
                  {isSuggestionOpen && formData.note && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-1.5 animate-in slide-in-from-top-1 max-h-[160px] overflow-y-auto">
@@ -1309,38 +1342,26 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  )}
               </div>
 
-              <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-sm relative z-40">
-                 <div className="relative">
-                    <input type="text" inputMode="numeric" pattern="[0-9,]*" value={formData.amount ? formatLargeMoney(formData.amount) : ''} onChange={e => setFormData({...formData, amount: e.target.value.replace(/[^0-9]/g, '')})} placeholder="금액 입력" className={`w-full text-3xl font-black border-b-2 ${formData.type === '수입' ? 'focus:border-blue-400' : 'focus:border-pink-400'} border-gray-100 pb-1 outline-none bg-transparent transition-colors pr-8`} />
-                    <span className="absolute right-1 bottom-2 text-xl font-black text-gray-300">원</span>
-                 </div>
-                 
-                 {amountPlaceholder && (
-                    <div className="text-[10px] font-bold text-pink-500 bg-pink-50 px-3 py-2 mt-2 rounded-lg border border-pink-100 animate-in fade-in flex items-center gap-1.5">
-                       <Star size={12} className="fill-pink-400 text-pink-400 shrink-0"/> {amountPlaceholder}
-                    </div>
-                 )}
-              </div>
-
-              <div className="flex gap-3 w-full relative z-30 flex-col sm:flex-row">
-                <div className="flex-[1.2] shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200">
+              {/* 4. 날짜 & 카테고리 (50:50 분할) */}
+              <div className="grid grid-cols-2 gap-3 w-full relative z-30 mt-3">
+                <div className="bg-gray-50 rounded-xl p-2 border border-gray-200">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><CalendarIcon size={10} className="text-pink-500"/> 날짜</label>
-                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors" />
+                   <input type="date" value={formData.date} onChange={e=>setFormData({...formData, date:e.target.value})} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none transition-colors text-gray-800" />
                 </div>
-                <div className="flex-1 shrink-0 bg-gray-50 rounded-xl p-2 border border-gray-200 flex flex-col gap-1">
+                <div className="bg-gray-50 rounded-xl p-2 border border-gray-200 flex flex-col gap-1">
                    <label className="text-[9px] font-black text-gray-400 ml-1 mb-0.5 flex items-center gap-1"><Grid size={10} className="text-pink-500"/> 카테고리</label>
-                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-xs outline-none transition-colors">
+                   <select value={isCustomCategory ? '직접입력' : formData.category} onChange={e=>{ if (e.target.value === '직접입력') { setIsCustomCategory(true); setCustomCategoryInput(''); } else { setIsCustomCategory(false); setFormData({...formData, category:e.target.value, isFromSavings: false, linkedAssetId: ''}); } }} className="w-full bg-transparent px-1 h-[28px] font-bold text-sm outline-none transition-colors text-gray-800">
                       {getSortedCategories(formData.type).map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="직접입력" className="font-black text-pink-500">+ 직접입력 (신규)</option>
                    </select>
 
-                   {/* 💡 [V5.31] 직접입력 폼 노출 (스텔스 폼) */}
+                   {/* 직접입력 스텔스 폼 */}
                    {isCustomCategory && (
                      <div className="mt-1 bg-pink-50/50 border border-pink-200 rounded-xl p-2.5 animate-in slide-in-from-top-2">
-                       <input type="text" placeholder="새로운 카테고리명" value={customCategoryInput} onChange={e => setCustomCategoryInput(e.target.value)} className="w-full bg-white rounded-lg px-3 py-2 text-xs font-black outline-none border border-pink-200 focus:border-pink-500 shadow-sm mb-2" />
+                       <input type="text" placeholder="새로운 분류명" value={customCategoryInput} onChange={e => setCustomCategoryInput(e.target.value)} className="w-full bg-white rounded-lg px-3 py-2 text-xs font-black outline-none border border-pink-200 focus:border-pink-500 shadow-sm mb-2" />
                        <label className="flex items-center gap-2 cursor-pointer">
                          <input type="checkbox" checked={saveToCategoryList} onChange={e => setSaveToCategoryList(e.target.checked)} className="w-4 h-4 text-pink-600 rounded border-pink-300 focus:ring-pink-500" />
-                         <span className="text-[10px] font-bold text-gray-600">즐겨찾기(카테고리 리스트)에 영구 추가</span>
+                         <span className="text-[10px] font-bold text-gray-600">즐겨찾기에 영구 추가</span>
                        </label>
                      </div>
                    )}
@@ -1378,15 +1399,11 @@ function LedgerView({ ledger, setLedger, assets, setAssets, memos, setMemos, sel
                  </div>
               )}
 
-              <div className="relative z-20">
-                 <input value={formData.subNote} onChange={e=>setFormData({...formData, subNote:e.target.value})} placeholder="세부 메모를 짧게 적어주세요 (선택)" className="w-full bg-gray-50 rounded-xl px-3 h-[40px] font-bold text-xs outline-none border focus:border-pink-300 transition-colors" />
-              </div>
-
-              <div className="flex gap-2 pt-1 relative z-10 w-full overflow-hidden">
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap bg-white border-2 py-3 rounded-[1.2rem] font-black text-xs active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
+              <div className="flex gap-2 pt-2 relative z-10 w-full overflow-hidden mt-4">
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, true)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap bg-white border-2 py-3.5 rounded-[1.2rem] font-black text-sm active:scale-95 shadow-sm transition-colors ${formData.type === '수입' ? 'border-blue-500 text-blue-500' : 'border-pink-500 text-pink-500'} disabled:opacity-50`}>
                     기록하고 계속
                  </button>
-                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap py-3 rounded-[1.2rem] text-white font-black text-xs active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
+                 <button type="button" onClick={(e) => handleTransactionSubmit(e, false)} disabled={!formData.amount || !formData.note || (formData.category === '저축' && !formData.linkedAssetId && !editingLedgerId) || (formData.isFromSavings && !formData.linkedAssetId)} className={`flex-1 min-w-0 px-1 whitespace-nowrap py-3.5 rounded-[1.2rem] text-white font-black text-sm active:scale-95 shadow-md transition-colors ${formData.type === '수입' ? 'bg-blue-600 border border-blue-700' : 'bg-pink-500 border border-pink-600'} disabled:opacity-50`}>
                     닫기 및 완료
                  </button>
               </div>
